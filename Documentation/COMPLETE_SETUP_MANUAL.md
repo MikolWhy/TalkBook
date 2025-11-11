@@ -12,10 +12,9 @@ cd talkbook
 # 2. Install all dependencies
 npm install zustand dexie compromise chrono-node wink-sentiment recharts dayjs next-pwa
 
-# 3. Install type definitions
-npm install -D @types/minimatch
+npm install -D @types/react@latest
 
-# 4. Verify setup works
+# 3. Verify setup works
 npm run dev
 ```
 
@@ -618,33 +617,24 @@ npm install zustand dexie compromise chrono-node wink-sentiment recharts dayjs n
 
 **Want to learn more about why we chose these?** See `LIBRARY_CHOICES.md` for detailed explanations, alternatives we considered, and how to make your own library choices.
 
-### Step 4: Install Type Definitions
+### Step 4: Type Definitions (Optional)
+
+**Note:** Modern packages (including all the ones we're using) come with built-in TypeScript types, so no additional type definition packages are needed!
 
 **What are type definitions?**
 - TypeScript needs to know the types (shapes) of JavaScript libraries.
 - **What are types?** Information about what data a function expects and returns.
 - **Example:** A function might expect a `string` and return a `number`. TypeScript needs to know this.
-- **Why do we need them?** Some libraries (like `minimatch`) don't have built-in TypeScript types. We install separate type definition packages.
 
-**What is `@types/`?**
-- Packages starting with `@types/` are TypeScript type definitions for JavaScript packages.
-- **Why separate?** The original package might not have TypeScript support, so the community creates type definitions separately.
+**Why don't we need `@types/minimatch`?**
+- `minimatch` (used internally by Next.js) now includes its own TypeScript types.
+- The `@types/minimatch` package is deprecated and unnecessary.
+- **How we know:** npm shows a deprecation warning: "minimatch provides its own type definitions, so you do not need this installed."
 
-**What is `-D`?**
-- The `-D` flag means "dev dependency" - only needed during development, not in production.
-- **Why separate?** Production code doesn't need TypeScript types (they're removed during compilation).
-- **Where does it go?** In `package.json` under `devDependencies` instead of `dependencies`.
-
-Install TypeScript type definitions:
-
-```bash
-npm install -D @types/minimatch
-```
-
-**Why `@types/minimatch`?**
-- `minimatch` is used internally by Next.js for file matching.
-- It doesn't have built-in TypeScript types, so we need the `@types` package.
-- Without this, TypeScript would show errors when compiling.
+**When would you need `@types/` packages?**
+- Only for older JavaScript libraries that don't have built-in TypeScript support.
+- Most modern packages (like all the ones in our setup) include types automatically.
+- If TypeScript shows errors about missing types, then you'd install `@types/package-name`.
 
 ---
 
@@ -917,9 +907,9 @@ If you see errors, check:
    - Provides functionality (state management, database, NLP, charts, etc.)
    - **Learn more:** See `LIBRARY_CHOICES.md` for why we chose each one
 
-3. **Install type definitions:**
-   - Installs TypeScript type definitions
-   - TypeScript needs type information to check your code
+3. **Verify setup:**
+   - Runs the development server
+   - Confirms everything is working correctly
 
 
 
@@ -1036,7 +1026,6 @@ As you work through the setup:
 npx create-next-app@latest talkbook
 cd talkbook
 npm install zustand dexie compromise chrono-node wink-sentiment recharts dayjs next-pwa
-npm install -D @types/minimatch
 npm run dev
 ```
 
