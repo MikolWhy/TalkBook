@@ -1,9 +1,454 @@
 # TalkBook - Complete Setup Manual
 
+## 📑 Table of Contents
+
+1. [Overview](#overview)
+2. [Prerequisites](#prerequisites)
+3. [Part 1: Initial Project Setup](#part-1-initial-project-setup)
+   - [Step 1: Create Next.js Project](#step-1-create-nextjs-project)
+   - [Step 2: Install Dependencies](#step-2-install-dependencies)
+   - [Step 3: Configure Next.js](#step-3-configure-nextjs)
+4. [Part 2: Create Skeleton Files](#part-2-create-skeleton-files)
+   - [Database Files](#database-files)
+   - [NLP Files](#nlp-files)
+   - [Security Files](#security-files)
+   - [Weather Files](#weather-files)
+   - [Utils](#utils)
+   - [Stores](#stores)
+   - [Components](#components)
+   - [Pages](#pages)
+   - [Types](#types)
+5. [Part 3: Verification](#part-3-verification)
+6. [Next Steps](#next-steps)
+
+---
+
 ## Overview
 This is your **single, comprehensive manual** for setting up TalkBook from scratch. Follow this step-by-step to create a clean skeleton project structure.
 
 **Want to learn WHY we chose each library?** See `LIBRARY_CHOICES.md` for detailed explanations of every library, alternatives we considered, and how to make informed technology decisions.
+
+**After setup, see `TASK_DELEGATION.md` for your Quick Start Checklist!**
+
+---
+
+## 📊 Visual Project Structure
+
+### App Flow Diagram
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    APP STARTUP FLOW                          │
+└─────────────────────────────────────────────────────────────┘
+
+User Opens App
+    ↓
+┌─────────────────┐
+│  layout.tsx     │ ← Wraps all pages, sets up fonts/metadata
+│  (Root Layout)  │
+└────────┬────────┘
+         │
+         ↓
+┌─────────────────┐
+│  PinGate.tsx    │ ← Checks if PIN is set
+│  (PIN Screen)   │
+└────────┬────────┘
+         │
+    ┌────┴────┐
+    │         │
+  PIN?      No PIN?
+    │         │
+    ↓         ↓
+┌─────────┐ ┌─────────┐
+│ Enter   │ │  Skip   │
+│ PIN     │ │  to     │
+└────┬────┘ └────┬────┘
+     │           │
+     └─────┬─────┘
+           ↓
+    ┌──────────────┐
+    │  page.tsx    │ ← Home Page (Dashboard)
+    │  (Home)      │
+    └──────┬───────┘
+           │
+    ┌──────┴──────┬──────────────┬──────────────┐
+    │             │              │              │
+    ↓             ↓              ↓              ↓
+┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐
+│ Journal │  │ Habits  │  │  Stats  │  │Settings │
+│  Tab    │  │   Tab    │  │   Tab   │  │   Tab   │
+└────┬────┘  └────┬────┘  └────┬────┘  └────┬────┘
+     │            │             │            │
+     │            │             │            │
+     ↓            ↓             │            ↓
+┌─────────┐  ┌─────────┐       │      ┌─────────┐
+│ List    │  │  List   │       │      │  Config │
+│ Entries │  │ Habits  │       │      │  Page   │
+└────┬────┘  └────┬────┘       │      └─────────┘
+     │            │             │
+     │            │             │
+  ┌──┴──┐      ┌──┴──┐          │
+  │ New │      │ New │          │
+  │Entry│      │Habit│          │
+  └──┬──┘      └──┬──┘          │
+     │            │             │
+     │            │             │
+  ┌──┴──┐      ┌──┴──┐          │
+  │Edit │      │Edit │          │
+  │Entry│      │Habit│          │
+  └─────┘      └─────┘          │
+                                 │
+                            ┌────┴────┐
+                            │  Charts  │
+                            │ Dashboard│
+                            └──────────┘
+```
+
+### Journal Entry Flow
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│              JOURNAL ENTRY CREATION FLOW                     │
+└─────────────────────────────────────────────────────────────┘
+
+User clicks "New Entry"
+    ↓
+┌─────────────────────────┐
+│ journal/new/page.tsx   │ ← New Entry Page
+│ (Entry Form)           │
+└───────────┬─────────────┘
+            │
+    ┌───────┴────────┐
+    │               │
+    ↓               ↓
+┌──────────┐  ┌──────────────┐
+│  NLP     │  │ RichText     │
+│ Prompts  │  │ Editor       │
+│ (Auto)   │  │ (User Types) │
+└────┬─────┘  └──────┬───────┘
+     │               │
+     └───────┬───────┘
+             │
+             ↓
+    ┌────────────────┐
+    │ User Saves     │
+    │ Entry          │
+    └────────┬───────┘
+             │
+    ┌────────┴────────┐
+    │                 │
+    ↓                 ↓
+┌──────────┐    ┌──────────┐
+│ Save to  │    │ Extract  │
+│ Database │    │ Entities │
+│ (repo.ts)│    │(extract)  │
+└────┬─────┘    └────┬─────┘
+     │               │
+     └───────┬───────┘
+             │
+             ↓
+    ┌────────────────┐
+    │ Save Entities   │
+    │ (repo.ts)       │
+    └────────────────┘
+```
+
+### Habit Tracking Flow
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│              HABIT TRACKING FLOW                            │
+└─────────────────────────────────────────────────────────────┘
+
+User goes to Habits Tab
+    ↓
+┌──────────────────┐
+│ habits/page.tsx  │ ← Habits List Page
+│ (List View)      │
+└────────┬─────────┘
+         │
+    ┌────┴────┐
+    │        │
+    ↓        ↓
+┌────────┐ ┌──────────┐
+│ Create │ │  View    │
+│ Habit  │ │  Habits  │
+└───┬────┘ └─────┬─────┘
+    │           │
+    │           ↓
+    │    ┌──────────────┐
+    │    │ HabitCard    │ ← Displays each habit
+    │    │ (Component)  │
+    │    └──────┬───────┘
+    │           │
+    │           ↓
+    │    ┌──────────────┐
+    │    │ Log Habit    │ ← User logs completion
+    │    │ (Button)     │
+    │    └──────┬───────┘
+    │           │
+    │           ↓
+    │    ┌──────────────┐
+    │    │ Update DB    │ ← Save to database
+    │    │ (repo.ts)    │
+    │    └──────┬───────┘
+    │           │
+    │           ↓
+    │    ┌──────────────┐
+    │    │ Calculate    │ ← Update streak
+    │    │ Streak       │
+    │    └──────────────┘
+    │
+    ↓
+┌──────────────┐
+│ new/page.tsx │ ← Create Habit Form
+│ (Habit Form) │
+└──────┬───────┘
+       │
+       ↓
+┌──────────────┐
+│ Save Habit   │
+│ (repo.ts)    │
+└──────────────┘
+```
+
+---
+
+## 📁 Complete File Structure with Tags
+
+```
+talkbook/
+│
+├── 📄 Configuration Files (Root)
+│   ├── package.json          [📦 Dependencies & Scripts]
+│   ├── tsconfig.json         [⚙️ TypeScript Config]
+│   ├── next.config.ts        [⚙️ Next.js Config + PWA]
+│   ├── eslint.config.mjs     [⚙️ Code Quality Rules]
+│   └── postcss.config.mjs    [⚙️ CSS Processing]
+│
+├── 📁 app/                    [📱 Pages (Next.js App Router)]
+│   ├── layout.tsx            [🔒 Root Layout + PinGate Wrapper]
+│   ├── page.tsx               [🏠 Home Page (Dashboard)]
+│   ├── globals.css            [🎨 Global Styles]
+│   │
+│   ├── 📁 journal/            [📝 Journal Pages]
+│   │   ├── page.tsx           [📋 Journal List (All Entries)]
+│   │   ├── new/
+│   │   │   └── page.tsx       [✍️ New Entry Form + NLP Prompts]
+│   │   └── [id]/
+│   │       └── page.tsx       [✏️ Edit Entry Form]
+│   │
+│   ├── 📁 habits/             [✅ Habit Tracking Pages]
+│   │   ├── page.tsx          [📋 Habits List]
+│   │   ├── new/
+│   │   │   └── page.tsx       [➕ Create Habit Form]
+│   │   └── [id]/
+│   │       └── page.tsx       [✏️ Edit Habit Form]
+│   │
+│   ├── 📁 settings/           [⚙️ Settings Page]
+│   │   └── page.tsx           [🔧 App Configuration]
+│   │
+│   └── 📁 stats/              [📊 Statistics Page]
+│       └── page.tsx           [📈 Charts & Analytics Dashboard]
+│
+├── 📁 src/                    [💻 Source Code]
+│   │
+│   ├── 📁 components/         [🧩 Reusable UI Components]
+│   │   ├── RichTextEditor.tsx [✍️ Text Editor (Bold, Italic, etc.)]
+│   │   ├── PinGate.tsx        [🔒 PIN Lock Screen]
+│   │   ├── HabitCard.tsx     [📦 Habit Display Card]
+│   │   └── PromptCard.tsx    [❌ NOT NEEDED (Auto-insert approach)]
+│   │
+│   ├── 📁 lib/                [🛠️ Utility Libraries]
+│   │   │
+│   │   ├── 📁 db/             [💾 Database Layer]
+│   │   │   ├── schema.ts      [📐 Data Structure (Interfaces)]
+│   │   │   ├── dexie.ts       [🔌 Database Connection]
+│   │   │   └── repo.ts        [📚 CRUD Operations (All Tables)]
+│   │   │
+│   │   ├── 📁 nlp/            [🤖 NLP & AI Prompts]
+│   │   │   ├── extract.ts     [🔍 Extract People/Topics/Dates]
+│   │   │   └── prompts.ts     [💡 Generate Writing Prompts]
+│   │   │
+│   │   ├── 📁 security/       [🔐 Security]
+│   │   │   └── pin.ts         [🔑 PIN Hashing & Verification]
+│   │   │
+│   │   ├── 📁 weather/        [🌤️ Weather Integration]
+│   │   │   ├── openMeteo.ts   [🌐 Weather API Client]
+│   │   │   └── weatherCodes.ts [📖 Weather Code Mappings]
+│   │   │
+│   │   └── utils.ts           [🔧 Helper Functions]
+│   │
+│   ├── 📁 store/              [💾 State Management (Zustand)]
+│   │   ├── settingsStore.ts   [⚙️ App Settings State]
+│   │   └── uiStore.ts         [🖥️ UI State (PIN, Loading, Modals)]
+│   │
+│   └── 📁 types/               [📝 TypeScript Type Definitions]
+│       └── wink-sentiment.d.ts [📦 Library Type Definitions]
+│
+├── 📁 public/                 [🌐 Static Assets]
+│   ├── manifest.json          [📱 PWA Manifest]
+│   └── *.svg                  [🖼️ Icons & Images]
+│
+└── 📄 Documentation
+    ├── COMPLETE_SETUP_MANUAL.md [📖 This File]
+    ├── TASK_DELEGATION.md      [👥 Team Task Assignment]
+    └── *.md                    [📚 Other Docs]
+```
+
+---
+
+## 🏷️ File Purpose Tags Reference
+
+### Pages (`app/`)
+- **🏠 Home** (`page.tsx`) - Landing page after PIN, shows recent entries & quick actions
+- **📝 Journal** (`journal/page.tsx`) - List all journal entries
+- **✍️ New Entry** (`journal/new/page.tsx`) - Create entry with rich text editor + NLP prompts
+- **✏️ Edit Entry** (`journal/[id]/page.tsx`) - Edit existing entry
+- **✅ Habits** (`habits/page.tsx`) - List all habits with progress & streaks
+- **➕ New Habit** (`habits/new/page.tsx`) - Create new habit
+- **✏️ Edit Habit** (`habits/[id]/page.tsx`) - Edit existing habit
+- **📊 Stats** (`stats/page.tsx`) - Charts & analytics dashboard
+- **⚙️ Settings** (`settings/page.tsx`) - App configuration (PIN, AI, appearance)
+
+### Components (`src/components/`)
+- **✍️ RichTextEditor** - Text editor with formatting toolbar (bold, italic, colors)
+- **🔒 PinGate** - PIN lock screen that protects all pages
+- **📦 HabitCard** - Displays one habit with progress bar & log button
+- **❌ PromptCard** - NOT NEEDED (prompts auto-insert into editor)
+
+### Database (`src/lib/db/`)
+- **📐 schema.ts** - TypeScript interfaces defining data structure
+- **🔌 dexie.ts** - IndexedDB connection & table setup
+- **📚 repo.ts** - All database operations (CRUD for all tables)
+
+### NLP (`src/lib/nlp/`)
+- **🔍 extract.ts** - Extracts people, topics, dates, sentiment from text
+- **💡 prompts.ts** - Generates personalized writing prompts
+
+### Security (`src/lib/security/`)
+- **🔑 pin.ts** - PIN hashing, verification, storage
+
+### Weather (`src/lib/weather/`)
+- **🌐 openMeteo.ts** - Fetches weather data from API
+- **📖 weatherCodes.ts** - Converts weather codes to descriptions
+
+### Stores (`src/store/`)
+- **⚙️ settingsStore.ts** - App settings (appearance, AI preferences)
+- **🖥️ uiStore.ts** - UI state (PIN lock, loading, modals)
+
+### Utils (`src/lib/`)
+- **🔧 utils.ts** - Helper functions (date formatting, text processing)
+
+---
+
+## 🔄 Data Flow Diagram
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    DATA FLOW OVERVIEW                       │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────┐
+│   User      │
+│  (Browser)  │
+└──────┬──────┘
+       │
+       │ User Actions (Click, Type, Save)
+       ↓
+┌─────────────────────────────────────┐
+│         Pages (app/*.tsx)           │
+│  - Display UI                       │
+│  - Handle user input                │
+│  - Call stores & repo functions     │
+└──────┬──────────────────────────────┘
+       │
+       ├─────────────────┬─────────────────┐
+       │                 │                 │
+       ↓                 ↓                 ↓
+┌─────────────┐  ┌─────────────┐  ┌─────────────┐
+│   Stores    │  │    Repo     │  │ Components  │
+│ (Zustand)   │  │  (Database) │  │  (UI)       │
+│             │  │             │  │             │
+│ - UI State  │  │ - CRUD Ops  │  │ - RichText  │
+│ - Settings  │  │ - Queries   │  │ - PinGate   │
+└──────┬──────┘  └──────┬──────┘  └──────┬──────┘
+       │                 │                 │
+       │                 │                 │
+       └─────────────────┴─────────────────┘
+                         │
+                         ↓
+              ┌──────────────────┐
+              │   IndexedDB      │
+              │  (Browser DB)    │
+              │                  │
+              │ - Entries        │
+              │ - Habits         │
+              │ - Entities       │
+              │ - Settings       │
+              └──────────────────┘
+```
+
+---
+
+## 🎯 Component Relationships
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│              COMPONENT DEPENDENCY TREE                       │
+└─────────────────────────────────────────────────────────────┘
+
+layout.tsx (Root)
+    │
+    ├── PinGate.tsx
+    │   ├── Uses: pin.ts (verify PIN)
+    │   └── Uses: uiStore.ts (PIN lock state)
+    │
+    └── All Pages
+        │
+        ├── page.tsx (Home)
+        │   ├── Uses: repo.ts (get recent entries)
+        │   └── Links to: journal, habits, stats, settings
+        │
+        ├── journal/new/page.tsx
+        │   ├── Uses: RichTextEditor.tsx
+        │   ├── Uses: prompts.ts (auto-insert prompts)
+        │   ├── Uses: repo.ts (save entry)
+        │   ├── Uses: extract.ts (extract entities)
+        │   └── Uses: settingsStore.ts (appearance settings)
+        │
+        ├── habits/page.tsx
+        │   ├── Uses: HabitCard.tsx
+        │   ├── Uses: repo.ts (get habits, log habits)
+        │   └── Uses: repo.ts (calculate streaks)
+        │
+        ├── stats/page.tsx
+        │   ├── Uses: repo.ts (get entries, habits, aggregates)
+        │   └── Uses: Recharts (display charts)
+        │
+        └── settings/page.tsx
+            ├── Uses: pin.ts (set/remove PIN)
+            ├── Uses: settingsStore.ts (all settings)
+            └── Uses: repo.ts (export/import data)
+```
+
+---
+
+## 📋 Quick Reference: What Each Folder Does
+
+| Folder | Purpose | Contains |
+|--------|---------|----------|
+| `app/` | **Pages** - Next.js routes | All page components (home, journal, habits, etc.) |
+| `src/components/` | **Reusable UI** | Components used across multiple pages |
+| `src/lib/db/` | **Database** | Schema, connection, CRUD operations |
+| `src/lib/nlp/` | **AI/NLP** | Entity extraction, prompt generation |
+| `src/lib/security/` | **Security** | PIN hashing & verification |
+| `src/lib/weather/` | **Weather** | API client & code mappings |
+| `src/store/` | **State** | Zustand stores (settings, UI state) |
+| `src/lib/` | **Utils** | Helper functions |
+| `public/` | **Static** | Images, icons, PWA manifest |
+
+---
 
 ## Prerequisites
 
@@ -532,7 +977,7 @@ Create new file:
 ```typescript
 // new journal entry page - create entry form
 // includes rich text editor, mood selector, weather, prompts, and save functionality
-// TODO: implement entry creation form, rich text editor integration, mood/weather inputs, prompt display, save handler
+// TODO: implement entry creation form, rich text editor integration, mood/weather inputs, auto-insert prompts as headers, save handler
 // why: interface for creating new journal entries with all features
 // how: client component with form state, rich text editor, async save to database
 // syntax: "use client"; export default function NewEntryPage()
@@ -759,27 +1204,17 @@ export default function RichTextEditor({
 Create new file:
 
 ```typescript
-// prompt card component - displays ai-generated prompt
-// clickable card that inserts prompt into editor as heading
-// TODO: implement prompt card ui, click handler to insert prompt, prevent duplicate insertion
-// why: reusable component for displaying prompts consistently
-// how: client component with click handler, communicates with parent via callback
-// syntax: "use client"; export default function PromptCard({ prompt, onSelect }: { prompt: string, onSelect: () => void })
+// prompt component - NOT NEEDED with auto-insert approach
+// prompts are automatically inserted as headers when page loads
+// TODO: this file can be deleted or left empty - auto-insert logic goes in app/journal/new/page.tsx
+// why: with auto-insert, prompts go directly into editor, no separate component needed
+// how: Person 1 implements auto-insert in new entry page using useEffect and insertPromptAsHeading()
+// syntax: prompts auto-inserted via editorRef.current?.insertPromptAsHeading(prompt)
 
 "use client";
 
-interface PromptCardProps {
-  prompt: string;
-  onSelect: () => void;
-}
-
-export default function PromptCard({ prompt, onSelect }: PromptCardProps) {
-  return (
-    <div>
-      <p>TODO: implement prompt card</p>
-    </div>
-  );
-}
+// TODO: this component is not needed with auto-insert approach
+// delete this file or leave empty
 ```
 
 #### `src/components/HabitCard.tsx`
@@ -845,12 +1280,15 @@ Create new file:
 ```typescript
 // database repository - crud operations for all tables
 // provides typed functions for creating, reading, updating, deleting data
-// TODO: implement all crud functions (getOrCreateDefaultProfile, createEntry, getEntries, updateEntry, deleteEntry, etc.)
+// TODO: Aadil implements entry and profile functions first, then Michael adds entity functions, Zayn adds habit functions
 // why: centralized data access layer, type-safe database operations
 // how: async functions using dexie instance, proper error handling, return typed data
 // syntax: export async function operationName(params): Promise<ReturnType> { ... }
+// coordination: Use Git branches - Aadil creates file, Michael and Zayn add functions on separate branches
 
-// TODO: implement all repository functions
+// TODO: Aadil implements entry and profile functions first
+// TODO: Michael adds entity functions (on separate branch)
+// TODO: Zayn adds habit and aggregate functions (on separate branch)
 ```
 
 ### NLP (`src/lib/nlp/`)
@@ -875,10 +1313,11 @@ Create new file:
 ```typescript
 // prompt generation - generates personalized ai prompts based on journal history
 // analyzes past entries to create relevant follow-up prompts
+// prompts are auto-inserted as headers when new entry page loads
 // TODO: implement generatePrompts function, analyze entities from past entries, create prompts with tone packs, filter blacklist
 // why: provides personalized prompts to guide journaling
 // how: async function fetching entities, analyzing patterns, generating prompts with templates
-// syntax: export async function generatePrompts(count: number, tone: string, blacklist: string[]): Promise<string[]>
+// syntax: export async function generatePrompts(count: number, tone: string, blacklist: string[], profileId: number): Promise<string[]>
 
 // TODO: implement generatePrompts function
 ```
@@ -967,31 +1406,18 @@ Create new file:
 ```typescript
 // settings state management - manages user settings
 // ai settings, appearance, blacklist, prompt preferences
-// TODO: implement zustand store with settings state, loadSettings, updateSetting, blacklist management
+// TODO: Aadil implements store structure and appearance settings first, then Michael adds AI settings
 // why: centralized settings management, persistence to indexeddb
 // how: zustand store with async load/save to database
 // syntax: export const useSettingsStore = create<SettingsState>((set, get) => ({ state, actions }))
+// coordination: Use Git branches - Aadil creates store, Michael adds AI settings on separate branch
 
 import { create } from "zustand";
 
-// TODO: implement settings store
+// TODO: Aadil implements store structure and appearance settings first
+// TODO: Michael adds AI settings (on separate branch)
 ```
 
-#### `src/store/journalStore.ts`
-Create new file:
-
-```typescript
-// journal state management - manages journal-related state
-// current entry, entries list, filters
-// TODO: implement zustand store with entries state, currentEntry, filters, and actions
-// why: centralized journal state, efficient updates
-// how: zustand store with state and actions for entries management
-// syntax: export const useJournalStore = create<JournalState>((set, get) => ({ state, actions }))
-
-import { create } from "zustand";
-
-// TODO: implement journal store
-```
 
 ### Types (`src/types/`)
 
