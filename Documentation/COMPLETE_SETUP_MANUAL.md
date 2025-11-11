@@ -1,25 +1,54 @@
 # TalkBook - Complete Setup Manual
 
-## 📑 Table of Contents
+## ⚡ Quick Setup Commands
 
-1. [Overview](#overview)
-2. [Prerequisites](#prerequisites)
-3. [Part 1: Initial Project Setup](#part-1-initial-project-setup)
+**Copy and paste these commands in order:**
+
+```bash
+# 1. Create Next.js project (if starting from scratch) SKIP - Already Done.
+npx create-next-app@latest talkbook
+cd talkbook
+
+# 2. Install all dependencies
+npm install zustand dexie compromise chrono-node wink-sentiment recharts dayjs next-pwa
+
+# 3. Install type definitions
+npm install -D @types/minimatch
+
+# 4. Verify setup works
+npm run dev
+```
+
+**That's it!** The skeleton files are already created. If you want to understand what each command does, read the detailed sections below.
+
+---
+
+## 📑 Table of Contents ⚡ = Skim plz; otherwise skip unless you curious
+
+1. [Quick Setup Commands](#quick-setup-commands) ⬆️
+2. [Visual Project Structure](#visual-project-structure)⚡
+   - [App Flow Diagram](#app-flow-diagram)⚡
+   - [Journal Entry Flow](#journal-entry-flow)⚡
+   - [Habit Tracking Flow](#habit-tracking-flow)⚡
+   - [Complete File Structure](#complete-file-structure-with-tags)⚡
+   - [File Purpose Tags](#file-purpose-tags-reference)⚡
+   - [Data Flow Diagram](#data-flow-diagram)⚡
+   - [Component Relationships](#component-relationships)⚡
+   - [Quick Reference: Folders](#quick-reference-what-each-folder-does)⚡
+3. [Overview](#overview)
+4. [Prerequisites](#prerequisites)
+5. [Part 1: Initial Project Setup](#part-1-initial-project-setup)
    - [Step 1: Create Next.js Project](#step-1-create-nextjs-project)
-   - [Step 2: Install Dependencies](#step-2-install-dependencies)
-   - [Step 3: Configure Next.js](#step-3-configure-nextjs)
-4. [Part 2: Create Skeleton Files](#part-2-create-skeleton-files)
-   - [Database Files](#database-files)
-   - [NLP Files](#nlp-files)
-   - [Security Files](#security-files)
-   - [Weather Files](#weather-files)
-   - [Utils](#utils)
-   - [Stores](#stores)
-   - [Components](#components)
-   - [Pages](#pages)
-   - [Types](#types)
-5. [Part 3: Verification](#part-3-verification)
-6. [Next Steps](#next-steps)
+   - [Step 2: Navigate to Project](#step-2-navigate-to-project)
+   - [Step 3: Install ALL Required Dependencies](#step-3-install-all-required-dependencies) ⚡
+   - [Step 4: Install Type Definitions](#step-4-install-type-definitions)
+6. [Part 2: Configuration Files (Reference Only)](#part-2-configuration-files-reference-only---already-done-)
+7. [Part 3: Skeleton Files Already Created](#part-3-skeleton-files-already-created-)
+8. [Part 4: Files Already Created](#part-4-files-already-created-)
+9. [Part 5: Verification](#part-5-verification)
+10. [Summary: Setup Commands](#summary-setup-commands)
+11. [Learning Resources](#learning-resources)
+12. [Quick Reference](#quick-reference)
 
 ---
 
@@ -466,24 +495,17 @@ Before starting, you need these tools installed:
 
 ### Step 1: Create Next.js Project
 
-**Yes, you need to run this command** - it creates the base Next.js project structure.
 
 **What is Next.js?**
 - Next.js is a **React framework** - it's built on top of React but adds features like routing, server-side rendering, and easy deployment.
 - **Why use a framework?** Instead of building everything from scratch (routing, file structure, build tools), Next.js provides a structure and tools so you can focus on building features.
 - **What does it give us?** Automatic routing (pages are files), fast development server, production optimizations, and PWA support.
 
-**What is `npx`?**
-- `npx` is a package runner that comes with npm. It downloads and runs packages temporarily.
-- **Why use it?** Instead of installing `create-next-app` globally, `npx` downloads it, runs it, then discards it. Keeps your system clean.
-- **The `@latest` part:** Ensures you get the newest version of the tool.
-
-Open your terminal in your desired project directory and run:
+Open your terminal in your desired project directory and run (SKIP - ALREADY DONE):
 
 ```bash
 npx create-next-app@latest talkbook
 ```
-
 **What this command does:**
 1. Downloads the `create-next-app` tool temporarily
 2. Creates a new folder called `talkbook`
@@ -626,7 +648,9 @@ npm install -D @types/minimatch
 
 ---
 
-## Part 2: Configuration Files
+## Part 2: Configuration Files (Reference Only - Already Done ✅)
+
+**Note:** If you're following this manual and the project is already set up, you can **skip this section**. It's kept as reference for understanding what the configuration files do.
 
 **What are configuration files?**
 - Files that tell tools how to behave (like settings in a video game).
@@ -825,648 +849,33 @@ Add these lines to your `.gitignore` (if not already present):
 
 ---
 
-## Part 3: Create Directory Structure
+## Part 3: Skeleton Files Already Created ✅
 
-### Step 9: Create All Directories
+**The skeleton files with proper headers have already been created.** 
 
-Create these directories in your project:
+If you need to see what each file should contain, check the actual files in your project - they all have detailed header comments explaining:
+- What the file is for
+- What needs to be implemented
+- Who owns it (Michael, Aadil, or Zayn)
+- Coordination notes for shared files
 
-```bash
-# Windows PowerShell
-New-Item -ItemType Directory -Force -Path "src/app/journal/new"
-New-Item -ItemType Directory -Force -Path "src/app/journal/[id]"
-New-Item -ItemType Directory -Force -Path "src/app/habits/new"
-New-Item -ItemType Directory -Force -Path "src/app/habits/[id]"
-New-Item -ItemType Directory -Force -Path "src/app/settings"
-New-Item -ItemType Directory -Force -Path "src/app/stats"
-New-Item -ItemType Directory -Force -Path "src/components"
-New-Item -ItemType Directory -Force -Path "src/lib/db"
-New-Item -ItemType Directory -Force -Path "src/lib/nlp"
-New-Item -ItemType Directory -Force -Path "src/lib/security"
-New-Item -ItemType Directory -Force -Path "src/lib/weather"
-New-Item -ItemType Directory -Force -Path "src/store"
-New-Item -ItemType Directory -Force -Path "src/types"
-```
-
-Or manually create these folders:
-- `src/app/journal/new/`
-- `src/app/journal/[id]/`
-- `src/app/habits/new/`
-- `src/app/habits/[id]/`
-- `src/app/settings/`
-- `src/app/stats/`
-- `src/components/`
-- `src/lib/db/`
-- `src/lib/nlp/`
-- `src/lib/security/`
-- `src/lib/weather/`
-- `src/store/`
-- `src/types/`
+**To see the file structure visually, check the [Visual Project Structure](#-visual-project-structure) section above.**
 
 ---
 
-## Part 4: Create All Files with Headers
+## Part 4: Files Already Created ✅
 
-### App Pages (`src/app/`)
+**All skeleton files have already been created with proper header comments.**
 
-#### `src/app/layout.tsx`
-Replace the entire file with:
+Each file contains:
+- **What the file is for** - Clear explanation of purpose
+- **What needs to be implemented** - Specific TODOs
+- **Ownership** - Who implements it (Michael, Aadil, or Zayn)
+- **Coordination notes** - How to work together on shared files
 
-```typescript
-// root layout component - wraps entire app
-// provides pin gate protection, global styles, and metadata
-// TODO: implement pin gate wrapper, add fonts, configure metadata and viewport
-// why: next.js app router requires root layout for all pages
-// how: default export function component with children prop
-// syntax: export default function RootLayout({ children }: { children: React.ReactNode })
+**To see the complete file structure, check the [Visual Project Structure](#-visual-project-structure) section above.**
 
-import type { Metadata } from "next";
-import "./globals.css";
-
-export const metadata: Metadata = {
-  title: "TalkBook - Local Journal & Habits",
-  description: "Privacy-first journaling and habit tracking PWA",
-  manifest: "/manifest.json",
-};
-
-export const viewport = {
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-  themeColor: "#3b82f6",
-};
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  return (
-    <html lang="en">
-      <body>{children}</body>
-    </html>
-  );
-}
-```
-
-#### `src/app/page.tsx`
-Replace the entire file with:
-
-```typescript
-// home page - dashboard view
-// displays recent journal entries, quick actions, and summary stats
-// TODO: implement home dashboard with recent entries list, quick action buttons, stats summary
-// why: main landing page after login, provides overview and quick access
-// how: client component fetching recent entries, displaying cards with links
-// syntax: "use client"; export default function HomePage()
-
-"use client";
-
-export default function HomePage() {
-  return (
-    <div>
-      <h1>TalkBook</h1>
-      <p>Home page - TODO: implement dashboard</p>
-    </div>
-  );
-}
-```
-
-#### `src/app/globals.css`
-Replace the entire file with:
-
-```css
-/* global styles and tailwind directives */
-/* TODO: add tailwind base, components, utilities directives */
-/* why: tailwind requires base styles to be imported */
-/* how: @tailwind directives at top of file */
-/* syntax: @tailwind base; @tailwind components; @tailwind utilities; */
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-```
-
-#### `src/app/journal/page.tsx`
-Create new file:
-
-```typescript
-// journal list page - displays all journal entries
-// shows entries in chronological order with preview and actions
-// TODO: implement entry list view, filtering, search, entry cards with preview
-// why: allows users to browse and access all journal entries
-// how: client component fetching entries, rendering cards with dates and previews
-// syntax: "use client"; export default function JournalPage()
-
-"use client";
-
-export default function JournalPage() {
-  return (
-    <div>
-      <h1>Journal</h1>
-      <p>TODO: implement journal list</p>
-    </div>
-  );
-}
-```
-
-#### `src/app/journal/new/page.tsx`
-Create new file:
-
-```typescript
-// new journal entry page - create entry form
-// includes rich text editor, mood selector, weather, prompts, and save functionality
-// TODO: implement entry creation form, rich text editor integration, mood/weather inputs, auto-insert prompts as headers, save handler
-// why: interface for creating new journal entries with all features
-// how: client component with form state, rich text editor, async save to database
-// syntax: "use client"; export default function NewEntryPage()
-
-"use client";
-
-export default function NewEntryPage() {
-  return (
-    <div>
-      <h1>New Entry</h1>
-      <p>TODO: implement entry creation form</p>
-    </div>
-  );
-}
-```
-
-#### `src/app/journal/[id]/page.tsx`
-Create new file:
-
-```typescript
-// edit journal entry page - update existing entry
-// similar to new page but pre-fills with existing entry data
-// TODO: implement entry editing form, load existing entry data, update handler, delete option
-// why: allows users to edit or delete existing journal entries
-// how: client component fetching entry by id, pre-filling form, async update/delete
-// syntax: "use client"; export default function EditEntryPage({ params }: { params: { id: string } })
-
-"use client";
-
-export default function EditEntryPage({
-  params,
-}: {
-  params: { id: string };
-}) {
-  return (
-    <div>
-      <h1>Edit Entry</h1>
-      <p>TODO: implement entry editing form</p>
-    </div>
-  );
-}
-```
-
-#### `src/app/habits/page.tsx`
-Create new file:
-
-```typescript
-// habits list page - displays all active habits
-// shows habits with progress, streaks, and logging interface
-// TODO: implement habits list view, progress display, streak calculation, logging interface, archive option
-// why: main interface for viewing and managing habits
-// how: client component fetching habits, displaying cards with stats, logging handlers
-// syntax: "use client"; export default function HabitsPage()
-
-"use client";
-
-export default function HabitsPage() {
-  return (
-    <div>
-      <h1>Habits</h1>
-      <p>TODO: implement habits list</p>
-    </div>
-  );
-}
-```
-
-#### `src/app/habits/new/page.tsx`
-Create new file:
-
-```typescript
-// new habit page - create habit form
-// includes name, type (bool/number), target, unit, color selection
-// TODO: implement habit creation form, type selection, target input, color picker, save handler
-// why: interface for creating new habits with all configuration options
-// how: client component with form state, validation, async save to database
-// syntax: "use client"; export default function NewHabitPage()
-
-"use client";
-
-export default function NewHabitPage() {
-  return (
-    <div>
-      <h1>New Habit</h1>
-      <p>TODO: implement habit creation form</p>
-    </div>
-  );
-}
-```
-
-#### `src/app/habits/[id]/page.tsx`
-Create new file:
-
-```typescript
-// edit habit page - update existing habit
-// similar to new page but pre-fills with existing habit data
-// TODO: implement habit editing form, load existing habit data, update handler, delete option
-// why: allows users to edit or delete existing habits
-// how: client component fetching habit by id, pre-filling form, async update/delete
-// syntax: "use client"; export default function EditHabitPage({ params }: { params: { id: string } })
-
-"use client";
-
-export default function EditHabitPage({
-  params,
-}: {
-  params: { id: string };
-}) {
-  return (
-    <div>
-      <h1>Edit Habit</h1>
-      <p>TODO: implement habit editing form</p>
-    </div>
-  );
-}
-```
-
-#### `src/app/stats/page.tsx`
-Create new file:
-
-```typescript
-// statistics page - displays charts and analytics
-// shows journal word counts, habit progress, streaks, mood trends, and other insights
-// TODO: implement stats dashboard with recharts, word count charts, habit progress charts, mood trends, streak visualizations
-// why: provides visual insights into journaling and habit tracking progress
-// how: client component fetching aggregated data, rendering charts with recharts library
-// syntax: "use client"; export default function StatsPage()
-
-"use client";
-
-export default function StatsPage() {
-  return (
-    <div>
-      <h1>Statistics</h1>
-      <p>TODO: implement statistics dashboard with charts</p>
-    </div>
-  );
-}
-```
-
-#### `src/app/settings/page.tsx`
-Create new file:
-
-```typescript
-// settings page - app configuration interface
-// includes pin management, ai settings, appearance, blacklist, export/import, clear data
-// TODO: implement settings form, pin set/remove, ai toggle, appearance options, blacklist management, export/import handlers
-// why: central location for all app configuration and data management
-// how: client component with multiple sections, form handlers, file operations
-// syntax: "use client"; export default function SettingsPage()
-
-"use client";
-
-export default function SettingsPage() {
-  return (
-    <div>
-      <h1>Settings</h1>
-      <p>TODO: implement settings form</p>
-    </div>
-  );
-}
-```
-
-### Components (`src/components/`)
-
-#### `src/components/PinGate.tsx`
-Create new file:
-
-```typescript
-// pin gate component - protects app with pin verification
-// shows pin entry screen when pin is set and not verified
-// TODO: implement pin verification screen, check pin status on mount, verify pin on submit, unlock app on success
-// why: privacy protection for journal entries and habits
-// how: client component checking pin status, showing input screen, verifying on submit
-// syntax: "use client"; export default function PinGate({ children }: { children: React.ReactNode })
-
-"use client";
-
-export default function PinGate({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return <>{children}</>;
-}
-```
-
-#### `src/components/RichTextEditor.tsx`
-Create new file:
-
-```typescript
-// rich text editor component - contentEditable editor with formatting toolbar
-// provides bold, italic, font size, color, and other formatting options
-// TODO: implement contentEditable div, formatting toolbar, format handlers, lined paper background, page color
-// why: allows users to format journal entry text with rich styling
-// how: client component with contentEditable, execCommand for formatting, state management
-// syntax: "use client"; export default function RichTextEditor({ value, onChange, ...props })
-
-"use client";
-
-interface RichTextEditorProps {
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  pageColor?: string;
-  linedPaper?: boolean;
-}
-
-export default function RichTextEditor({
-  value,
-  onChange,
-  placeholder,
-  pageColor,
-  linedPaper,
-}: RichTextEditorProps) {
-  return (
-    <div>
-      <p>TODO: implement rich text editor</p>
-    </div>
-  );
-}
-```
-
-#### `src/components/PromptCard.tsx`
-Create new file:
-
-```typescript
-// prompt component - NOT NEEDED with auto-insert approach
-// prompts are automatically inserted as headers when page loads
-// TODO: this file can be deleted or left empty - auto-insert logic goes in app/journal/new/page.tsx
-// why: with auto-insert, prompts go directly into editor, no separate component needed
-// how: Person 1 implements auto-insert in new entry page using useEffect and insertPromptAsHeading()
-// syntax: prompts auto-inserted via editorRef.current?.insertPromptAsHeading(prompt)
-
-"use client";
-
-// TODO: this component is not needed with auto-insert approach
-// delete this file or leave empty
-```
-
-#### `src/components/HabitCard.tsx`
-Create new file:
-
-```typescript
-// habit card component - displays habit with progress and actions
-// shows habit info, streak, progress, and logging interface
-// TODO: implement habit card ui, progress display, streak badge, log button, recent activity
-// why: reusable component for displaying habits consistently
-// how: client component receiving habit data, displaying stats, handling log actions
-// syntax: "use client"; export default function HabitCard({ habit, onLog }: { habit: Habit, onLog: (value?: number) => void })
-
-"use client";
-
-interface HabitCardProps {
-  habit: any; // TODO: import Habit type
-  onLog: (value?: number) => void;
-}
-
-export default function HabitCard({ habit, onLog }: HabitCardProps) {
-  return (
-    <div>
-      <p>TODO: implement habit card</p>
-    </div>
-  );
-}
-```
-
-### Database (`src/lib/db/`)
-
-#### `src/lib/db/schema.ts`
-Create new file:
-
-```typescript
-// database schema definitions - typescript interfaces for all database tables
-// defines structure for profiles, entries, entities, habits, habitLogs, dailyAggregates, settings
-// TODO: define all interfaces (Profile, Entry, Entity, Habit, HabitLog, DailyAggregate, Settings)
-// why: type safety for database operations, clear data structure
-// how: typescript interfaces with optional id fields, required fields, optional metadata
-// syntax: export interface TableName { id?: number; field: type; ... }
-
-// TODO: add all schema interfaces
-```
-
-#### `src/lib/db/dexie.ts`
-Create new file:
-
-```typescript
-// dexie database instance - initializes indexeddb connection
-// configures database schema, versions, and indexes
-// TODO: create dexie database class, define tables, set up indexes, configure versions
-// why: dexie provides typed indexeddb wrapper, manages schema migrations
-// how: extend dexie class, define tables in schema, create indexes for queries
-// syntax: export class TalkBookDB extends Dexie { ... }
-
-// TODO: implement dexie database class
-```
-
-#### `src/lib/db/repo.ts`
-Create new file:
-
-```typescript
-// database repository - crud operations for all tables
-// provides typed functions for creating, reading, updating, deleting data
-// TODO: Aadil implements entry and profile functions first, then Michael adds entity functions, Zayn adds habit functions
-// why: centralized data access layer, type-safe database operations
-// how: async functions using dexie instance, proper error handling, return typed data
-// syntax: export async function operationName(params): Promise<ReturnType> { ... }
-// coordination: Use Git branches - Aadil creates file, Michael and Zayn add functions on separate branches
-
-// TODO: Aadil implements entry and profile functions first
-// TODO: Michael adds entity functions (on separate branch)
-// TODO: Zayn adds habit and aggregate functions (on separate branch)
-```
-
-### NLP (`src/lib/nlp/`)
-
-#### `src/lib/nlp/extract.ts`
-Create new file:
-
-```typescript
-// nlp extraction - extracts entities and sentiment from text
-// uses compromise for people/topics, chrono-node for dates, wink-sentiment for sentiment
-// TODO: implement extractMetadata function, extract people, topics, dates, sentiment from text
-// why: provides data for prompt generation and insights
-// how: async function processing text with nlp libraries, returning structured data
-// syntax: export async function extractMetadata(text: string): Promise<{ people: string[], topics: string[], dates: Date[], sentiment: number }>
-
-// TODO: implement extractMetadata function
-```
-
-#### `src/lib/nlp/prompts.ts`
-Create new file:
-
-```typescript
-// prompt generation - generates personalized ai prompts based on journal history
-// analyzes past entries to create relevant follow-up prompts
-// prompts are auto-inserted as headers when new entry page loads
-// TODO: implement generatePrompts function, analyze entities from past entries, create prompts with tone packs, filter blacklist
-// why: provides personalized prompts to guide journaling
-// how: async function fetching entities, analyzing patterns, generating prompts with templates
-// syntax: export async function generatePrompts(count: number, tone: string, blacklist: string[], profileId: number): Promise<string[]>
-
-// TODO: implement generatePrompts function
-```
-
-### Security (`src/lib/security/`)
-
-#### `src/lib/security/pin.ts`
-Create new file:
-
-```typescript
-// pin security system - handles pin hashing, verification, and storage
-// uses web crypto api for secure hashing
-// TODO: implement hashPin, setPin, verifyPin, isPinSet, removePin functions
-// why: secure pin protection without storing plain text
-// how: web crypto sha-256 hashing, localStorage for hash storage, async verification
-// syntax: export async function functionName(pin: string): Promise<ReturnType>
-
-// TODO: implement pin security functions
-```
-
-### Weather (`src/lib/weather/`)
-
-#### `src/lib/weather/openMeteo.ts`
-Create new file:
-
-```typescript
-// open-meteo api client - fetches current weather data
-// gets weather for user's location or default location
-// TODO: implement fetchWeather function, call open-meteo api, return weather code and temperature
-// why: auto-fill weather in journal entries
-// how: async function calling external api, error handling, return structured data
-// syntax: export async function fetchWeather(lat?: number, lon?: number): Promise<{ code: number, temp: number }>
-
-// TODO: implement fetchWeather function
-```
-
-#### `src/lib/weather/weatherCodes.ts`
-Create new file:
-
-```typescript
-// weather code mapping - maps wmo weather codes to descriptions
-// provides human-readable weather descriptions
-// TODO: implement weatherCodeDescriptions object and getWeatherDescription function
-// why: converts numeric weather codes to readable text
-// how: object mapping codes to strings, function to lookup description
-// syntax: const weatherCodeDescriptions: Record<number, string> = { ... }; export function getWeatherDescription(code: number): string
-
-// TODO: implement weather code mapping
-```
-
-### Utils (`src/lib/utils.ts`)
-Create new file:
-
-```typescript
-// utility functions - helper functions used throughout app
-// date formatting, text processing, and other utilities
-// TODO: implement formatDateKey, formatDate, truncateText, and other helper functions
-// why: reusable utility functions to avoid code duplication
-// how: pure functions with clear inputs and outputs
-// syntax: export function functionName(params): ReturnType { ... }
-
-// TODO: implement utility functions
-```
-
-### Stores (`src/store/`)
-
-#### `src/store/uiStore.ts`
-Create new file:
-
-```typescript
-// ui state management - manages client-side ui state
-// pin lock state, loading states, modal states
-// TODO: implement zustand store with isPinLocked, isPinVerified, isLoading, modal states and actions
-// why: centralized ui state management, reactive updates
-// how: zustand create() function, define state and actions
-// syntax: export const useUIStore = create<UIState>((set) => ({ state, actions }))
-
-import { create } from "zustand";
-
-// TODO: implement ui store
-```
-
-#### `src/store/settingsStore.ts`
-Create new file:
-
-```typescript
-// settings state management - manages user settings
-// ai settings, appearance, blacklist, prompt preferences
-// TODO: Aadil implements store structure and appearance settings first, then Michael adds AI settings
-// why: centralized settings management, persistence to indexeddb
-// how: zustand store with async load/save to database
-// syntax: export const useSettingsStore = create<SettingsState>((set, get) => ({ state, actions }))
-// coordination: Use Git branches - Aadil creates store, Michael adds AI settings on separate branch
-
-import { create } from "zustand";
-
-// TODO: Aadil implements store structure and appearance settings first
-// TODO: Michael adds AI settings (on separate branch)
-```
-
-
-### Types (`src/types/`)
-
-#### `src/types/wink-sentiment.d.ts`
-Create new file:
-
-```typescript
-// type declaration for wink-sentiment package
-// why: wink-sentiment doesn't have built-in typescript types
-// how: declare module to tell typescript about the package
-// syntax: declare module "wink-sentiment" { export function sentiment(text: string): { score: number; tokens: string[] }; }
-
-declare module "wink-sentiment" {
-  export function sentiment(text: string): {
-    score: number;
-    tokens: string[];
-  };
-}
-```
-
-### Root Files
-
-#### `next-pwa.d.ts` (in root)
-Create new file:
-
-```typescript
-// type declaration for next-pwa package
-// why: next-pwa doesn't have built-in typescript types
-// how: declare module to tell typescript about the package
-// syntax: declare module "next-pwa";
-
-declare module "next-pwa";
-```
-
-#### `public/manifest.json`
-Create new file:
-
-```json
-{
-  "name": "TalkBook",
-  "short_name": "TalkBook",
-  "description": "Privacy-first journaling and habit tracking PWA",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#3b82f6",
-  "icons": []
-}
-```
+**To see what each file should contain, check the actual files in your project - they all have detailed comments.**
 
 ---
 
@@ -1495,40 +904,24 @@ If you see errors, check:
 
 ## Summary: Setup Commands
 
-**You only need these 3 commands:**
+**Quick reference - see [Quick Setup Commands](#-quick-setup-commands) at the top for the actual commands.**
+
+**What each command does:**
 
 1. **Create Next.js project:**
-   ```bash
-   npx create-next-app@latest talkbook
-   ```
-   - **What it does:** Creates the base Next.js project structure
-   - **When:** First thing you do
-   - **Why:** Sets up routing, build tools, and project structure automatically
+   - Creates the base Next.js project structure
+   - Sets up routing, build tools, and project structure automatically
 
-2. **Install all dependencies (NLP, charts, database, etc.):**
-   ```bash
-   npm install zustand dexie compromise chrono-node wink-sentiment recharts dayjs next-pwa
-   ```
-   - **What it does:** Downloads and installs all libraries we need
-   - **When:** After creating the project
-   - **Why:** These libraries provide functionality (state management, database, NLP, charts, etc.)
+2. **Install all dependencies:**
+   - Downloads and installs all libraries we need
+   - Provides functionality (state management, database, NLP, charts, etc.)
    - **Learn more:** See `LIBRARY_CHOICES.md` for why we chose each one
 
 3. **Install type definitions:**
-   ```bash
-   npm install -D @types/minimatch
-   ```
-   - **What it does:** Installs TypeScript type definitions
-   - **When:** After installing main dependencies
-   - **Why:** TypeScript needs type information to check your code
+   - Installs TypeScript type definitions
+   - TypeScript needs type information to check your code
 
-That's it! Then follow Part 2-4 to create all the files.
 
-**What happens next?**
-- You'll create all the skeleton files with proper structure
-- Each file will have header comments explaining what to implement
-- You'll verify everything works with `npm run dev`
-- Then you can start implementing features!
 
 ---
 
@@ -1556,25 +949,7 @@ talkbook/
 ├── public/
 │   └── manifest.json        # PWA manifest
 └── [config files]
-```
 
----
-
-## Next Steps
-
-Once skeleton is complete and verified:
-
-1. ✅ All files created with proper headers
-2. ✅ `npm run dev` runs without errors
-3. ✅ All pages load (even if empty)
-
-**Then ask for help:**
-- Delegating tasks to team members
-- Adding detailed implementation comments
-- Planning development order
-- Starting implementation
-
----
 
 ## Learning Resources
 
@@ -1651,7 +1026,6 @@ As you work through the setup:
 - ✅ Can I explain what each config file does?
 - ✅ Do I know where to find documentation?
 
-**Remember:** It's okay to not understand everything immediately. Learning happens through doing. Use this manual, `LIBRARY_CHOICES.md`, and documentation to learn as you go!
 
 ---
 
