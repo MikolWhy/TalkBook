@@ -57,5 +57,18 @@
 
 "use client";
 
+import DashboardLayout from "../components/DashboardLayout";
+
 // TODO: implement journal list page
+
+// TEMPORARY: Basic page structure to prevent navigation errors
+// This will be replaced with full implementation later
+export default function JournalPage() {
+  return (
+    <DashboardLayout>
+      <h1 className="text-2xl font-bold text-gray-900 mb-4">Journal</h1>
+      <p className="text-gray-600">Journal entries will be displayed here.</p>
+    </DashboardLayout>
+  );
+}
 

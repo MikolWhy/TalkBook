@@ -59,5 +59,17 @@
 
 "use client";
 
+import DashboardLayout from "../components/DashboardLayout";
+
 // TODO: implement habits list page
+
+// TEMPORARY: Basic page structure to prevent navigation errors
+export default function HabitsPage() {
+  return (
+    <DashboardLayout>
+      <h1 className="text-2xl font-bold text-gray-900 mb-4">Habits</h1>
+      <p className="text-gray-600">Habits will be displayed here.</p>
+    </DashboardLayout>
+  );
+}
 
