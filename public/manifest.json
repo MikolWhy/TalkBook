@@ -1,0 +1,11 @@
+{
+  "name": "TalkBook",
+  "short_name": "TalkBook",
+  "description": "Privacy-first journaling and habit tracking PWA",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3b82f6",
+  "icons": []
+}
+
