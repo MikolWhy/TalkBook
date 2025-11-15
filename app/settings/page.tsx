@@ -62,5 +62,17 @@
 
 "use client";
 
+import DashboardLayout from "../components/DashboardLayout";
+
 // TODO: implement settings form
+
+// TEMPORARY: Basic page structure to prevent navigation errors
+export default function SettingsPage() {
+  return (
+    <DashboardLayout>
+      <h1 className="text-2xl font-bold text-gray-900 mb-4">Settings</h1>
+      <p className="text-gray-600">Settings will be displayed here.</p>
+    </DashboardLayout>
+  );
+}
 

@@ -58,5 +58,22 @@
 
 "use client";
 
+import { useParams } from "next/navigation";
+
 // TODO: implement entry editing form
+
+// TEMPORARY: Basic page structure to prevent navigation errors
+// useParams = gets URL parameters (the [id] from the route)
+export default function EditEntryPage() {
+  const params = useParams();
+  const entryId = params.id as string;
+  
+  return (
+    <div className="min-h-screen bg-gray-50 p-8">
+      <h1 className="text-2xl font-bold text-gray-900 mb-4">Edit Entry</h1>
+      <p className="text-gray-600">Editing entry ID: {entryId}</p>
+      <p className="text-sm text-gray-500 mt-2">Entry editing form will be displayed here.</p>
+    </div>
+  );
+}
 

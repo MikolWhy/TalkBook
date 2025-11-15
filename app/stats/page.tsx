@@ -63,5 +63,17 @@
 
 "use client";
 
+import DashboardLayout from "../components/DashboardLayout";
+
 // TODO: implement statistics dashboard
+
+// TEMPORARY: Basic page structure to prevent navigation errors
+export default function StatsPage() {
+  return (
+    <DashboardLayout>
+      <h1 className="text-2xl font-bold text-gray-900 mb-4">Statistics</h1>
+      <p className="text-gray-600">Statistics and charts will be displayed here.</p>
+    </DashboardLayout>
+  );
+}
 
