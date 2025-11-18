@@ -58,7 +58,9 @@
 
 "use client";
 
-import { useParams } from "next/navigation";
+import { useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import DashboardLayout from "../../components/DashboardLayout";
 
 // TODO: implement entry editing form
 
@@ -66,14 +68,49 @@ import { useParams } from "next/navigation";
 // useParams = gets URL parameters (the [id] from the route)
 export default function EditEntryPage() {
   const params = useParams();
+  const router = useRouter();
   const entryId = params.id as string;
+
+  // Function to navigate back to journal page
+  const handleBack = () => {
+    router.push("/journal");
+  };
+
+  // Listen for ESC key press
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Check if ESC key is pressed
+      if (event.key === "Escape") {
+        handleBack();
+      }
+    };
+
+    // Add event listener when component mounts
+    window.addEventListener("keydown", handleKeyDown);
+
+    // Clean up: remove event listener when component unmounts
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [router]); // Include router in dependency array
   
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <h1 className="text-2xl font-bold text-gray-900 mb-4">Edit Entry</h1>
+    <DashboardLayout>
+      {/* Header Section with Title and Back Button */}
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Edit Entry</h1>
+        {/* Back/Exit Button */}
+        <button
+          onClick={handleBack}
+          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+        >
+          ← Back to Journal
+        </button>
+      </div>
+      
       <p className="text-gray-600">Editing entry ID: {entryId}</p>
       <p className="text-sm text-gray-500 mt-2">Entry editing form will be displayed here.</p>
-    </div>
+    </DashboardLayout>
   );
 }
 

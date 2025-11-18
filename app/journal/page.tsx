@@ -57,6 +57,8 @@
 
 "use client";
 
+//adding to use nav links
+import Link from "next/link";
 import DashboardLayout from "../components/DashboardLayout";
 
 // TODO: implement journal list page
@@ -66,7 +68,19 @@ import DashboardLayout from "../components/DashboardLayout";
 export default function JournalPage() {
   return (
     <DashboardLayout>
-      <h1 className="text-2xl font-bold text-gray-900 mb-4">Journal</h1>
+      {/* Header Section with Title and New Entry Button */}
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Journal</h1>
+        
+        {/* New Entry Button */}
+        <Link
+          href="/journal/new"
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+        >
+          ✍️ New Entry
+        </Link>
+      </div>
+      
       <p className="text-gray-600">Journal entries will be displayed here.</p>
     </DashboardLayout>
   );
