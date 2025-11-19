@@ -72,15 +72,19 @@
 "use client";
 
 //listening for keyboard events - eg: esc key
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "../../components/DashboardLayout";
+//to use richTextEditor component
+import RichTextEditor from "../../../src/components/RichTextEditor";
 
 // TODO: implement entry creation form
 
 // TEMPORARY: Basic page structure to prevent navigation errors
 export default function NewEntryPage() {
   const router = useRouter(); // Hook to navigate programmatically
+  
+  const [content, setContent] = useState(""); // State to store editor content
 
   // Function to navigate back to journal page
   const handleBack = () => {
@@ -111,7 +115,7 @@ export default function NewEntryPage() {
       {/* Header Section with Title and Back Button */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">New Entry</h1>
-
+ 
         {/* Back/Exit Button */}
         <button
           onClick={handleBack}
@@ -121,7 +125,14 @@ export default function NewEntryPage() {
         </button>
       </div>
       
-      <p className="text-gray-600">Entry creation form will be displayed here.</p>
+      {/* Rich Text Editor */}
+      <div className="mb-6">
+        <RichTextEditor
+          value={content}
+          onChange={(newContent: string) => setContent(newContent)}
+          placeholder="Start writing your journal entry..."
+        />
+      </div>
     </DashboardLayout>
   );
 }
