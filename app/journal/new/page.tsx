@@ -72,19 +72,128 @@
 "use client";
 
 //listening for keyboard events - eg: esc key
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "../../components/DashboardLayout";
 //to use richTextEditor component
-import RichTextEditor from "../../../src/components/RichTextEditor";
+import RichTextEditor, { RichTextEditorRef } from "../../../src/components/RichTextEditor";
+// NLP components and functions
+import NLPResultsDisplay from "../../../src/components/NLPResultsDisplay";
+import PromptSuggestions from "../../../src/components/PromptSuggestions";
+import { extractMetadata } from "../../../src/lib/nlp/extract";
+import { generatePrompts, filterUsedPrompts, filterExpiredPrompts, clearUsedPrompts, Prompt, getUsedPromptsCount } from "../../../src/lib/nlp/prompts";
 
 // TODO: implement entry creation form
 
-// TEMPORARY: Basic page structure to prevent navigation errors
 export default function NewEntryPage() {
   const router = useRouter(); // Hook to navigate programmatically
+  const editorRef = useRef<RichTextEditorRef>(null); // Ref to access editor methods
   
   const [content, setContent] = useState(""); // State to store editor content
+  
+  // State for extracted metadata
+  const [extractedData, setExtractedData] = useState<{
+    people: string[];
+    topics: string[];
+    dates: Date[];
+    sentiment: number;
+  } | null>(null);
+  
+  // State for prompts
+  const [allPrompts, setAllPrompts] = useState<Prompt[]>([]); // All available prompts
+  const [insertedPromptIds, setInsertedPromptIds] = useState<Set<string>>(new Set()); // Prompts currently in editor
+  
+  // Filter prompts: show only those NOT currently inserted in editor
+  const availablePrompts = allPrompts.filter(p => !insertedPromptIds.has(p.id));
+
+  // Dummy text for NLP testing (hardcoded) - TODO: Replace with actual entry content from previous entries
+  const dummyText = "Had a great meeting with Zayn today about our group project, I am feeling lazy though and have been procrastinating some of my parts of the project. Not feeling great about it.";
+
+  // Extract metadata and generate prompts when component loads
+  useEffect(() => {
+    const runExtractionAndPrompts = async () => {
+      try {
+        // Extract metadata from dummy text (in real app, this would be from previous entries)
+        const result = await extractMetadata(dummyText);
+        setExtractedData(result);
+        
+        // Generate prompts based on extracted data (pass original text for context)
+        const generatedPrompts = await generatePrompts(result, "cozy", 5, dummyText);
+        
+        // Filter out prompts that were permanently used (from localStorage)
+        const unusedPrompts = filterUsedPrompts(generatedPrompts);
+        
+        // Filter out expired prompts (default: 7 days)
+        // TODO: Get expiryDays from settings store when available
+        const expiryDays = 7; // Default, will be configurable in settings
+        const validPrompts = filterExpiredPrompts(unusedPrompts, expiryDays);
+        
+        // Debug: log used prompts count
+        const usedCount = getUsedPromptsCount();
+        if (usedCount > 0) {
+          console.log(`ℹ️ ${usedCount} prompt(s) are marked as used and filtered out. To reset for testing, run: clearUsedPrompts()`);
+        }
+        
+        setAllPrompts(validPrompts);
+      } catch (error) {
+        console.error("Error extracting metadata or generating prompts:", error);
+      }
+    };
+    
+    runExtractionAndPrompts();
+  }, []); // Empty dependency array = run once on mount
+
+  // Handle prompt being inserted into editor
+  const handlePromptInserted = (promptId: string) => {
+    // Add to inserted set (removes from available list)
+    setInsertedPromptIds((prev) => {
+      const newSet = new Set(prev);
+      newSet.add(promptId);
+      return newSet;
+    });
+  };
+
+  // Monitor editor content to detect when prompts are removed
+  useEffect(() => {
+    if (!content || insertedPromptIds.size === 0) return;
+
+    // Check which inserted prompts are still in the editor content
+    const stillInEditor = new Set<string>();
+    
+    insertedPromptIds.forEach((promptId) => {
+      const prompt = allPrompts.find(p => p.id === promptId);
+      if (prompt) {
+        // Check if prompt text (or similar) is still in content
+        // Look for the prompt text as a heading (h3)
+        const promptText = prompt.text;
+        // Check if it exists as a heading in the HTML
+        const headingPattern = new RegExp(`<h3[^>]*>.*?${promptText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}.*?</h3>`, "i");
+        if (headingPattern.test(content)) {
+          stillInEditor.add(promptId);
+        }
+      }
+    });
+
+    // If a prompt was removed from editor, remove it from inserted set
+    // This makes it available again in the prompt list
+    const removed = Array.from(insertedPromptIds).filter(id => !stillInEditor.has(id));
+    if (removed.length > 0) {
+      setInsertedPromptIds((prev) => {
+        const newSet = new Set(prev);
+        removed.forEach(id => newSet.delete(id));
+        return newSet;
+      });
+    }
+  }, [content, insertedPromptIds, allPrompts]);
+
+  // TODO: When entry is saved (Aadil implements save functionality):
+  // 1. Extract metadata from current entry content: extractMetadata(content)
+  // 2. Save entry to database: createEntry({ content, mood, weather, date, ... })
+  // 3. Save extracted entities to database (for future prompt generation)
+  // 4. Mark inserted prompts as permanently used:
+  //    insertedPromptIds.forEach(id => markPromptAsUsed(id));
+  // 5. Clear inserted prompts: setInsertedPromptIds(new Set());
+  //    This allows prompts to reappear if the same topics come up in future entries
 
   // Function to navigate back to journal page
   const handleBack = () => {
@@ -125,14 +234,65 @@ export default function NewEntryPage() {
         </button>
       </div>
       
+      {/* Prompt Suggestions */}
+      {availablePrompts.length > 0 && (
+        <PromptSuggestions
+          prompts={availablePrompts}
+          editorRef={editorRef}
+          onPromptInserted={handlePromptInserted}
+        />
+      )}
+      
+      {/* Debug: Show used prompts count and reset button (for testing) */}
+      {process.env.NODE_ENV === "development" && getUsedPromptsCount() > 0 && (
+        <div className="mb-6 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <p className="text-sm text-yellow-800 mb-2">
+            🧪 <strong>Testing Mode:</strong> {getUsedPromptsCount()} prompt(s) marked as used and hidden.
+          </p>
+          <button
+            onClick={() => {
+              clearUsedPrompts();
+              // Reload prompts
+              const runExtractionAndPrompts = async () => {
+                try {
+                  const result = await extractMetadata(dummyText);
+                  const generatedPrompts = await generatePrompts(result, "cozy", 5, dummyText);
+                  setAllPrompts(generatedPrompts);
+                  setInsertedPromptIds(new Set());
+                } catch (error) {
+                  console.error("Error:", error);
+                }
+              };
+              runExtractionAndPrompts();
+            }}
+            className="px-3 py-1.5 bg-yellow-200 text-yellow-900 rounded text-xs font-medium hover:bg-yellow-300 transition-colors"
+          >
+            Reset Used Prompts (Testing Only)
+          </button>
+        </div>
+      )}
+
       {/* Rich Text Editor */}
       <div className="mb-6">
         <RichTextEditor
+          ref={editorRef}
           value={content}
           onChange={(newContent: string) => setContent(newContent)}
           placeholder="Start writing your journal entry..."
         />
       </div>
+
+      {/* NLP Results Display - Temporary for testing */}
+      {extractedData && (
+        <div className="mb-6">
+          <NLPResultsDisplay
+            people={extractedData.people}
+            topics={extractedData.topics}
+            dates={extractedData.dates}
+            sentiment={extractedData.sentiment}
+          />
+        </div>
+      )}
     </DashboardLayout>
   );
 }
