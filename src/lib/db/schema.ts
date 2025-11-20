@@ -61,6 +61,7 @@ export interface Habit {
     description?: string;
     archived: boolean;
     createdAt: string;
+    order?: number; // for drag and drop ordering
   }
   
   export interface HabitLog {

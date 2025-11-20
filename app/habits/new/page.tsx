@@ -1,3 +1,4 @@
+// habits/new/page.tsx
 // new habit page - create habit form
 // includes name, type (bool/number), target, unit, color selection
 //
@@ -83,16 +84,27 @@ const WEEKDAYS = [
   { label: "S", value: 6 }, // Saturday
 ];
 
+interface HabitFormData {
+  name: string;
+  type: "boolean" | "numeric";
+  target: number;
+  unit: string;
+  color: string;
+  frequency: "daily" | "weekly" | "monthly" | "one-time";
+  weekDays: number[];
+  description: string;
+}
+
 export default function NewHabitPage() {
   const router = useRouter();
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<HabitFormData>({
     name: "",
-    type: "boolean" as "boolean" | "numeric",
+    type: "boolean",
     target: 1,
     unit: "",
     color: PRESET_COLORS[0],
-    frequency: "daily" as "daily" | "weekly" | "monthly" | "one-time",
-    weekDays: [1, 2, 3, 4, 5], // M-F default
+    frequency: "one-time",
+    weekDays: [],
     description: "",
   });
   const [saving, setSaving] = useState(false);
@@ -136,12 +148,57 @@ export default function NewHabitPage() {
   };
 
   const toggleWeekday = (day: number) => {
-    setFormData(prev => ({
-      ...prev,
-      weekDays: prev.weekDays.includes(day)
+    setFormData(prev => {
+      const allDays = [0, 1, 2, 3, 4, 5, 6];
+      const newWeekDays = prev.weekDays.includes(day)
         ? prev.weekDays.filter(d => d !== day)
-        : [...prev.weekDays, day].sort((a, b) => a - b)
-    }));
+        : [...prev.weekDays, day].sort((a, b) => a - b);
+      
+      // Auto-update frequency based on selected days
+      let newFrequency = prev.frequency;
+      if (newWeekDays.length === 7) {
+        newFrequency = "daily";
+      } else if (newWeekDays.length > 0 && newWeekDays.length < 7) {
+        // If days are selected but not all, it's weekly
+        if (prev.frequency === "daily") {
+          newFrequency = "weekly";
+        } else if (prev.frequency === "one-time") {
+          newFrequency = "weekly";
+        }
+      } else if (newWeekDays.length === 0) {
+        // If no days selected, could be one-time or monthly
+        // Keep current frequency unless it was daily/weekly, then set to one-time
+        if (prev.frequency === "daily" || prev.frequency === "weekly") {
+          newFrequency = "one-time";
+        }
+      }
+      
+      return {
+        ...prev,
+        weekDays: newWeekDays,
+        frequency: newFrequency
+      };
+    });
+  };
+
+  const handleFrequencyChange = (newFrequency: "daily" | "weekly" | "monthly" | "one-time") => {
+    setFormData(prev => {
+      let newWeekDays = prev.weekDays;
+      
+      if (newFrequency === "daily") {
+        // Auto-select all days when daily is selected
+        newWeekDays = [0, 1, 2, 3, 4, 5, 6];
+      } else if (newFrequency === "weekly" && prev.frequency === "daily") {
+        // When switching from daily to weekly, unselect one day (keep 6 days)
+        newWeekDays = [0, 1, 2, 3, 4, 5]; // Remove Saturday (day 6)
+      }
+      
+      return {
+        ...prev,
+        frequency: newFrequency,
+        weekDays: newWeekDays
+      };
+    });
   };
 
   return (
@@ -208,7 +265,7 @@ export default function NewHabitPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Target
+                  Count
                 </label>
                 <input
                   type="number"
@@ -241,7 +298,7 @@ export default function NewHabitPage() {
             </label>
             <select
               value={formData.frequency}
-              onChange={(e) => setFormData({ ...formData, frequency: e.target.value as any })}
+              onChange={(e) => handleFrequencyChange(e.target.value as any)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
             >
               <option value="one-time">One time</option>
@@ -251,31 +308,33 @@ export default function NewHabitPage() {
             </select>
           </div>
 
-          {/* Week Days - Available for all frequencies */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Select Days
-            </label>
-            <div className="flex gap-2">
-              {WEEKDAYS.map((day) => (
-                <button
-                  key={`${day.label}-${day.value}`}
-                  type="button"
-                  onClick={() => toggleWeekday(day.value)}
-                  className={`w-10 h-10 rounded-full font-medium transition-all ${
-                    formData.weekDays.includes(day.value)
-                      ? "bg-blue-500 text-white shadow-md"
-                      : "bg-gray-200 text-gray-600 hover:bg-gray-300"
-                  }`}
-                >
-                  {day.label}
-                </button>
-              ))}
+          {/* Week Days - Hidden for one-time frequency */}
+          {formData.frequency !== "one-time" && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Select Days
+              </label>
+              <div className="flex gap-2">
+                {WEEKDAYS.map((day) => (
+                  <button
+                    key={`${day.label}-${day.value}`}
+                    type="button"
+                    onClick={() => toggleWeekday(day.value)}
+                    className={`w-10 h-10 rounded-full font-medium transition-all ${
+                      formData.weekDays.includes(day.value)
+                        ? "bg-blue-500 text-white shadow-md"
+                        : "bg-gray-200 text-gray-600 hover:bg-gray-300"
+                    }`}
+                  >
+                    {day.label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                Selected: {formData.weekDays.length} day{formData.weekDays.length !== 1 ? 's' : ''}
+              </p>
             </div>
-            <p className="text-xs text-gray-500 mt-2">
-              Selected: {formData.weekDays.length} day{formData.weekDays.length !== 1 ? 's' : ''}
-            </p>
-          </div>
+          )}
 
           {/* Tag/Color */}
           <div>

@@ -61,7 +61,7 @@ export class TalkBookDB extends Dexie {
     // Define schema version 1
     this.version(1).stores({
       // Zayn's tables
-      habits: '++id, profileId, archived, createdAt',
+      habits: '++id, profileId, archived, createdAt, order',
       habitLogs: '++id, habitId, date, [habitId+date], completedAt',
       
       // TODO: Aadil will add other tables here
