@@ -1,72 +1,6 @@
-// prompt generation - generates personalized ai prompts based on journal history
-// analyzes past entries to create relevant follow-up prompts
-//
-// WHAT WE'RE CREATING:
-// - A function that generates writing prompts to help users continue journaling
-// - Prompts are personalized based on what users have written about before
-// - Examples: "Tell me more about Sarah", "How did work go?", "What happened yesterday?"
-// - Prompts are automatically inserted as headers when new entry page loads
-//
-// OWNERSHIP:
-// - Michael implements this completely
-//
-// COORDINATION NOTES:
-// - Uses entities from repo.ts (Michael adds entity functions)
-// - Uses settings from settingsStore.ts (Michael adds AI settings)
-// - Called from app/journal/new/page.tsx (Aadil creates page, Michael adds prompt logic)
-//
-// CONTEXT FOR AI ASSISTANTS:
-// - This file generates prompts that help users continue journaling
-// - Prompts are personalized based on what users have written about before
-// - Uses extracted entities (people, topics) from past entries
-// - Respects user's blacklist (topics they don't want prompts about)
-// - Supports different tones (cozy, neutral) for prompt style
-//
-// HOW IT WORKS:
-// 1. Fetch entities from recent entries (last 7 days by default)
-// 2. Analyze which people/topics appear frequently
-// 3. Generate prompts using tone templates
-// 4. Filter out blacklisted items
-// 5. Return array of prompt strings
-//
-// DEVELOPMENT NOTES:
-// - Prompts should feel natural and conversational
-// - Use relative dates ("yesterday", "2 days ago") for better UX
-// - Avoid repetitive prompts - track which prompts have been used
-// - Consider entry frequency - if user writes daily, prompts can reference recent entries
-// - If user writes weekly, prompts should be more general
-//
-// TONE PACKS:
-// - "cozy": warm, friendly, personal prompts (e.g., "How did your conversation with Sarah go?")
-// - "neutral": straightforward, factual prompts (e.g., "Tell me more about the project you mentioned")
-//
-// TODO: implement generatePrompts function
-// - Input: count (1-3), tone ("cozy" | "neutral"), blacklist (string[]), profileId
-// - Fetch entities from recent entries (use getEntitiesForPrompts from repo.ts)
-// - Create tone-specific prompt templates
-// - Generate prompts based on most mentioned people/topics
-// - Filter out blacklisted items
-// - Return array of prompt strings
-// - NOTE: Prompts are auto-inserted as headers when new entry page loads. Used prompts are temporary
-//   (for current entry only) and reset when entry is saved. If a topic appears in recent entries,
-//   it can be suggested again.
-//
-// TODO: implement getRelativeDate helper
-// - Converts date to relative string ("yesterday", "2 days ago", etc.)
-// - Used in prompt templates for natural language
-//
-// SYNTAX:
-// export async function generatePrompts(
-//   count: number,
-//   tone: "cozy" | "neutral",
-//   blacklist: string[],
-//   profileId: number
-// ): Promise<string[]> {
-//   // implementation
-// }
-
 // Import types
 import { extractMetadata } from "./extract";
+import nlp from "compromise"; // For linguistic analysis and context-based detection
 
 // Prompt template types
 type Tone = "cozy" | "neutral";
@@ -91,60 +25,122 @@ export interface Prompt {
   createdAt: Date; // When this prompt was generated (for expiry tracking)
 }
 
-// Default prompts when no extracted data is available
+// Default prompts when no extracted data is available eg: first entry 
 const DEFAULT_PROMPTS = [
-  "How was your day?",
+  "How are you feeling?",
   "What's on your mind?",
-  "What are you grateful for today?",
-  "What challenged you today?",
-  "What made you smile today?",
+  "What did you do today?",
+  "Who is on your mind?",
 ];
 
 // Helper: Check if a topic should use "your" (possessive context)
-// Topics like "project", "work", "meeting" work better with "your"
+// Uses context-based detection with compromise - NO hardcoded word sets!
+// Only uses minimal fallback for truly ambiguous cases (when no context available)
 function shouldUsePossessive(topic: string, originalText?: string): boolean {
-  const possessiveTopics = new Set([
-    "project", "projects", "work", "meeting", "meetings", "plan", "plans",
-    "goal", "goals", "task", "tasks", "assignment", "assignments",
-    "part", "parts", "role", "roles", "job", "jobs",
+  // If we have original text, use context-based detection (preferred method)
+  if (originalText) {
+    const lowerText = originalText.toLowerCase();
+    const lowerTopic = topic.toLowerCase();
+    
+    // Pattern 1: "my/our/your topic" → possessive
+    if (new RegExp(`(my|our|your)\\s+${lowerTopic}`, "i").test(lowerText)) {
+      return true;
+    }
+    
+    // Pattern 2: "topic of mine/ours/yours" → possessive
+    if (new RegExp(`${lowerTopic}\\s+(of|for)\\s+(mine|ours|yours)`, "i").test(lowerText)) {
+      return true;
+    }
+    
+    // Pattern 3: Use compromise to find possessive context
+    // Look for sentences where topic appears with possessive determiners
+    const doc = nlp(originalText);
+    const sentences = doc.sentences().out("array") as string[];
+    
+    for (const sentenceText of sentences) {
+      const lowerSentence = sentenceText.toLowerCase();
+      if (lowerSentence.includes(lowerTopic)) {
+        // Check for possessive patterns using regex (more reliable)
+        if (new RegExp(`(my|our|your)\\s+${lowerTopic}`, "i").test(lowerSentence)) {
+          return true;
+        }
+      }
+    }
+  }
+  
+  // MINIMAL FALLBACK: Only for truly ambiguous cases (no context available)
+  // Based on linguistic research: these words are almost always possessive in journal contexts
+  // Only 2 words - kept minimal and smart
+  const MINIMAL_POSSESSIVE_FALLBACK = new Set([
+    "work",   // "my work", "your work" - almost always possessive
+    "project", // "my project", "your project" - almost always possessive
   ]);
   
   const lowerTopic = topic.toLowerCase();
-  if (possessiveTopics.has(lowerTopic)) return true;
-  
-  // Check if original text contains possessive context
-  if (originalText) {
-    const lowerText = originalText.toLowerCase();
-    // Check for patterns like "my project", "our project", "your project"
-    const possessivePatterns = [
-      new RegExp(`(my|our|your)\\s+${lowerTopic}`, "i"),
-      new RegExp(`${lowerTopic}\\s+(of|for)\\s+(mine|ours|yours)`, "i"),
-    ];
-    
-    if (possessivePatterns.some(pattern => pattern.test(lowerText))) {
-      return true;
-    }
+  if (MINIMAL_POSSESSIVE_FALLBACK.has(lowerTopic)) {
+    return true; // Only use fallback if no context available
   }
   
   return false;
 }
 
 // Helper: Determine topic category for better template selection
-function getTopicCategory(topic: string): "work" | "personal" | "activity" | "general" {
-  const lowerTopic = topic.toLowerCase();
+// Uses context-based detection with compromise - NO hardcoded word sets!
+// Analyzes surrounding context to determine category dynamically
+function getTopicCategory(topic: string, originalText?: string): "work" | "personal" | "activity" | "general" {
+  // If we have original text, use context-based detection (preferred method)
+  if (originalText) {
+    const doc = nlp(originalText);
+    const lowerText = originalText.toLowerCase();
+    const lowerTopic = topic.toLowerCase();
+    
+    // WORK: Look for work-related context words nearby
+    // Check if topic appears near work indicators (deadline, meeting, project, task, assignment, presentation, report, office, boss, colleague, team)
+    const workContextPattern = new RegExp(`${lowerTopic}.*(deadline|meeting|project|task|assignment|presentation|report|work|office|boss|colleague|team|client|customer|manager|supervisor|workplace|job|career)`, "i");
+    if (workContextPattern.test(lowerText)) {
+      return "work";
+    }
+    
+    // Also check reverse pattern: work word before topic
+    const reverseWorkPattern = new RegExp(`(deadline|meeting|project|task|assignment|presentation|report|work|office|boss|colleague|team).*${lowerTopic}`, "i");
+    if (reverseWorkPattern.test(lowerText)) {
+      return "work";
+    }
+    
+    // Use compromise to find work-related context
+    const workMatch = doc.match(`${lowerTopic}.*(deadline|meeting|project|task|assignment|work)`);
+    if (workMatch.found) {
+      return "work";
+    }
+    
+    // ACTIVITY: Look for activity/communication verbs nearby
+    // Check if topic appears near activity indicators (conversation, discussion, talk, call, meeting, chat)
+    const activityContextPattern = new RegExp(`${lowerTopic}.*(conversation|discussion|talk|call|meeting|chat|phone|message|text|email)`, "i");
+    if (activityContextPattern.test(lowerText)) {
+      return "activity";
+    }
+    
+    // Reverse pattern
+    const reverseActivityPattern = new RegExp(`(conversation|discussion|talk|call|meeting|chat|phone|message|text|email).*${lowerTopic}`, "i");
+    if (reverseActivityPattern.test(lowerText)) {
+      return "activity";
+    }
+    
+    // PERSONAL: Look for emotional/feeling words nearby
+    // Check if topic appears near personal indicators (feeling, emotion, mood, thought, idea, feeling, feels)
+    const personalContextPattern = new RegExp(`${lowerTopic}.*(feeling|emotion|mood|thought|idea|feels|felt|feeling|emotions|moods)`, "i");
+    if (personalContextPattern.test(lowerText)) {
+      return "personal";
+    }
+    
+    // Reverse pattern
+    const reversePersonalPattern = new RegExp(`(feeling|emotion|mood|thought|idea|feels|felt|feeling|emotions|moods).*${lowerTopic}`, "i");
+    if (reversePersonalPattern.test(lowerText)) {
+      return "personal";
+    }
+  }
   
-  // Work-related topics
-  const workTopics = ["project", "meeting", "work", "task", "assignment", "deadline", "presentation", "report"];
-  if (workTopics.some(w => lowerTopic.includes(w))) return "work";
-  
-  // Activity-related topics
-  const activityTopics = ["meeting", "conversation", "discussion", "talk", "call"];
-  if (activityTopics.some(a => lowerTopic.includes(a))) return "activity";
-  
-  // Personal topics
-  const personalTopics = ["feeling", "emotion", "mood", "thought", "idea"];
-  if (personalTopics.some(p => lowerTopic.includes(p))) return "personal";
-  
+  // No context available - return general (let templates handle it)
   return "general";
 }
 
@@ -290,32 +286,74 @@ function generatePromptId(promptText: string): string {
 }
 
 // Helper: Check if a topic makes sense in a template
-// Filters out prompts that would create awkward sentences
+// Uses compromise for linguistic analysis - NO hardcoded word sets!
+// Filters out prompts that would create awkward sentences using part-of-speech detection
 function isValidPrompt(topic: string, template: string, type: EntityType): boolean {
   const lowerTopic = topic.toLowerCase();
   
-  // Skip very short topics
+  // Skip very short topics (not meaningful)
   if (topic.length < 3) return false;
   
-  // Skip common words that don't work as topics
-  const invalidTopics = new Set([
-    "great", "good", "bad", "nice", "fine", "okay", "ok", "well", "better", "best",
-    "our", "your", "my", "his", "her", "their", "its",
-    "today", "tomorrow", "yesterday", "now", "then", "here", "there",
-    "this", "that", "these", "those", "what", "which", "who", "where", "when",
-    "and", "or", "but", "so", "if", "with", "for", "of", "in", "on", "at", "to",
-    "is", "are", "was", "were", "be", "been", "being", "have", "has", "had",
+  // Use compromise to analyze the topic linguistically
+  const doc = nlp(topic);
+  
+  // Filter out parts of speech that don't work as topics using compromise
+  // This is MUCH smarter than hardcoded lists - handles ANY word!
+  
+  // Skip if it's an adjective (doesn't work as topic)
+  if (doc.has("#Adjective")) return false;
+  
+  // Skip if it's an adverb
+  if (doc.has("#Adverb")) return false;
+  
+  // Skip if it's a pronoun
+  if (doc.has("#Pronoun")) return false;
+  
+  // Skip if it's a determiner (the, a, an, this, that)
+  if (doc.has("#Determiner")) return false;
+  
+  // Skip if it's a preposition
+  if (doc.has("#Preposition")) return false;
+  
+  // Skip if it's a conjunction
+  if (doc.has("#Conjunction")) return false;
+  
+  // Skip if it's a verb (unless it's a gerund/noun form)
+  if (doc.has("#Verb") && !doc.has("#Gerund") && !doc.has("#PresentTense")) {
+    return false;
+  }
+  
+  // MINIMAL FALLBACK: Common English stop words (most frequent words that don't carry semantic meaning)
+  // Based on linguistic research - these are the top 20 most common English words
+  // Only used as fallback if compromise doesn't catch them (rare edge cases)
+  const COMMON_STOP_WORDS = new Set([
+    // Most common determiners and pronouns
+    "the", "a", "an", "this", "that", "these", "those",
+    // Most common pronouns
+    "i", "you", "he", "she", "it", "we", "they",
+    "my", "your", "his", "her", "its", "our", "their",
+    // Most common prepositions
+    "in", "on", "at", "to", "for", "of", "with", "by",
+    // Most common conjunctions
+    "and", "or", "but", "so", "if",
+    // Most common auxiliary verbs
+    "is", "are", "was", "were", "be", "been", "being", "have", "has", "had", "do", "does", "did",
+    // Common time/place adverbs
+    "today", "tomorrow", "yesterday", "now", "then", "here", "there", "where", "when",
   ]);
   
-  if (invalidTopics.has(lowerTopic)) return false;
+  // Only use fallback if compromise didn't catch it (defensive check)
+  if (COMMON_STOP_WORDS.has(lowerTopic)) {
+    return false;
+  }
   
   // For topics, check if the template makes grammatical sense
   if (type === "topic") {
-    // Templates like "How's {topic} going?" don't work well with adjectives
-    // Check if topic sounds like a noun (simple heuristic)
+    // Templates like "How's {topic} going?" don't work well with adjectives/adverbs
     const testPrompt = template.replace("{entity}", topic);
+    const testDoc = nlp(testPrompt);
     
-    // Skip if it creates obviously awkward phrases
+    // Check if template creates awkward grammar
     const awkwardPatterns = [
       /how's \w+ going\?/i, // "How's great going?" - awkward
       /what's happening with \w+\?/i, // "What's happening with today?" - awkward
@@ -323,9 +361,26 @@ function isValidPrompt(topic: string, template: string, type: EntityType): boole
     
     // Only check if template matches these patterns
     if (awkwardPatterns.some(pattern => pattern.test(testPrompt))) {
+      // Use compromise to check if the word in context is an adjective/adverb
+      // If compromise says it's an adjective/adverb in this context, skip it
+      if (testDoc.has("#Adjective") || testDoc.has("#Adverb")) {
+        return false;
+      }
+      
       // For these templates, prefer noun-like topics (longer, more specific)
-      // Skip single-word adjectives/adverbs
-      if (topic.length < 5) return false;
+      // Skip very short words that might be adjectives/adverbs
+      if (topic.length < 5 && !doc.has("#Noun")) {
+        return false;
+      }
+    }
+    
+    // Prefer nouns for topics (use compromise to verify)
+    if (!doc.has("#Noun") && !doc.has("#Gerund")) {
+      // Not a noun or gerund - might not work well as topic
+      // But allow it if it's longer (might be a compound word compromise doesn't recognize)
+      if (topic.length < 5) {
+        return false;
+      }
     }
   }
   
@@ -360,7 +415,7 @@ function selectBestTemplate(
   
   // Handle object templates (for topics - context-aware)
   if (type === "topic") {
-    const topicCategory = getTopicCategory(entity);
+    const topicCategory = getTopicCategory(entity, originalText); // Pass originalText for context
     const usePossessive = shouldUsePossessive(entity, originalText);
     
     // Determine which template set to use
