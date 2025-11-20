@@ -246,9 +246,47 @@ function formatDate(date: Date): string {
   return `${Math.abs(diffDays)} days ago`;
 }
 
-// Helper: Generate a unique ID for a prompt
-function generatePromptId(entity: string, type: EntityType, templateIndex: number): string {
-  return `${type}-${entity.toLowerCase().replace(/\s+/g, "-")}-${templateIndex}`;
+// #2: Generate Stable Prompt ID from Text Hash
+// WHY: Original approach used template index in ID (e.g., "person-sarah-0"), but template
+//      selection uses rotation, so same entity got different template indices on different runs.
+//      This caused same prompt text to get different IDs, so used prompts weren't filtered correctly.
+// HOW: Hash the prompt text itself using a simple string hash algorithm (djb2-like).
+//      Same prompt text = same hash = same ID, regardless of which template was used.
+// SYNTAX BREAKDOWN:
+//   - function generatePromptId(promptText: string): string
+//     - TypeScript function signature: parameter type (string) and return type (string)
+//   - let hash = 0 - Initialize hash accumulator (let allows reassignment)
+//   - for (let i = 0; i < promptText.length; i++) - Standard for loop iterating string characters
+//   - promptText.charCodeAt(i) - JavaScript String method, returns Unicode value of character at index i
+//     - Returns number (0-65535) representing the character code
+//   - hash << 5 - Bitwise left shift operator, shifts bits 5 positions left (multiplies by 32)
+//   - hash & hash - Bitwise AND operator (here used to ensure 32-bit integer, though redundant)
+//     - Actually: hash = hash & 0xFFFFFFFF would be more explicit for 32-bit
+//   - Math.abs(hash) - JavaScript Math method, returns absolute value (ensures positive number)
+//   - .toString(36) - Number method, converts to base-36 string (0-9, a-z)
+//     - Base36 is more compact than decimal (e.g., 1000 = "rs" in base36)
+//   - Template literal: `prompt-${...}` - String interpolation with backticks
+// REFERENCES:
+//   - charCodeAt: JavaScript String.prototype.charCodeAt() - MDN Web Docs
+//   - Bitwise operators: JavaScript bitwise operators (<<, &) - MDN Web Docs
+//   - toString(36): JavaScript Number.prototype.toString(radix) - MDN Web Docs
+//   - This is a simplified djb2 hash algorithm (common string hashing approach)
+// APPROACH: Synchronous hash function (no async needed) - simple bit manipulation.
+//           Base36 encoding makes IDs shorter and URL-safe.
+//           This is conventional - text-based hashing for stable IDs.
+// CONNECTION: Used when creating Prompt objects in generatePromptsFromMetadata().
+//             Ensures markPromptAsUsed() and filterUsedPrompts() work correctly.
+function generatePromptId(promptText: string): string {
+  // Generate ID from prompt text hash (synchronous fallback for compatibility)
+  // This ensures same prompt text always gets same ID
+  let hash = 0;
+  for (let i = 0; i < promptText.length; i++) {
+    const char = promptText.charCodeAt(i); // Get Unicode value of character
+    hash = ((hash << 5) - hash) + char; // Bit shift left 5, subtract original, add char code
+    // Equivalent to: hash = hash * 31 + char (but bitwise is faster)
+    hash = hash & hash; // Convert to 32-bit integer (bitwise AND with itself)
+  }
+  return `prompt-${Math.abs(hash).toString(36)}`; // Base36 encoding for shorter ID
 }
 
 // Helper: Check if a topic makes sense in a template
@@ -356,10 +394,47 @@ function generatePromptsFromMetadata(
   const prompts: Prompt[] = [];
   const templates = PROMPT_TEMPLATES[tone];
   
+  // #3: Ensure Mix of People and Topic Prompts (Not Just People)
+  // WHY: Original logic prioritized people first and filled all slots with people if available.
+  //      This meant if there were 5+ people, no topic prompts were shown, even if topics existed.
+  //      User noticed when saving draft, only people prompts appeared, not topics from the entry.
+  // HOW: Calculate max counts upfront - ~60% people, ~40% topics (rounded).
+  //      Generate up to peopleCount people prompts, then up to topicsCount topic prompts.
+  //      This ensures both types are represented even if many people exist.
+  // SYNTAX BREAKDOWN:
+  //   - const peopleCount = Math.min(...) - Math.min() returns the smallest of its arguments
+  //     - Math.min(a, b) - JavaScript Math object method (built-in, no import needed)
+  //   - Math.ceil(count * 0.6) - Math.ceil() rounds UP to nearest integer
+  //     - Example: Math.ceil(5 * 0.6) = Math.ceil(3.0) = 3
+  //     - Example: Math.ceil(5 * 0.6) = Math.ceil(3.0) = 3, but Math.ceil(3.1) = 4
+  //   - Math.floor(count * 0.4) - Math.floor() rounds DOWN to nearest integer
+  //     - Example: Math.floor(5 * 0.4) = Math.floor(2.0) = 2
+  //   - metadata.people.length - Array.length property (JavaScript built-in)
+  //   - count - number parameter passed to function (from generatePromptsFromMetadata call)
+  //   - count - peopleCount - Simple subtraction to ensure we don't exceed total count
+  // REFERENCES:
+  //   - Math.min, Math.ceil, Math.floor: JavaScript Math object methods - MDN Web Docs
+  //   - Array.length: JavaScript Array.prototype.length property - MDN Web Docs
+  //   - metadata: ExtractedMetadata type (defined in extract.ts, imported at top of file)
+  // APPROACH: Pre-calculate limits before generation - prevents filling all slots with one type.
+  //           This is a simple fix - not over-engineered, just ensures fair distribution.
+  // CONNECTION: Used when generating prompts for new entries - ensures variety in suggestions.
   // Priority: People > Topics > Dates
+  // BUT: Ensure we get a mix - don't fill all slots with people
+  // Strategy: Generate ~60% people, ~40% topics (rounded)
+  const peopleCount = Math.min(
+    Math.ceil(count * 0.6), // ~60% for people (rounded up)
+    metadata.people.length // Don't exceed available people
+  );
+  const topicsCount = Math.min(
+    Math.floor(count * 0.4), // ~40% for topics (rounded down)
+    metadata.topics.length, // Don't exceed available topics
+    count - peopleCount // Don't exceed total count
+  );
+  
   // Generate prompts for people first - ensure they use person templates
   let promptIndex = 0;
-  for (let i = 0; i < metadata.people.length && prompts.length < count; i++) {
+  for (let i = 0; i < peopleCount && prompts.length < count; i++) {
     const person = metadata.people[i];
     const personTemplates = templates.person;
     
@@ -375,7 +450,7 @@ function generatePromptsFromMetadata(
     const promptText = template.replace("{entity}", person);
     
     prompts.push({
-      id: generatePromptId(person, "person", personTemplates.indexOf(template)),
+      id: generatePromptId(promptText), // FIXED: Use prompt text for stable ID
       text: promptText,
       entity: person,
       type: "person",
@@ -386,7 +461,8 @@ function generatePromptsFromMetadata(
   }
   
   // Then topics - with validation, ensure they use context-aware topic templates
-  for (let i = 0; i < metadata.topics.length && prompts.length < count; i++) {
+  // Generate up to topicsCount prompts for topics
+  for (let i = 0; i < topicsCount && prompts.length < count; i++) {
     const topic = metadata.topics[i];
     
     // Skip invalid topics
@@ -409,35 +485,14 @@ function generatePromptsFromMetadata(
     // Double-check the final prompt makes sense
     if (!isValidPrompt(topic, template, "topic")) continue;
     
-    // Get the template index for proper ID generation
-    // This ensures the same topic with different templates gets different IDs
-    let templateIndexForId = 0;
-    if (typeof topicTemplates === "object" && !Array.isArray(topicTemplates)) {
-      // Find which template set was used and get the index
-      const topicCategory = getTopicCategory(topic);
-      const usePossessive = shouldUsePossessive(topic, metadata.originalText);
-      
-      let templateSet: string[] = topicTemplates.general || [];
-      if (usePossessive && topicTemplates.possessive) {
-        templateSet = topicTemplates.possessive;
-      } else if (topicCategory === "work" && topicTemplates.work) {
-        templateSet = topicTemplates.work;
-      } else if (topicCategory === "activity" && topicTemplates.activity) {
-        templateSet = topicTemplates.activity;
-      }
-      
-      templateIndexForId = templateSet.indexOf(template);
-      if (templateIndexForId === -1) templateIndexForId = 0;
-    }
-    
-    prompts.push({
-      id: generatePromptId(topic, "topic", templateIndexForId),
-      text: promptText,
-      entity: topic,
-      type: "topic",
-      used: false,
-      createdAt: new Date(),
-    });
+      prompts.push({
+        id: generatePromptId(promptText), // FIXED: Use prompt text for stable ID
+        text: promptText,
+        entity: topic,
+        type: "topic",
+        used: false,
+        createdAt: new Date(),
+      });
     promptIndex++;
   }
   
@@ -459,7 +514,7 @@ function generatePromptsFromMetadata(
     const promptText = template.replace("{entity}", dateStr);
     
     prompts.push({
-      id: generatePromptId(dateStr, "date", dateTemplates.indexOf(template)),
+      id: generatePromptId(promptText), // FIXED: Use prompt text for stable ID
       text: promptText,
       entity: dateStr,
       type: "date",

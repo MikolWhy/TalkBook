@@ -12,7 +12,7 @@ interface RichTextEditorProps {
   onChange: (value: string) => void; // Callback when content changes
   placeholder?: string; // Placeholder text when empty
   pageColor?: string; // Background color (hex code)
-  linedPaper?: boolean; // Whether to show lined background
+  linedPaper?: boolean; // Whether to show lined background (for now no)
 }
 
 // Ref interface - defines methods that parent components can call
@@ -47,12 +47,36 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
     });
 
     // Expose methods to parent components via ref
+    // SYNTAX: useImperativeHandle(ref, callback) - React hook to expose methods to parent via ref
+    //         The callback returns an object with methods that parent can call via ref.current.methodName()
+    //         ref comes from forwardRef wrapper (see component definition)
     useImperativeHandle(ref, () => ({
       insertPromptAsHeading: (prompt: string) => {
-        if (!editor) return;
+        if (!editor) return; // Early return if editor not initialized (defensive check)
         
-        // Insert prompt as heading (h3)
-        editor.chain().focus().setHeading({ level: 3 }).insertContent(prompt).insertContent("\n\n").run();
+        // #1: Insert Prompt as H3 Heading with Paragraph Below
+        // WHY: User requested that prompts insert as headings (like Google Docs), and clicking
+        //      underneath should default to regular body text, not heading format.
+        // HOW: Use Tiptap's insertContent to insert HTML directly - `<h3>${prompt}</h3><p></p>`
+        //      The empty paragraph ensures cursor is positioned in paragraph mode for regular text.
+        // SYNTAX BREAKDOWN:
+        //   - editor.chain() - Tiptap's chainable API (returns EditorChain object)
+        //   - .focus() - Focuses the editor (chainable method)
+        //   - .insertContent(htmlString) - Inserts HTML content at cursor position
+        //     - Template literal: `...` allows ${prompt} interpolation
+        //     - HTML string: `<h3>...</h3><p></p>` - H3 heading + empty paragraph
+        //   - .run() - Executes the chain (required to actually perform the operations)
+        // REFERENCES:
+        //   - editor: Tiptap Editor instance from useEditor() hook (line ~30)
+        //   - prompt: string parameter passed from parent component
+        //   - insertContent: Tiptap command from @tiptap/core library
+        // APPROACH: Simple and direct - Tiptap handles cursor positioning automatically.
+        //           No setTimeout needed - this is conventional Tiptap usage.
+        // CONNECTION: Called from PromptSuggestions component when user clicks a prompt button.
+        editor.chain()
+          .focus()
+          .insertContent(`<h3>${prompt}</h3><p></p>`) // Insert H3 + empty paragraph
+          .run();
       },
     }));
 
