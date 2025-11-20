@@ -59,9 +59,66 @@
 
 //adding to use nav links
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DashboardLayout from "../components/DashboardLayout";
 import IOSList, { IOSListItem } from "../components/IOSList";
+
+// Mood ID to emoji mapping
+const moodMap: Record<string, string> = {
+  "very-happy": "😄",
+  "happy": "😊",
+  "neutral": "😐",
+  "sad": "😢",
+  "very-sad": "😭",
+  "excited": "🤩",
+  "calm": "😌",
+  "anxious": "😰",
+  "angry": "😠",
+  "grateful": "🙏",
+};
+
+// Tag color options (matching the new entry page)
+const tagColors = [
+  "bg-blue-100 text-blue-800 border-blue-300",
+  "bg-green-100 text-green-800 border-green-300",
+  "bg-purple-100 text-purple-800 border-purple-300",
+  "bg-pink-100 text-pink-800 border-pink-300",
+  "bg-yellow-100 text-yellow-800 border-yellow-300",
+  "bg-red-100 text-red-800 border-red-300",
+  "bg-indigo-100 text-indigo-800 border-indigo-300",
+  "bg-teal-100 text-teal-800 border-teal-300",
+  "bg-orange-100 text-orange-800 border-orange-300",
+  "bg-cyan-100 text-cyan-800 border-cyan-300",
+];
+
+// Function to get color for a tag based on its index
+const getTagColor = (index: number) => {
+  return tagColors[index % tagColors.length];
+};
+
+// Function to strip HTML tags for preview
+const stripHtml = (html: string): string => {
+  if (typeof window === "undefined") return html;
+  const tmp = document.createElement("DIV");
+  tmp.innerHTML = html;
+  return tmp.textContent || tmp.innerText || "";
+};
+
+// Function to format date
+const formatDate = (dateString: string): string => {
+  const date = new Date(dateString);
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+};
+
+// Function to truncate text
+const truncateText = (text: string, maxLength: number = 100): string => {
+  if (text.length <= maxLength) return text;
+  return text.substring(0, maxLength) + "...";
+};
 
 // TODO: implement journal list page
 
@@ -69,106 +126,90 @@ import IOSList, { IOSListItem } from "../components/IOSList";
 // This will be replaced with full implementation later
 export default function JournalPage() {
   const [selectedEntryId, setSelectedEntryId] = useState<string | number | null>(null);
+  const [entries, setEntries] = useState<any[]>([]);
 
-  const entries = [
-    {
-      id: 1,
-      date: "2025-01-15",
-      mood: "😊",
-      weather: "☀️",
-      content: "Today was a great day! I went for a walk in the park and enjoyed the beautiful weather. The sun was shining and I felt really positive about everything.",
-    },
-    {
-      id: 2,
-      date: "2025-01-14",
-      mood: "😌",
-      weather: "☁️",
-      content: "Had a productive day at work. Finished the project I've been working on and felt accomplished. Looking forward to the weekend.",
-    },
-    {
-      id: 3,
-      date: "2025-01-13",
-      mood: "🤔",
-      weather: "🌧️",
-      content: "Rainy day today. Spent most of it indoors reading and reflecting. Sometimes these quiet days are exactly what you need.",
-    },
-    {
-      id: 4,
-      date: "2025-01-12",
-      mood: "😄",
-      weather: "☀️",
-      content: "Met up with friends for coffee. Great conversation and lots of laughter. These moments remind me what's truly important in life.",
-    },
-    {
-      id: 5,
-      date: "2025-01-11",
-      mood: "😴",
-      weather: "🌙",
-      content: "Early morning entry. Feeling a bit tired but motivated to start the day. Planning to get a lot done today.",
-    },
-    {
-      id: 6,
-      date: "2025-01-11",
-      mood: "😴",
-      weather: "🌙",
-      content: "Early morning entry. Feeling a bit tired but motivated to start the day. Planning to get a lot done today.",
-    },
-    {
-      id: 7,
-      date: "2025-01-11",
-      mood: "😴",
-      weather: "🌙",
-      content: "Early morning entry. Feeling a bit tired but motivated to start the day. Planning to get a lot done today.",
-    },
-    {
-      id: 8,
-      date: "2025-01-11",
-      mood: "😴",
-      weather: "🌙",
-      content: "Early morning entry. Feeling a bit tired but motivated to start the day. Planning to get a lot done today.",
-    },
-    {
-      id: 9,
-      date: "2025-01-11",
-      mood: "😴",
-      weather: "🌙",
-      content: "Early morning entry. Feeling a bit tired but motivated to start the day. Planning to get a lot done today.",
-    },
-    {
-      id: 10,
-      date: "2025-01-11",
-      mood: "😴",
-      weather: "🌙",
-      content: "Early morning entry. Feeling a bit tired but motivated to start the day. Planning to get a lot done today.",
-    },
-    {
-      id: 11,
-      date: "2025-01-11",
-      mood: "😴",
-      weather: "🌙",
-      content: "Early morning entry. Feeling a bit tired but motivated to start the day. Planning to get a lot done today.",
-    },
-  ];
+  // Load entries from localStorage
+  const loadEntries = () => {
+    try {
+      const storedEntries = JSON.parse(
+        localStorage.getItem("journalEntries") || "[]"
+      );
+      // Sort by createdAt (newest first)
+      const sortedEntries = storedEntries.sort(
+        (a: any, b: any) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      setEntries(sortedEntries);
+    } catch (error) {
+      console.error("Error loading entries from localStorage:", error);
+      setEntries([]);
+    }
+  };
+
+  // Load entries on mount and when page becomes visible
+  useEffect(() => {
+    loadEntries();
+
+    // Reload when page becomes visible (user navigates back from new entry page)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        loadEntries();
+      }
+    };
+
+    // Listen for storage changes (in case entries are added from another tab)
+    window.addEventListener("storage", loadEntries);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    
+    // Also reload on focus (when user switches back to this tab)
+    window.addEventListener("focus", loadEntries);
+
+    return () => {
+      window.removeEventListener("storage", loadEntries);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", loadEntries);
+    };
+  }, []);
 
   // Transform entries to IOSListItem format
-  const listItems: IOSListItem[] = entries.map((entry) => ({
-    id: entry.id,
-    title: entry.date,
-    description: entry.content,
-    startContent: (
-      <div className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-100 text-blue-600 text-lg">
-        {entry.mood}
-      </div>
-    ),
-    endContent: (
-      <div className="flex flex-col items-end gap-1">
-        <span className="text-lg">{entry.weather}</span>
-      </div>
-    ),
-    onClick: () => {
-      setSelectedEntryId(entry.id);
-    },
-  }));
+  const listItems: IOSListItem[] = entries.map((entry) => {
+    const moodEmoji = entry.mood ? moodMap[entry.mood] || "😐" : "😐";
+    const contentPreview = truncateText(stripHtml(entry.content || ""));
+    const displayTitle = entry.title || formatDate(entry.createdAt);
+
+    return {
+      id: entry.id,
+      title: displayTitle,
+      description: contentPreview || "No content",
+      startContent: (
+        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-100 text-blue-600 text-lg">
+          {moodEmoji}
+        </div>
+      ),
+      endContent: entry.tags && entry.tags.length > 0 ? (
+        <div className="flex flex-col items-end gap-1">
+          <div className="flex flex-wrap gap-1 justify-end max-w-[100px]">
+            {entry.tags.slice(0, 2).map((tag: string, index: number) => (
+              <span
+                key={tag}
+                className={`px-2 py-0.5 rounded-full text-xs font-medium border ${getTagColor(
+                  index
+                )}`}
+              >
+                {tag}
+              </span>
+            ))}
+            {entry.tags.length > 2 && (
+              <span className="text-xs text-gray-500">+{entry.tags.length - 2}</span>
+            )}
+          </div>
+        </div>
+      ) : null,
+      onClick: () => {
+        setSelectedEntryId(entry.id);
+      },
+    };
+  });
 
   const selectedEntry = entries.find((e) => e.id === selectedEntryId);
   return (
@@ -218,16 +259,45 @@ export default function JournalPage() {
               {selectedEntry ? (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between border-b pb-4">
-                    <h2 className="text-2xl font-bold text-gray-900">{selectedEntry.date}</h2>
+                    <div>
+                      <h2 className="text-2xl font-bold text-gray-900">
+                        {selectedEntry.title || "Untitled Entry"}
+                      </h2>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {formatDate(selectedEntry.createdAt)}
+                      </p>
+                    </div>
                     <div className="flex items-center gap-3">
-                      <span className="text-2xl">{selectedEntry.mood}</span>
-                      <span className="text-2xl">{selectedEntry.weather}</span>
+                      {selectedEntry.mood && (
+                        <span className="text-2xl" title={selectedEntry.mood}>
+                          {moodMap[selectedEntry.mood] || "😐"}
+                        </span>
+                      )}
                     </div>
                   </div>
+                  {selectedEntry.tags && selectedEntry.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {selectedEntry.tags.map((tag: string, index: number) => (
+                        <span
+                          key={tag}
+                          className={`px-3 py-1 rounded-full text-sm font-medium border ${getTagColor(
+                            index
+                          )}`}
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   <div className="prose max-w-none">
-                    <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-                      {selectedEntry.content}
-                    </p>
+                    {selectedEntry.content ? (
+                      <div
+                        className="text-gray-700 leading-relaxed"
+                        dangerouslySetInnerHTML={{ __html: selectedEntry.content }}
+                      />
+                    ) : (
+                      <p className="text-gray-500 italic">No content</p>
+                    )}
                   </div>
                   <div className="pt-4 border-t">
                     <Link
