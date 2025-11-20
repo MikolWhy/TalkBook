@@ -80,3 +80,168 @@
 
 // TODO: Aadil implements entry and profile functions first, then Michael and Zayn add their functions on separate branches
 
+import { db } from './dexie';
+import { Habit, HabitLog } from './schema';
+
+// ============================================================================
+// HABIT OPERATIONS (Zayn)
+// ============================================================================
+
+export async function createHabit(habit: Omit<Habit, 'id'>): Promise<Habit> {
+  try {
+    const id = await db.habits.add(habit);
+    return { ...habit, id };
+  } catch (error) {
+    console.error('Failed to create habit:', error);
+    throw error;
+  }
+}
+
+export async function getActiveHabits(profileId: number): Promise<Habit[]> {
+  try {
+    return await db.habits
+      .where('profileId')
+      .equals(profileId)
+      .filter(habit => !habit.archived)
+      .toArray();
+  } catch (error) {
+    console.error('Failed to get active habits:', error);
+    throw error;
+  }
+}
+
+export async function getHabitById(id: number): Promise<Habit | undefined> {
+  try {
+    return await db.habits.get(id);
+  } catch (error) {
+    console.error('Failed to get habit by id:', error);
+    throw error;
+  }
+}
+
+export async function updateHabit(
+  id: number,
+  updates: Partial<Habit>
+): Promise<void> {
+  try {
+    await db.habits.update(id, updates);
+  } catch (error) {
+    console.error('Failed to update habit:', error);
+    throw error;
+  }
+}
+
+export async function archiveHabit(id: number): Promise<void> {
+  try {
+    await db.habits.update(id, { archived: true });
+  } catch (error) {
+    console.error('Failed to archive habit:', error);
+    throw error;
+  }
+}
+
+// ============================================================================
+// HABIT LOG OPERATIONS (Zayn)
+// ============================================================================
+
+export async function logHabit(
+  habitId: number,
+  date: string,
+  value: number
+): Promise<HabitLog> {
+  try {
+    // Check if log already exists for this date (upsert logic)
+    const existing = await db.habitLogs
+      .where('[habitId+date]')
+      .equals([habitId, date])
+      .first();
+
+    if (existing) {
+      // Update existing log
+      await db.habitLogs.update(existing.id!, {
+        value,
+        completedAt: new Date().toISOString(),
+      });
+      return { ...existing, value, completedAt: new Date().toISOString() };
+    } else {
+      // Create new log
+      const id = await db.habitLogs.add({
+        habitId,
+        date,
+        value,
+        completedAt: new Date().toISOString(),
+      });
+      return { id, habitId, date, value, completedAt: new Date().toISOString() };
+    }
+  } catch (error) {
+    console.error('Failed to log habit:', error);
+    throw error;
+  }
+}
+
+export async function getHabitLogs(
+  habitId: number,
+  startDate?: string,
+  endDate?: string
+): Promise<HabitLog[]> {
+  try {
+    let logs = await db.habitLogs.where('habitId').equals(habitId).toArray();
+
+    // Filter by date range if provided
+    if (startDate && endDate) {
+      logs = logs.filter((log) => log.date >= startDate && log.date <= endDate);
+    } else if (startDate) {
+      logs = logs.filter((log) => log.date >= startDate);
+    } else if (endDate) {
+      logs = logs.filter((log) => log.date <= endDate);
+    }
+
+    // Sort by date descending
+    return logs.sort((a, b) => b.date.localeCompare(a.date));
+  } catch (error) {
+    console.error('Failed to get habit logs:', error);
+    throw error;
+  }
+}
+
+export async function calculateStreak(habitId: number): Promise<number> {
+  try {
+    const logs = await db.habitLogs
+      .where('habitId')
+      .equals(habitId)
+      .toArray();
+
+    if (logs.length === 0) return 0;
+
+    // Sort by date descending
+    const sortedLogs = logs.sort((a, b) => b.date.localeCompare(a.date));
+
+    let streak = 0;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Start from today and go backwards
+    let currentDate = new Date(today);
+
+    for (const log of sortedLogs) {
+      const logDate = new Date(log.date);
+      logDate.setHours(0, 0, 0, 0);
+
+      const dateString = currentDate.toISOString().split('T')[0];
+
+      if (log.date === dateString) {
+        streak++;
+        // Move to previous day
+        currentDate.setDate(currentDate.getDate() - 1);
+      } else {
+        // Gap in streak, stop counting
+        break;
+      }
+    }
+
+    return streak;
+  } catch (error) {
+    console.error('Failed to calculate streak:', error);
+    return 0;
+  }
+}
