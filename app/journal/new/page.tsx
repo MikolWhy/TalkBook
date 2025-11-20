@@ -127,6 +127,9 @@ export default function NewEntryPage() {
       
       {/* Rich Text Editor */}
       <div className="mb-6">
+        <div className="mb-6">
+          <h2 className="text-lg font-bold text-gray-900">Entry Content</h2>
+        </div>
         <RichTextEditor
           value={content}
           onChange={(newContent: string) => setContent(newContent)}
