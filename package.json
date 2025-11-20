@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@heroui/listbox": "^2.3.26",
     "@tiptap/extension-highlight": "^3.10.8",
     "@tiptap/extension-underline": "^3.10.8",
     "@tiptap/react": "^3.10.8",
