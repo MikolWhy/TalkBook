@@ -173,3 +173,14 @@ body {
 .ios-list-item-animate:nth-child(n+6) {
   animation-delay: 0.12s;
 }
+
+/* Dynamic ring color for selected list items */
+[data-selected="true"] {
+  --tw-ring-color: var(--ring-color, rgb(96, 165, 250));
+  box-shadow: 0 0 0 4px var(--ring-color, rgb(96, 165, 250)) inset !important;
+}
+
+[aria-selected="true"] {
+  --tw-ring-color: var(--ring-color, rgb(96, 165, 250));
+  box-shadow: 0 0 0 4px var(--ring-color, rgb(96, 165, 250)) inset !important;
+}

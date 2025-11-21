@@ -62,16 +62,16 @@ import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import DashboardLayout from "../components/DashboardLayout";
 import IOSList, { IOSListItem } from "../components/IOSList";
-import { 
-  initializeJournals, 
-  getJournals, 
-  getActiveJournalId, 
+import {
+  initializeJournals,
+  getJournals,
+  getActiveJournalId,
   setActiveJournal,
   createJournal,
   renameJournal,
   deleteJournal,
   getJournalById,
-  type Journal 
+  type Journal
 } from "../../src/lib/journals/manager";
 
 // Mood ID to emoji mapping
@@ -142,7 +142,7 @@ export default function JournalPage() {
   const [selectedTagFilter, setSelectedTagFilter] = useState<string | null>(null);
   const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
   const filterDropdownRef = useRef<HTMLDivElement>(null);
-  
+
   // Journal management state
   const [journals, setJournals] = useState<Journal[]>([]);
   const [activeJournalId, setActiveJournalIdState] = useState<string>("");
@@ -167,12 +167,12 @@ export default function JournalPage() {
       const storedEntries = JSON.parse(
         localStorage.getItem("journalEntries") || "[]"
       );
-      
+
       // Filter entries by active journal
       const journalEntries = storedEntries.filter(
         (entry: any) => (entry.journalId || "journal-1") === activeJournalId
       );
-      
+
       // Sort by createdAt (newest first)
       const sortedEntries = journalEntries.sort(
         (a: any, b: any) =>
@@ -241,7 +241,7 @@ export default function JournalPage() {
     // Listen for storage changes (in case entries are added from another tab)
     window.addEventListener("storage", loadEntries);
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    
+
     // Also reload on focus (when user switches back to this tab)
     window.addEventListener("focus", loadEntries);
 
@@ -314,7 +314,7 @@ export default function JournalPage() {
       const tagMatch = (entry.tags || []).some((tag: string) =>
         tag.toLowerCase().includes(query) // Check if any tag includes query
       );
-      
+
       if (!titleMatch && !contentMatch && !tagMatch) {
         return false; // Entry doesn't match search query (exclude it)
       }
@@ -365,7 +365,24 @@ export default function JournalPage() {
       description: contentPreview || "No content",
       bgColor: colorConfig.bgClass,
       borderColor: colorConfig.borderClass,
-      startContent: (
+      tags: entry.tags && entry.tags.length > 0 ? (
+        <>
+          {entry.tags.slice(0, 3).map((tag: string, index: number) => (
+            <span
+              key={tag}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border shadow-sm ${getTagColor(
+                index
+              )}`}
+            >
+              {tag}
+            </span>
+          ))}
+          {entry.tags.length > 3 && (
+            <span className="text-[11px] text-gray-500 font-medium">+{entry.tags.length - 3} more</span>
+          )}
+        </>
+      ) : undefined,
+      endContent: (
         <div className="flex flex-col items-center gap-2">
           <div className="text-4xl leading-none transition-transform hover:scale-110">
             {moodEmoji}
@@ -377,25 +394,6 @@ export default function JournalPage() {
           )}
         </div>
       ),
-      endContent: entry.tags && entry.tags.length > 0 ? (
-        <div className="flex flex-col items-end gap-1.5">
-          <div className="flex flex-wrap gap-1.5 justify-end max-w-[120px]">
-            {entry.tags.slice(0, 2).map((tag: string, index: number) => (
-              <span
-                key={tag}
-                className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border shadow-sm ${getTagColor(
-                  index
-                )}`}
-              >
-                {tag}
-              </span>
-            ))}
-            {entry.tags.length > 2 && (
-              <span className="text-[11px] text-gray-500 font-medium mt-0.5">+{entry.tags.length - 2} more</span>
-            )}
-          </div>
-        </div>
-      ) : null,
       onClick: () => {
         setSelectedEntryId(entry.id);
       },
@@ -466,11 +464,10 @@ export default function JournalPage() {
                         setActiveJournal(journal.id);
                         setIsJournalDropdownOpen(false);
                       }}
-                      className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                        activeJournalId === journal.id 
-                          ? "bg-blue-50 font-semibold text-gray-900" 
-                          : "text-gray-700"
-                      }`}
+                      className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${activeJournalId === journal.id
+                        ? "bg-blue-50 font-semibold text-gray-900"
+                        : "text-gray-700"
+                        }`}
                     >
                       {journal.name}
                     </button>
@@ -496,7 +493,7 @@ export default function JournalPage() {
             href="/journal/new"
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
           >
-            ✍️ New Entry
+            ✍️ new entry
           </Link>
         </div>
 
@@ -694,9 +691,8 @@ export default function JournalPage() {
                         setSelectedTagFilter(null);
                         setIsFilterDropdownOpen(false);
                       }}
-                      className={`w-full px-4 py-2 text-left hover:bg-gray-100 transition-colors ${
-                        selectedTagFilter === null ? "bg-blue-50 font-medium text-gray-900" : "text-gray-400"
-                      }`}
+                      className={`w-full px-4 py-2 text-left hover:bg-gray-100 transition-colors ${selectedTagFilter === null ? "bg-blue-50 font-medium text-gray-900" : "text-gray-400"
+                        }`}
                     >
                       All Entries
                     </button>
@@ -708,9 +704,8 @@ export default function JournalPage() {
                             setSelectedTagFilter(tag);
                             setIsFilterDropdownOpen(false);
                           }}
-                          className={`w-full px-4 py-2 text-left hover:bg-gray-100 transition-colors flex items-center gap-2 ${
-                            selectedTagFilter === tag ? "bg-blue-50 font-medium" : ""
-                          }`}
+                          className={`w-full px-4 py-2 text-left hover:bg-gray-100 transition-colors flex items-center gap-2 ${selectedTagFilter === tag ? "bg-blue-50 font-medium" : ""
+                            }`}
                         >
                           <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${getTagColor(
                             index
