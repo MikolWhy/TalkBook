@@ -92,6 +92,121 @@ export async function extractMetadata(
     dates: [] as Date[],
   };
 
+  // MINIMAL BLACKLIST: Only grammatical words that are structurally NEVER names
+  // We keep this minimal and rely on NLP analysis for everything else
+  // This list contains only function words (prepositions, conjunctions, pronouns, determiners)
+  const grammaticalWords = new Set([
+    // Prepositions (function words)
+    "on", "in", "at", "to", "from", "with", "about", "after", "before", "during", "until", "for",
+    "by", "under", "over", "through", "between", "among", "into", "onto", "upon",
+    // Conjunctions (function words)
+    "and", "or", "but", "so", "yet", "nor", "for", "because", "although", "though", "since", "if", "unless", "while",
+    // Determiners (function words)
+    "the", "a", "an", "this", "that", "these", "those", "some", "any", "each", "every", "either", "neither", "both", "all",
+    // Pronouns (function words)
+    "i", "me", "my", "mine", "myself",
+    "you", "your", "yours", "yourself",
+    "he", "him", "his", "himself",
+    "she", "her", "hers", "herself",
+    "it", "its", "itself",
+    "we", "us", "our", "ours", "ourselves",
+    "they", "them", "their", "theirs", "themselves",
+    // Adverbs (common function words only)
+    "not", "very", "too", "so", "just", "only", "also", "even", "still", "already", "yet"
+  ]);
+
+  // Helper function: Smart validation to check if a word is truly a person name
+  // Uses compromise's linguistic analysis instead of hardcoded word lists
+  const isValidPersonName = (word: string, originalContext: string): boolean => {
+    const cleanWord = word.replace(/[.,!?;:'"]/g, "").trim();
+    const cleanWordLower = cleanWord.toLowerCase();
+    
+    // Filter 1: Reject grammatical function words (minimal hardcoded list)
+    if (grammaticalWords.has(cleanWordLower)) {
+      return false;
+    }
+    
+    // Filter 2: Use compromise to analyze the word in multiple sentence contexts
+    // Test in 3 different sentence patterns to get accurate linguistic tags
+    const testSentences = [
+      `I met ${cleanWord} yesterday.`,           // Pattern 1: "met X" - name context
+      `${cleanWord} is a person.`,               // Pattern 2: "X is" - subject context
+      `I was talking with ${cleanWord}.`         // Pattern 3: "with X" - object context
+    ];
+    
+    let nameCount = 0;
+    let nounCount = 0;
+    let verbCount = 0;
+    let otherGrammaticalCount = 0;
+    
+    for (const sentence of testSentences) {
+      const testDoc = nlp(sentence);
+      
+      // Find the term we're testing
+      const terms = testDoc.terms().out("array") as any[];
+      const targetTerm = terms.find(t => {
+        const tText = (t.text || "").toLowerCase().replace(/[.,!?;:'"]/g, "");
+        return tText === cleanWordLower;
+      });
+      
+      if (targetTerm) {
+        const tags = targetTerm.tags || [];
+        
+        // Count how compromise tags this word across different contexts
+        if (tags.some((tag: string) => tag.includes("Person") || tag.includes("FirstName") || tag.includes("LastName"))) {
+          nameCount++;
+        }
+        if (tags.some((tag: string) => tag.includes("ProperNoun"))) {
+          nameCount++;
+        }
+        if (tags.some((tag: string) => tag.includes("Noun") && !tag.includes("ProperNoun"))) {
+          nounCount++;
+        }
+        if (tags.some((tag: string) => tag.includes("Verb"))) {
+          verbCount++;
+        }
+        if (tags.some((tag: string) => 
+          tag.includes("Adjective") || tag.includes("Adverb") || 
+          tag.includes("Pronoun") || tag.includes("Determiner")
+        )) {
+          otherGrammaticalCount++;
+        }
+      }
+    }
+    
+    // Decision logic: Use voting system across contexts
+    // If compromise consistently tags it as a name/proper noun → it's a name
+    // If it's tagged as a verb or other grammatical word → NOT a name
+    // If it's a common noun but never tagged as a name → NOT a name
+    
+    if (verbCount > 0 || otherGrammaticalCount > 0) {
+      return false; // Verbs and grammatical words are never names
+    }
+    
+    if (nameCount >= 2) {
+      return true; // Compromise thinks it's a name in multiple contexts → trust it
+    }
+    
+    if (nameCount > 0 && nounCount === 0) {
+      return true; // Tagged as name but never as common noun → likely a name
+    }
+    
+    // Check original context: if it appears after a strong name indicator AND
+    // compromise never tagged it as a verb/grammatical word, it might be a name
+    const nameIndicators = ["met", "with", "called", "texted", "saw", "spoke to", "talked to", "talking with"];
+    const contextLower = originalContext.toLowerCase();
+    const hasNameIndicator = nameIndicators.some(indicator => {
+      const pattern = new RegExp(`\\b${indicator}\\s+${cleanWordLower}\\b`, "i");
+      return pattern.test(contextLower);
+    });
+    
+    if (hasNameIndicator && nameCount > 0 && verbCount === 0 && otherGrammaticalCount === 0) {
+      return true; // Appears after name indicator + compromise tagged it as name at least once
+    }
+    
+    return false; // Default: not confident it's a name
+  };
+  
   // 1. Extract people (names) using compromise
   try {
     const doc = nlp(plainText);
@@ -154,47 +269,8 @@ export async function extractMetadata(
         return;
       }
       
-      // CRITICAL: Filter out common English words that are often capitalized but aren't names
-      // These are prepositions, conjunctions, adverbs, common nouns that appear mid-sentence
-      const commonNonNames = new Set([
-        // Prepositions
-        "on", "in", "at", "to", "from", "with", "about", "after", "before", "during", "until", "for",
-        // Conjunctions
-        "and", "or", "but", "so", "then",
-        // Common adverbs/determiners
-        "the", "a", "an", "there", "here", "where", "when", "why", "how",
-        "somewhere", "somehow", "anywhere", "everywhere",
-        // Pronouns
-        "we", "they", "i", "you", "he", "she", "it", "us", "them",
-        // Common verbs that might be capitalized mid-sentence or appear after indicators
-        "had", "was", "were", "did", "does", "has", "have", "got", "get",
-        "talk", "talked", "talking", "talks",
-        "went", "go", "going", "gone",
-        "saw", "see", "seeing", "seen",
-        "met", "meet", "meeting", "meets",
-        "called", "call", "calling", "calls",
-        "texted", "text", "texting", "texts",
-        "jumped", "jump", "jumping", "jumps",
-        "ran", "run", "running", "runs",
-        "walked", "walk", "walking", "walks",
-        "played", "play", "playing", "plays",
-        "worked", "work", "working", "works",
-        "studied", "study", "studying", "studies",
-        // Time/place words
-        "today", "tomorrow", "yesterday", "later", "earlier",
-        // Common nouns often capitalized but not names - EXPANDED
-        "group", "team", "project", "meeting", "library", "school", "university", "company",
-        "pumpkin", "field", "house", "car", "phone", "book", "movie", "game",
-        "gym", "park", "store", "mall", "restaurant", "cafe", "coffee", "shop",
-        "office", "work", "home", "place", "room", "building", "street", "city",
-        "beach", "pool", "lake", "river", "mountain", "hill", "forest", "woods",
-        "party", "event", "concert", "show", "class", "course", "lesson",
-        // Other common words
-        "our", "your", "my", "his", "her", "their", "its"
-      ]);
-      
-      if (commonNonNames.has(cleanTextLower)) {
-        return; // Skip common non-name words
+      if (grammaticalWords.has(cleanTextLower)) {
+        return; // Skip grammatical function words
       }
       
       // Additional check: analyze the word in a sentence context using compromise
@@ -304,11 +380,11 @@ export async function extractMetadata(
       // 2. If capitalized standalone word (likely a name) → include (catches "Joy", "MADISON")
       // 3. If capitalized AND appears after name indicator AND NOT a common noun → include
       // 4. If lowercase AND appears after name indicator AND compromise doesn't tag it as grammatical → include
-      // CRITICAL: ALWAYS filter against commonNonNames first - these are NEVER names
-      if (isProperNoun && !commonNonNames.has(cleanTextLower)) {
-        // Compromise identified it as a proper noun - trust it (unless it's in commonNonNames)
+      // CRITICAL: ALWAYS filter against grammaticalWords first - these are NEVER names
+      if (isProperNoun && !grammaticalWords.has(cleanTextLower)) {
+        // Compromise identified it as a proper noun - trust it (unless it's a grammatical word)
         potentialNames.push(cleanText);
-      } else if (isCapitalized && !commonNonNames.has(cleanTextLower)) {
+      } else if (isCapitalized && !grammaticalWords.has(cleanTextLower)) {
         // Capitalized word - might be a name
         // Be smart: check if it appears after a name indicator OR if it's truly name-like
         const looksLikeName = cleanText.length >= 2 && cleanText.length <= 20 && /^[A-Za-z]+$/.test(cleanText);
@@ -338,7 +414,7 @@ export async function extractMetadata(
             }
           }
         }
-      } else if (!isCapitalized && (appearsAfterIndicator || appearsAfterIndicatorInText) && !commonNonNames.has(cleanTextLower)) {
+      } else if (!isCapitalized && (appearsAfterIndicator || appearsAfterIndicatorInText) && !grammaticalWords.has(cleanTextLower)) {
         // Lowercase word after name indicator → likely a name (like "henry", "zayn", "cindy")
         // Be careful - still check if it's a common word
         if (testWordTerm) {
@@ -368,8 +444,14 @@ export async function extractMetadata(
       }
     });
     
-    // Combine compromise's results with our detection
-    const allPeople = [...people, ...potentialNames];
+    // CRITICAL FIX: Filter compromise's people() results using smart NLP validation
+    // Don't blindly trust compromise - validate each word using linguistic analysis
+    const filteredPeople = people.filter((person) => {
+      return isValidPersonName(person, plainText);
+    });
+    
+    // Combine filtered compromise results with our carefully detected names
+    const allPeople = [...filteredPeople, ...potentialNames];
     
     // Normalize: capitalize first letter of each word, remove duplicates (case-insensitive)
     // IMPORTANT: Preserve multi-word names (e.g., "Mary Jane" stays as "Mary Jane", not "Maryjane")
