@@ -18,6 +18,8 @@ import PromptSuggestions from "../../../src/components/PromptSuggestions";
 import { extractMetadata } from "../../../src/lib/nlp/extract";
 import { generatePrompts, filterUsedPrompts, filterExpiredPrompts, Prompt, markPromptAsUsed } from "../../../src/lib/nlp/prompts";
 import { getEntries, getEntryById, updateEntry, saveEntries } from "../../../src/lib/cache/entriesCache";
+import { awardEntryXP } from "../../../src/lib/gamification/xp";
+import XPNotification from "../../components/XPNotification";
 
 // Mood options (same as new entry page)
 const moodOptions = [

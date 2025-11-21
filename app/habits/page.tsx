@@ -69,6 +69,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "../components/DashboardLayout";
 import HabitCard from "@/components/HabitCard";
+import XPNotification from "../components/XPNotification";
+import { awardHabitXP, calculateGlobalHabitStreak } from "../../src/lib/gamification/xp";
 import { 
   getActiveHabits, 
   logHabit, 
@@ -89,6 +91,13 @@ export default function HabitsPage() {
   const [loading, setLoading] = useState(true);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  
+  // XP Notification State
+  const [showXPNotification, setShowXPNotification] = useState(false);
+  const [xpEarned, setXpEarned] = useState(0);
+  const [leveledUp, setLeveledUp] = useState(false);
+  const [oldLevel, setOldLevel] = useState<number | undefined>(undefined);
+  const [newLevel, setNewLevel] = useState<number | undefined>(undefined);
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -134,12 +143,47 @@ export default function HabitsPage() {
 
   const handleLog = async (habitId: number, value: number) => {
     try {
+      // Find the habit being logged
+      const habit = habits.find(h => h.id === habitId);
+      if (!habit) return;
+      
+      const wasCompleted = todayLogs[habitId]?.value > 0;
+      const isNowCompleted = value > 0;
+      
+      // Log the habit
       if (value === 0) {
-        // User is un-logging - we could delete the log or set value to 0
-        // For now, we'll just set value to 0 (which logHabit will update)
         await logHabit(habitId, today, 0);
       } else {
         await logHabit(habitId, today, value);
+      }
+      
+      // Award XP only if habit is being completed (not un-logged)
+      if (isNowCompleted && !wasCompleted) {
+        // Count how many habits are completed today (after this log)
+        const completedToday = Object.values(todayLogs).filter((log: any) => log?.value > 0).length + 1;
+        
+        // Calculate global habit streak
+        const habitStreak = await calculateGlobalHabitStreak();
+        
+        // Award XP
+        const xpResult = awardHabitXP(
+          habit.type,
+          habit.type === 'numeric' ? value : 1,
+          habitStreak,
+          completedToday
+        );
+        
+        console.log("🎉 Habit XP Awarded:", xpResult);
+        
+        // Show XP notification
+        setXpEarned(xpResult.xp);
+        setLeveledUp(xpResult.leveledUp);
+        setOldLevel(xpResult.oldLevel);
+        setNewLevel(xpResult.newLevel);
+        setShowXPNotification(true);
+        
+        // Dispatch event for XP bar to update
+        window.dispatchEvent(new Event("xp-updated"));
       }
       
       // Reload habits to update streaks and logs
@@ -357,6 +401,16 @@ export default function HabitsPage() {
           </div>
         );
       })()}
+
+      {/* XP Notification */}
+      <XPNotification
+        xp={xpEarned}
+        show={showXPNotification}
+        onComplete={() => setShowXPNotification(false)}
+        leveledUp={leveledUp}
+        oldLevel={oldLevel}
+        newLevel={newLevel}
+      />
     </DashboardLayout>
   );
 }
