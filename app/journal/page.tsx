@@ -784,7 +784,7 @@ export default function JournalPage() {
                       ))}
                     </div>
                   )}
-                  <div className="prose max-w-none">
+                  <div className="prose max-w-none entry-content">
                     {selectedEntry.content ? (
                       <div
                         className="text-gray-700 text-[15px] leading-relaxed"

@@ -84,7 +84,7 @@ export async function extractMetadata(
 
   // Convert HTML to plain text
   const plainText = stripHTML(text);
-  
+
   // Initialize result object
   const result = {
     people: [] as string[],
@@ -226,7 +226,7 @@ export async function extractMetadata(
     
     return false; // Default: not confident it's a name
   };
-  
+
   // 1. Extract people (names) using compromise
   try {
     const doc = nlp(plainText);
@@ -357,7 +357,7 @@ export async function extractMetadata(
         // Direct pattern: "indicator X" (e.g., "with henry", "met zayn", "saw cindy")
         const directPattern = new RegExp(`\\b${indicator}\\s+${cleanTextLower}\\b`, "i");
         if (directPattern.test(textLower)) return true;
-        
+      
         // Pattern with one word in between: "indicator WORD X" (e.g., "and then Michael", "saw someone like cindy")
         // Allow common words like "then", "also", "even", "just", "really" between indicator and name
         const oneWordBetween = new RegExp(`\\b${indicator}\\s+\\w+\\s+${cleanTextLower}\\b`, "i");
@@ -405,7 +405,7 @@ export async function extractMetadata(
       
       // Skip if it's clearly not a name based on basic checks
       if (isVerb || isCommonNoun || isAdjective || isAdverb) return;
-      
+          
       // Now apply the STRICT validation function
       // This checks if compromise consistently tags it as a name across multiple contexts
       if (isValidPersonName(cleanText, plainText)) {
@@ -425,7 +425,7 @@ export async function extractMetadata(
     // Normalize: capitalize first letter of each word, remove duplicates (case-insensitive)
     // IMPORTANT: Preserve multi-word names (e.g., "Mary Jane" stays as "Mary Jane", not "Maryjane")
     const normalizedNames = allPeople
-      .map((name) => {
+          .map((name) => {
         // Remove punctuation but preserve spaces (for multi-word names)
         // Also remove apostrophes and quotes that might create malformed names like "Guyhenrywhat's"
         const clean = name.replace(/[.,!?;:'"]/g, "").trim();

@@ -85,7 +85,7 @@ import TopicSuggestions from "../../../src/components/TopicSuggestions";
 import { extractMetadata } from "../../../src/lib/nlp/extract";
 import { generatePrompts, filterUsedPrompts, filterExpiredPrompts, Prompt, markPromptAsUsed, getTopicSuggestions, TopicSuggestion } from "../../../src/lib/nlp/prompts";
 import { getActiveJournalId, getJournals, type Journal } from "../../../src/lib/journals/manager";
-import { getEntries, addEntry } from "../../../src/lib/cache/entriesCache";
+import { getEntries, addEntry, updateEntry } from "../../../src/lib/cache/entriesCache";
 import { awardEntryXP } from "../../../src/lib/gamification/xp";
 import XPNotification from "../../components/XPNotification";
 
@@ -138,6 +138,7 @@ export default function NewEntryPage() {
   const [leveledUp, setLeveledUp] = useState(false);
   const [oldLevel, setOldLevel] = useState<number | undefined>(undefined);
   const [newLevel, setNewLevel] = useState<number | undefined>(undefined);
+  const [isSaving, setIsSaving] = useState(false); // Prevent duplicate saves
   
   // Filter prompts: show only those NOT currently inserted in editor
   const availablePrompts = allPrompts.filter(p => !insertedPromptIds.has(p.id));
@@ -511,6 +512,23 @@ export default function NewEntryPage() {
   // CONNECTION: Drafts are excluded from extraction in new entry page (#4).
   //             When draft is saved as regular entry, extraction runs (#8 in edit page).
   const handleSaveDraft = () => {
+    if (!content.trim()) {
+      alert("Please add some content before saving as draft.");
+      return;
+    }
+
+    // Prevent duplicate saves
+    if (isSaving) {
+      return;
+    }
+
+    setIsSaving(true);
+    
+    // Re-enable button after 5 seconds
+    setTimeout(() => {
+      setIsSaving(false);
+    }, 5000);
+
     const entryTitle = title.trim() || formatDateAsTitle(new Date()); // Use date if title empty
     
     const entry = {
@@ -551,21 +569,25 @@ export default function NewEntryPage() {
       return;
     }
 
-    const entryTitle = title.trim() || formatDateAsTitle(new Date());
-    
-    // OPTIMIZATION: Extract metadata once at save time and cache with entry
-    // This prevents re-extraction on every page load
-    let cachedMetadata = null;
-    try {
-      cachedMetadata = await extractMetadata(content);
-      console.log("✅ [Optimization] Extracted and cached metadata at save time:", cachedMetadata);
-    } catch (error) {
-      console.error("Error extracting metadata:", error);
-      // Continue saving even if extraction fails
+    // Prevent duplicate saves
+    if (isSaving) {
+      return;
     }
 
+    setIsSaving(true);
+    
+    // Re-enable button after 5 seconds
+    setTimeout(() => {
+      setIsSaving(false);
+    }, 5000);
+
+    const entryTitle = title.trim() || formatDateAsTitle(new Date());
+    const entryId = Date.now().toString();
+    
+    // OPTIMIZATION: Save entry immediately, extract metadata in background
+    // This gives instant feedback to the user
     const entry = {
-      id: Date.now().toString(),
+      id: entryId,
       title: entryTitle,
       content: content,
       mood: mood,
@@ -576,22 +598,33 @@ export default function NewEntryPage() {
       updatedAt: new Date().toISOString(),
       draft: false, // Not a draft
       promptIds: Array.from(insertedPromptIds), // Store prompt IDs with entry
-      // OPTIMIZATION: Store extracted metadata with entry for instant access
-      extractedPeople: cachedMetadata?.people || [],
-      extractedTopics: cachedMetadata?.topics || [],
-      extractedDates: cachedMetadata?.dates || [],
+      // Metadata will be added in background
+      extractedPeople: [],
+      extractedTopics: [],
+      extractedDates: [],
     };
     
-    console.log("💾 [Save Entry] Saving entry:", {
+    console.log("💾 [Save Entry] Saving entry immediately:", {
       title: entry.title,
       contentLength: content.length,
       draft: entry.draft,
-      cachedPeople: entry.extractedPeople.length,
-      cachedTopics: entry.extractedTopics.length
     });
 
-    // OPTIMIZATION: Use cache instead of localStorage
+    // OPTIMIZATION: Save immediately for instant feedback
     addEntry(entry);
+    
+    // Extract metadata in background and update entry
+    extractMetadata(content).then((cachedMetadata) => {
+      console.log("✅ [Optimization] Extracted metadata in background:", cachedMetadata);
+      updateEntry(entryId, {
+        extractedPeople: cachedMetadata?.people || [],
+        extractedTopics: cachedMetadata?.topics || [],
+        extractedDates: cachedMetadata?.dates || [],
+      });
+    }).catch((error) => {
+      console.error("Error extracting metadata in background:", error);
+      // Non-critical, entry is already saved
+    });
 
     // MICHAEL'S CODE: Mark inserted prompts as permanently used
     // This prevents them from appearing again in future prompt suggestions
@@ -605,11 +638,11 @@ export default function NewEntryPage() {
     // Award XP for entry
     const wordCount = content.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().split(/\s+/).filter((w: string) => w.length > 0).length;
     
-    // Calculate current journal streak from all entries
+    // OPTIMIZATION: Calculate streak more efficiently - only check last 60 entries (max streak is 60 days)
     const allEntries = getEntries().filter((e: any) => !e.draft);
-    const sortedEntries = [...allEntries].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+    const sortedEntries = allEntries
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 60); // Only check last 60 entries for streak calculation
     
     let journalStreak = 0;
     if (sortedEntries.length > 0) {
@@ -869,15 +902,17 @@ export default function NewEntryPage() {
           </button>
           <button
             onClick={handleSaveDraft}
-            className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors font-medium"
+            disabled={isSaving}
+            className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Save as Draft
+            {isSaving ? "Saving..." : "Save as Draft"}
           </button>
           <button
             onClick={handleSave}
-            className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
+            disabled={isSaving}
+            className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Save Entry
+            {isSaving ? "Saving..." : "Save Entry"}
           </button>
         </div>
       </div>

@@ -98,11 +98,20 @@ export default function EditEntryPage() {
   const [loading, setLoading] = useState(true);
   const [entryNotFound, setEntryNotFound] = useState(false);
   const [isDraft, setIsDraft] = useState(false); // Track if entry is a draft
+  const [originalContent, setOriginalContent] = useState<string>(""); // Track original content to detect changes
 
   // NLP Prompt System State
   const [allPrompts, setAllPrompts] = useState<Prompt[]>([]);
   const [insertedPromptIds, setInsertedPromptIds] = useState<Set<string>>(new Set());
   const [originalPromptIds, setOriginalPromptIds] = useState<string[]>([]); // Prompts that were in entry when loaded
+
+  // XP Notification State
+  const [xpEarned, setXpEarned] = useState(0);
+  const [leveledUp, setLeveledUp] = useState(false);
+  const [oldLevel, setOldLevel] = useState(1);
+  const [newLevel, setNewLevel] = useState(1);
+  const [showXPNotification, setShowXPNotification] = useState(false);
+  const [isSaving, setIsSaving] = useState(false); // Prevent duplicate saves
 
   // Filter prompts: show only those NOT currently inserted in editor
   const availablePrompts = allPrompts.filter(p => !insertedPromptIds.has(p.id));
@@ -163,7 +172,9 @@ export default function EditEntryPage() {
 
         // Pre-fill form with existing entry data
         setTitle(entry.title || ""); // Use empty string if title missing
-        setContent(entry.content || ""); // Use empty string if content missing
+        const entryContent = entry.content || "";
+        setContent(entryContent); // Use empty string if content missing
+        setOriginalContent(entryContent); // Track original content to detect changes
         setMood(entry.mood || null); // Use null if mood missing
         setTags(entry.tags || []); // Use empty array if tags missing
         setCardColor(entry.cardColor || "default"); // Load card color or use default
@@ -267,6 +278,18 @@ export default function EditEntryPage() {
       return;
     }
 
+    // Prevent duplicate saves
+    if (isSaving) {
+      return;
+    }
+
+    setIsSaving(true);
+    
+    // Re-enable button after 5 seconds
+    setTimeout(() => {
+      setIsSaving(false);
+    }, 5000);
+
     try {
       const entryTitle = title.trim() || formatDateAsTitle(new Date());
 
@@ -314,20 +337,23 @@ export default function EditEntryPage() {
       return;
     }
 
+    // Prevent duplicate saves
+    if (isSaving) {
+      return;
+    }
+
+    setIsSaving(true);
+    
+    // Re-enable button after 5 seconds
+    setTimeout(() => {
+      setIsSaving(false);
+    }, 5000);
+
     try {
       const entryTitle = title.trim() || formatDateAsTitle(new Date());
+      const contentChanged = content !== originalContent;
 
-      // OPTIMIZATION: Extract and cache metadata when saving
-      // Always extract on save to update cache if content changed
-      let cachedMetadata = null;
-      try {
-        cachedMetadata = await extractMetadata(content);
-        console.log("✅ [Optimization] Updated cached metadata:", cachedMetadata);
-      } catch (error) {
-        console.error("Error extracting metadata:", error);
-      }
-
-      // OPTIMIZATION: Use cache update
+      // OPTIMIZATION: Save immediately, extract metadata in background only if content changed
       const success = updateEntry(entryId as string, {
         title: entryTitle,
         content: content,
@@ -337,9 +363,10 @@ export default function EditEntryPage() {
         updatedAt: new Date().toISOString(),
         draft: false, // Remove draft status
         promptIds: Array.from(insertedPromptIds),
-        extractedPeople: cachedMetadata?.people || [],
-        extractedTopics: cachedMetadata?.topics || [],
-        extractedDates: cachedMetadata?.dates || [],
+        // Keep existing metadata if content hasn't changed
+        extractedPeople: [],
+        extractedTopics: [],
+        extractedDates: [],
       });
 
       if (!success) {
@@ -348,12 +375,83 @@ export default function EditEntryPage() {
         return;
       }
 
+      // Extract metadata in background only if content changed
+      if (contentChanged) {
+        extractMetadata(content).then((cachedMetadata) => {
+          console.log("✅ [Optimization] Updated cached metadata in background:", cachedMetadata);
+          updateEntry(entryId as string, {
+            extractedPeople: cachedMetadata?.people || [],
+            extractedTopics: cachedMetadata?.topics || [],
+            extractedDates: cachedMetadata?.dates || [],
+          });
+        }).catch((error) => {
+          console.error("Error extracting metadata in background:", error);
+          // Non-critical, entry is already saved
+        });
+      }
+
       // Mark prompts as used (original prompts stay marked as used)
       // Note: insertedPromptIds contains prompts from original entry + any new ones
       if (insertedPromptIds.size > 0) {
         insertedPromptIds.forEach((promptId) => {
           markPromptAsUsed(promptId);
         });
+      }
+
+      // Award XP if word count increased (for editing entries)
+      const wordCount = content.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().split(/\s+/).filter((w: string) => w.length > 0).length;
+      const originalWordCount = originalContent.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().split(/\s+/).filter((w: string) => w.length > 0).length;
+      
+      if (wordCount > originalWordCount) {
+        // Calculate streak for XP calculation
+        const allEntries = getEntries().filter((e: any) => !e.draft && e.id !== entryId);
+        const sortedEntries = allEntries
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+          .slice(0, 60);
+        
+        let journalStreak = 0;
+        if (sortedEntries.length > 0) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const lastEntry = new Date(sortedEntries[0].createdAt);
+          lastEntry.setHours(0, 0, 0, 0);
+          const daysSinceLastEntry = Math.floor((today.getTime() - lastEntry.getTime()) / (1000 * 60 * 60 * 24));
+          
+          if (daysSinceLastEntry <= 1) {
+            let streakDate = new Date(lastEntry);
+            for (let i = 0; i < sortedEntries.length; i++) {
+              const entryDate = new Date(sortedEntries[i].createdAt);
+              entryDate.setHours(0, 0, 0, 0);
+              const diff = Math.floor((streakDate.getTime() - entryDate.getTime()) / (1000 * 60 * 60 * 24));
+              if (diff === 0) {
+                journalStreak++;
+              } else if (diff === 1) {
+                journalStreak++;
+                streakDate = entryDate;
+              } else {
+                break;
+              }
+            }
+          }
+        }
+        
+        const additionalWords = wordCount - originalWordCount;
+        const xpResult = awardEntryXP(additionalWords, journalStreak);
+        
+        if (xpResult.xp > 0) {
+          setXpEarned(xpResult.xp);
+          setLeveledUp(xpResult.leveledUp);
+          setOldLevel(xpResult.oldLevel);
+          setNewLevel(xpResult.newLevel);
+          setShowXPNotification(true);
+          window.dispatchEvent(new Event("xp-updated"));
+          
+          // Navigate after notification delay
+          setTimeout(() => {
+            router.push("/journal");
+          }, xpResult.leveledUp ? 4500 : 3500);
+          return;
+        }
       }
 
       router.push("/journal");
@@ -611,21 +709,32 @@ export default function EditEntryPage() {
             {isDraft && (
               <button
                 onClick={handleSaveDraft}
-                className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors font-medium"
+                disabled={isSaving}
+                className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Save as Draft
+                {isSaving ? "Saving..." : "Save as Draft"}
               </button>
             )}
             <button
               onClick={handleSave}
-              className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
+              disabled={isSaving}
+              className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isDraft ? "Save Entry" : "Save Changes"}
+              {isSaving ? "Saving..." : (isDraft ? "Save Entry" : "Save Changes")}
             </button>
           </div>
         </div>
       </div>
-
+      
+      {/* XP Notification */}
+      <XPNotification
+        xp={xpEarned}
+        show={showXPNotification}
+        leveledUp={leveledUp}
+        oldLevel={oldLevel}
+        newLevel={newLevel}
+        onComplete={() => setShowXPNotification(false)}
+      />
     </DashboardLayout>
   );
 }
