@@ -11,11 +11,10 @@ interface ExtractedMetadata {
   people: string[];
   topics: string[];
   dates: Date[];
-  sentiment: number;
   originalText?: string; // Optional: original text for context-aware prompts
 }
 
-// Interface for a prompt
+// Interface for a prompt (clickable - for people/names only)
 export interface Prompt {
   id: string; // Unique ID for tracking
   text: string; // The prompt text
@@ -23,6 +22,12 @@ export interface Prompt {
   type?: EntityType; // Type of entity
   used: boolean; // Whether this prompt has been used
   createdAt: Date; // When this prompt was generated (for expiry tracking)
+}
+
+// Interface for topic suggestions (non-clickable - just display words)
+export interface TopicSuggestion {
+  word: string; // The topic word itself
+  entity?: string; // Original entity if available
 }
 
 // Default prompts when no extracted data is available eg: first entry 
@@ -145,86 +150,46 @@ function getTopicCategory(topic: string, originalText?: string): "work" | "perso
 }
 
 // Prompt templates organized by tone, entity type, and context
-// These templates are designed to be natural, conversational, and context-aware
+// SIMPLIFIED: Fewer templates to avoid awkward prompts
+// For topics: Use word itself or very generic templates
 const PROMPT_TEMPLATES = {
   cozy: {
     person: [
-      "How did things go with {entity}?",
-      "What happened with {entity}?",
-      "Tell me more about {entity}.",
-      "How's {entity} doing?",
+      "Tell me about {entity}.",
+      "Anything happen with {entity}?",
       "What's on your mind about {entity}?",
+      "How's {entity} doing?",
     ],
     topic: {
-      possessive: [ // For topics that work with "your" (project, work, meeting, etc.)
-        "How's your {entity} going?",
-        "Any updates on your {entity}?",
-        "Tell me more about your {entity}.",
-        "What's happening with your {entity}?",
-        "How did your {entity} go?",
-      ],
-      work: [ // Work-related topics
-        "How's {entity} going?",
-        "Any progress on {entity}?",
+      // SIMPLIFIED: For topics, just use the word itself or very generic templates
+      // This avoids awkward prompts like "How did house go?"
+      general: [
+        "{entity}", // Just the word itself - user can make it their header
         "Tell me more about {entity}.",
-        "What's the status of {entity}?",
-        "How did {entity} go?",
-      ],
-      activity: [ // Activity-related topics
-        "How did {entity} go?",
-        "Tell me more about {entity}.",
-        "What happened during {entity}?",
-        "How was {entity}?",
-      ],
-      general: [ // General topics
-        "Tell me more about {entity}.",
-        "How's {entity} going?",
-        "What's happening with {entity}?",
-        "Any updates on {entity}?",
+        "What happened with {entity}?",
       ],
     },
     date: [
       "Tell me about {entity}.",
       "What happened on {entity}?",
-      "How did {entity} go?",
-      "You mentioned {entity}. What happened?",
     ],
   },
   neutral: {
     person: [
-      "How did your interaction with {entity} go?",
-      "Tell me more about {entity}.",
+      "Tell me about {entity}.",
+      "Anything happen with {entity}?",
       "What's new with {entity}?",
-      "Any updates on {entity}?",
     ],
     topic: {
-      possessive: [
-        "Any updates on your {entity}?",
-        "How's your {entity} going?",
-        "What's the status of your {entity}?",
-        "Tell me more about your {entity}.",
-      ],
-      work: [
-        "Any updates on {entity}?",
-        "How's {entity} going?",
-        "What's the status of {entity}?",
-        "Progress on {entity}?",
-      ],
-      activity: [
-        "How did {entity} go?",
-        "What happened during {entity}?",
-        "Tell me more about {entity}.",
-      ],
       general: [
+        "{entity}", // Just the word itself - user can make it their header
         "Tell me more about {entity}.",
-        "Any updates on {entity}?",
-        "How's {entity} going?",
+        "What happened with {entity}?",
       ],
     },
     date: [
       "Tell me about {entity}.",
       "What happened on {entity}?",
-      "Any updates on {entity}?",
     ],
   },
 };
@@ -323,15 +288,34 @@ function isValidPrompt(topic: string, template: string, type: EntityType): boole
     return false;
   }
   
+  // CRITICAL: Filter out pronouns that compromise might miss
+  // These are common pronouns that slip through as nouns (like "it", "her", "him", "they")
+  const COMMON_PRONOUNS = new Set([
+    // Personal pronouns
+    "it", "its", "he", "him", "she", "her", "they", "them", "we", "us",
+    // Possessive pronouns
+    "his", "hers", "theirs", "ours", "yours", "mine",
+    // Demonstrative pronouns
+    "this", "that", "these", "those",
+    // Interrogative pronouns
+    "what", "which", "who", "whom", "whose", "where", "when", "why", "how",
+    // Indefinite pronouns
+    "all", "another", "any", "anybody", "anyone", "anything", "each", "everybody", "everyone", "everything",
+    "few", "many", "nobody", "none", "one", "several", "some", "somebody", "someone", "something",
+    // Common words that are often pronouns
+    "guy", "guys", "person", "people", "thing", "things", "stuff",
+  ]);
+  
+  if (COMMON_PRONOUNS.has(lowerTopic)) {
+    return false; // Never allow pronouns as topics
+  }
+  
   // MINIMAL FALLBACK: Common English stop words (most frequent words that don't carry semantic meaning)
   // Based on linguistic research - these are the top 20 most common English words
   // Only used as fallback if compromise doesn't catch them (rare edge cases)
   const COMMON_STOP_WORDS = new Set([
-    // Most common determiners and pronouns
-    "the", "a", "an", "this", "that", "these", "those",
-    // Most common pronouns
-    "i", "you", "he", "she", "it", "we", "they",
-    "my", "your", "his", "her", "its", "our", "their",
+    // Most common determiners
+    "the", "a", "an",
     // Most common prepositions
     "in", "on", "at", "to", "for", "of", "with", "by",
     // Most common conjunctions
@@ -388,48 +372,26 @@ function isValidPrompt(topic: string, template: string, type: EntityType): boole
 }
 
 // Helper: Select the best template for an entity
-// Chooses templates that work best for the entity type, context, and characteristics
+// Chooses templates that work best for the entity type and rotates for variety
 function selectBestTemplate(
   entity: string,
   templates: string[] | { possessive?: string[]; work?: string[]; activity?: string[]; general?: string[] },
   type: EntityType,
-  sentiment: number = 0,
   index: number = 0,
   originalText?: string
 ): string {
   // Handle array templates (for people and dates)
   if (Array.isArray(templates)) {
-    const rotationIndex = index % templates.length;
-    
-    // For people, prefer supportive templates if sentiment is negative
-    if (type === "person" && sentiment < -0.2) {
-      const supportive = templates.find(t => 
-        t.includes("How did things go") || t.includes("How's") || t.includes("What happened")
-      );
-      if (supportive) return supportive;
-    }
-    
     // Rotate through templates for variety
+    const rotationIndex = index % templates.length;
     return templates[rotationIndex];
   }
   
-  // Handle object templates (for topics - context-aware)
+  // Handle object templates (for topics - SIMPLIFIED)
   if (type === "topic") {
-    const topicCategory = getTopicCategory(entity, originalText); // Pass originalText for context
-    const usePossessive = shouldUsePossessive(entity, originalText);
-    
-    // Determine which template set to use
-    let templateSet: string[] = templates.general || [];
-    
-    if (usePossessive && templates.possessive) {
-      templateSet = templates.possessive;
-    } else if (topicCategory === "work" && templates.work) {
-      templateSet = templates.work;
-    } else if (topicCategory === "activity" && templates.activity) {
-      templateSet = templates.activity;
-    } else if (templates.general) {
-      templateSet = templates.general;
-    }
+    // SIMPLIFIED: Just use general templates (no complex categorization)
+    // This avoids awkward prompts and lets users customize
+    const templateSet: string[] = templates.general || [];
     
     // Select template with rotation
     const rotationIndex = index % templateSet.length;
@@ -440,7 +402,8 @@ function selectBestTemplate(
   return Array.isArray(templates) ? templates[0] : templates.general?.[0] || "";
 }
 
-// Helper: Get prompts from extracted metadata
+// Helper: Get prompts from extracted metadata (SIMPLIFIED: Only people prompts)
+// Topics are now handled separately as non-clickable suggestions
 function generatePromptsFromMetadata(
   metadata: ExtractedMetadata,
   tone: Tone,
@@ -449,137 +412,123 @@ function generatePromptsFromMetadata(
   const prompts: Prompt[] = [];
   const templates = PROMPT_TEMPLATES[tone];
   
-  // #3: Ensure Mix of People and Topic Prompts (Not Just People)
-  // WHY: Original logic prioritized people first and filled all slots with people if available.
-  //      This meant if there were 5+ people, no topic prompts were shown, even if topics existed.
-  //      User noticed when saving draft, only people prompts appeared, not topics from the entry.
-  // HOW: Calculate max counts upfront - ~60% people, ~40% topics (rounded).
-  //      Generate up to peopleCount people prompts, then up to topicsCount topic prompts.
-  //      This ensures both types are represented even if many people exist.
-  // SYNTAX BREAKDOWN:
-  //   - const peopleCount = Math.min(...) - Math.min() returns the smallest of its arguments
-  //     - Math.min(a, b) - JavaScript Math object method (built-in, no import needed)
-  //   - Math.ceil(count * 0.6) - Math.ceil() rounds UP to nearest integer
-  //     - Example: Math.ceil(5 * 0.6) = Math.ceil(3.0) = 3
-  //     - Example: Math.ceil(5 * 0.6) = Math.ceil(3.0) = 3, but Math.ceil(3.1) = 4
-  //   - Math.floor(count * 0.4) - Math.floor() rounds DOWN to nearest integer
-  //     - Example: Math.floor(5 * 0.4) = Math.floor(2.0) = 2
-  //   - metadata.people.length - Array.length property (JavaScript built-in)
-  //   - count - number parameter passed to function (from generatePromptsFromMetadata call)
-  //   - count - peopleCount - Simple subtraction to ensure we don't exceed total count
-  // REFERENCES:
-  //   - Math.min, Math.ceil, Math.floor: JavaScript Math object methods - MDN Web Docs
-  //   - Array.length: JavaScript Array.prototype.length property - MDN Web Docs
-  //   - metadata: ExtractedMetadata type (defined in extract.ts, imported at top of file)
-  // APPROACH: Pre-calculate limits before generation - prevents filling all slots with one type.
-  //           This is a simple fix - not over-engineered, just ensures fair distribution.
-  // CONNECTION: Used when generating prompts for new entries - ensures variety in suggestions.
-  // Priority: People > Topics > Dates
-  // BUT: Ensure we get a mix - don't fill all slots with people
-  // Strategy: Generate ~60% people, ~40% topics (rounded)
-  const peopleCount = Math.min(
-    Math.ceil(count * 0.6), // ~60% for people (rounded up)
-    metadata.people.length // Don't exceed available people
-  );
-  const topicsCount = Math.min(
-    Math.floor(count * 0.4), // ~40% for topics (rounded down)
-    metadata.topics.length, // Don't exceed available topics
-    count - peopleCount // Don't exceed total count
-  );
+  // SIMPLIFIED: Only generate prompts for people (names)
+  // Topics are shown separately as non-clickable suggestions
+  const peopleCount = Math.min(count, metadata.people.length);
   
-  // Generate prompts for people first - ensure they use person templates
-  let promptIndex = 0;
+  // Generate prompts for people only
   for (let i = 0; i < peopleCount && prompts.length < count; i++) {
     const person = metadata.people[i];
     const personTemplates = templates.person;
     
-    // Select best template based on sentiment, context, and rotation
+    // Select template using rotation for variety
     const template = selectBestTemplate(
       person, 
       personTemplates, 
       "person", 
-      metadata.sentiment, 
-      promptIndex,
+      i,
       metadata.originalText
     );
     const promptText = template.replace("{entity}", person);
     
     prompts.push({
-      id: generatePromptId(promptText), // FIXED: Use prompt text for stable ID
+      id: generatePromptId(promptText),
       text: promptText,
       entity: person,
       type: "person",
       used: false,
       createdAt: new Date(),
     });
-    promptIndex++;
   }
   
-  // Then topics - with validation, ensure they use context-aware topic templates
-  // Generate up to topicsCount prompts for topics
-  for (let i = 0; i < topicsCount && prompts.length < count; i++) {
-    const topic = metadata.topics[i];
-    
-    // Skip invalid topics
-    if (!isValidPrompt(topic, "", "topic")) continue;
-    
-    const topicTemplates = templates.topic;
-    // Select best template for this topic with context awareness
-    const template = selectBestTemplate(
-      topic, 
-      topicTemplates, 
-      "topic", 
-      metadata.sentiment, 
-      promptIndex,
-      metadata.originalText
-    );
-    
-    // Replace {entity} in template (handles both "your {entity}" and "{entity}" formats)
-    const promptText = template.replace("{entity}", topic);
-    
-    // Double-check the final prompt makes sense
-    if (!isValidPrompt(topic, template, "topic")) continue;
-    
-      prompts.push({
-        id: generatePromptId(promptText), // FIXED: Use prompt text for stable ID
-        text: promptText,
-        entity: topic,
-        type: "topic",
-        used: false,
-        createdAt: new Date(),
-      });
-    promptIndex++;
-  }
+  return prompts;
+}
+
+// Helper: Check if a word is likely a person name using compromise
+// This catches names that might have been extracted as topics instead of people
+function isLikelyName(word: string): boolean {
+  if (!word || word.length < 2) return false;
   
-  // Finally dates - ensure they use date templates
-  for (let i = 0; i < metadata.dates.length && prompts.length < count; i++) {
-    const date = metadata.dates[i];
-    const dateStr = formatDate(date);
-    const dateTemplates = templates.date;
+  try {
+    // Use compromise to check if this word is detected as a person name
+    // Test in a sentence context for better accuracy
+    const wordLower = word.toLowerCase().trim();
+    const testSentence = `I met ${word} yesterday.`;
+    const doc = nlp(testSentence);
     
-    // Select best template for this date with rotation
-    const template = selectBestTemplate(
-      dateStr, 
-      dateTemplates, 
-      "date", 
-      metadata.sentiment, 
-      promptIndex,
-      metadata.originalText
-    );
-    const promptText = template.replace("{entity}", dateStr);
+    // Check if compromise detects it as a person
+    const people = doc.people().out("array") as string[];
+    if (people.length > 0) {
+      // Check if any detected person matches our word (case-insensitive)
+      if (people.some(p => p.toLowerCase().trim() === wordLower)) {
+        return true;
+      }
+    }
     
-    prompts.push({
-      id: generatePromptId(promptText), // FIXED: Use prompt text for stable ID
-      text: promptText,
-      entity: dateStr,
-      type: "date",
-      used: false,
-      createdAt: new Date(),
+    // Also check if it's tagged as a ProperNoun (likely a name)
+    const terms = doc.terms().out("array") as any[];
+    const wordTerm = terms.find(t => {
+      const tText = (t.text || "").toLowerCase().replace(/[.,!?;:]/g, "");
+      return tText === wordLower;
     });
-    promptIndex++;
+    
+    if (wordTerm) {
+      const tags = wordTerm.tags || [];
+      const isProperNoun = tags.some((tag: string) => 
+        tag.includes("ProperNoun") || tag.includes("Person")
+      );
+      if (isProperNoun) {
+        return true;
+      }
+    }
+    
+    return false;
+  } catch (error) {
+    // If compromise fails, fall back to false
+    return false;
   }
+}
+
+// Helper: Get topic suggestions (non-clickable, just words)
+// Only from last 3 entries, capped at reasonable number
+// Excludes names (people) - only shows non-name topics
+export function getTopicSuggestions(
+  metadata: ExtractedMetadata,
+  maxCount: number = 8,
+  excludeNames: string[] = []
+): TopicSuggestion[] {
+  // Create a set of names to exclude (case-insensitive comparison)
+  const namesSet = new Set(
+    excludeNames.map(name => name.toLowerCase().trim())
+  );
   
-  return prompts.slice(0, count);
+  // Filter and validate topics, excluding names
+  const validTopics = metadata.topics
+    .filter(topic => {
+      // Basic validation - must be valid prompt
+      if (!isValidPrompt(topic, "", "topic")) return false;
+      
+      // CRITICAL: Exclude names - check if topic matches any name (case-insensitive)
+      const topicLower = topic.toLowerCase().trim();
+      if (namesSet.has(topicLower)) {
+        return false; // This is a name, exclude it
+      }
+      
+      // CRITICAL: Also check if compromise thinks this is a person name
+      // This catches names that weren't extracted as people (e.g., lowercase names)
+      if (isLikelyName(topic)) {
+        return false; // Compromise detected this as a name, exclude it
+      }
+      
+      return true;
+    })
+    .slice(0, maxCount) // Cap at maxCount
+    .map(topic => ({
+      word: topic.charAt(0).toUpperCase() + topic.slice(1).toLowerCase(), // Capitalize
+      entity: topic,
+    }));
+  
+  return validTopics;
 }
 
 // Helper: Get default prompts
@@ -593,16 +542,24 @@ function getDefaultPrompts(count: number): Prompt[] {
   }));
 }
 
-// Main function: Generate prompts based on extracted metadata
-// If no metadata or queue is empty, returns default prompts
+// Main function: Generate prompts based on extracted metadata (SIMPLIFIED: Only people)
+// If no metadata, returns default prompts
 export async function generatePrompts(
   extractedData: ExtractedMetadata | null,
   tone: Tone = "cozy",
-  count: number = 3,
+  count: number = 5,
   originalText?: string
 ): Promise<Prompt[]> {
+  console.log("🔧 [generatePrompts] Called with:", {
+    hasPeople: extractedData?.people?.length || 0,
+    people: extractedData?.people || [],
+    tone,
+    count
+  });
+  
   // If no extracted data, return default prompts
   if (!extractedData) {
+    console.log("⚠️ [generatePrompts] No extracted data, returning defaults");
     return getDefaultPrompts(count);
   }
   
@@ -612,18 +569,18 @@ export async function generatePrompts(
     originalText: originalText || extractedData.originalText,
   };
   
-  // Check if we have any entities
-  const hasEntities =
-    metadataWithContext.people.length > 0 ||
-    metadataWithContext.topics.length > 0 ||
-    metadataWithContext.dates.length > 0;
-  
-  if (!hasEntities) {
+  // Check if we have any people
+  if (metadataWithContext.people.length === 0) {
+    console.log("⚠️ [generatePrompts] No people found, returning defaults");
     return getDefaultPrompts(count);
   }
   
-  // Generate prompts from extracted data with context
+  console.log("✅ [generatePrompts] Generating prompts for people:", metadataWithContext.people);
+  
+  // Generate prompts from extracted data with context (only people)
   const prompts = generatePromptsFromMetadata(metadataWithContext, tone, count);
+  
+  console.log("✅ [generatePrompts] Generated prompts:", prompts.map(p => ({ text: p.text, entity: p.entity })));
   
   // If we don't have enough prompts, fill with defaults
   if (prompts.length < count) {
@@ -665,7 +622,9 @@ export function markPromptAsUsed(promptId: string): void {
 // Helper: Filter out used prompts from a list
 export function filterUsedPrompts(prompts: Prompt[]): Prompt[] {
   const usedPrompts = getUsedPrompts();
-  return prompts.filter((prompt) => !usedPrompts.has(prompt.id));
+  const filtered = prompts.filter((prompt) => !usedPrompts.has(prompt.id));
+  
+  return filtered;
 }
 
 // Helper: Filter out expired prompts
@@ -677,27 +636,13 @@ export function filterExpiredPrompts(
   const now = new Date();
   const expiryMs = expiryDays * 24 * 60 * 60 * 1000; // Convert days to milliseconds
   
-  return prompts.filter((prompt) => {
+  const filtered = prompts.filter((prompt) => {
     const age = now.getTime() - prompt.createdAt.getTime();
+    const isExpired = age >= expiryMs;
+    
     return age < expiryMs; // Keep prompts that are younger than expiry period
   });
-}
-
-// Helper: Clear used prompts (called when entry is saved)
-// Also useful for testing/debugging
-export function clearUsedPrompts(): void {
-  if (typeof window === "undefined") return;
   
-  try {
-    localStorage.removeItem("talkbook-used-prompts");
-    console.log("✅ Cleared used prompts from localStorage");
-  } catch (error) {
-    console.error("Error clearing used prompts:", error);
-  }
-}
-
-// Helper: Get count of used prompts (for debugging)
-export function getUsedPromptsCount(): number {
-  return getUsedPrompts().size;
+  return filtered;
 }
 

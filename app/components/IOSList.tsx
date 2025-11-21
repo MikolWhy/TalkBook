@@ -16,6 +16,8 @@ export interface IOSListItem {
   endContent?: ReactNode;
   onClick?: () => void;
   isSelected?: boolean;
+  bgColor?: string;
+  borderColor?: string;
 }
 
 interface IOSListProps {
@@ -85,10 +87,10 @@ export default function IOSList({
                 }
               }}
               classNames={{
-                base: `ios-list-item-animate bg-white rounded-xl my-1 p-0 min-h-[90px] transition-all duration-200 cursor-pointer border border-black/5 shadow-sm hover:bg-gray-50 hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:shadow-sm active:bg-gray-100 data-[selected=true]:bg-blue-50 data-[selected=true]:border-blue-500 aria-selected:bg-blue-50 aria-selected:border-blue-500 dark:bg-[#1a1a1a] dark:border-white/10 dark:shadow-[0_1px_2px_rgba(0,0,0,0.3)] dark:hover:bg-[#252525] dark:hover:shadow-[0_2px_8px_rgba(0,0,0,0.4)] dark:active:bg-[#2a2a2a] dark:data-[selected=true]:bg-[#1e3a5f] dark:data-[selected=true]:border-[#42a5f5] dark:aria-selected:bg-[#1e3a5f] dark:aria-selected:border-[#42a5f5]`,
-                title: "text-base font-medium text-[#1a1a1a] leading-[1.4] dark:text-[#e0e0e0]",
-                description: "text-sm text-gray-600 leading-[1.4] overflow-hidden text-ellipsis line-clamp-2 dark:text-[#999]",
-                wrapper: "px-[18px] py-4 flex flex-col gap-1.5 min-h-[90px] justify-center",
+                base: `ios-list-item-animate ${item.bgColor || 'bg-white'} rounded-2xl my-2 p-0 min-h-[100px] transition-all duration-300 ease-out cursor-pointer border-2 ${item.borderColor || 'border-gray-100'} shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] hover:-translate-y-1 hover:scale-[1.01] active:translate-y-0 active:scale-100 data-[selected=true]:ring-4 data-[selected=true]:ring-blue-400 data-[selected=true]:ring-inset aria-selected:ring-4 aria-selected:ring-blue-400 aria-selected:ring-inset`,
+                title: "text-[15px] font-semibold text-gray-900 leading-snug tracking-tight",
+                description: "text-[13px] text-gray-600 leading-relaxed overflow-hidden text-ellipsis line-clamp-2 mt-1",
+                wrapper: "px-5 py-4 flex flex-col gap-2 min-h-[100px] justify-center",
               }}
             />
           ))}

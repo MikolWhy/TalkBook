@@ -5,6 +5,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "./SidebarProvider";
+import { useState, useEffect } from "react";
 import { BookHeart, Home, Dumbbell, BarChart, ArrowLeftFromLine } from "lucide-react";
 // Navigation items - shared across all pages
 const navItems = [
@@ -12,12 +13,105 @@ const navItems = [
   { label: "journal", href: "/journal", icon: BookHeart },
   { label: "habits", href: "/habits", icon: Dumbbell },
   { label: "stats", href: "/stats", icon: BarChart },
+  { label: "Settings", href: "/settings", icon: "⚙️" },
+  { label: "Help", href: "/help", icon: "❓" },
 ];
 
-const insightItems = [
-  { label: "Article", href: "/articles", icon: "📰", badge: "New" },
-  { label: "Bookmark", href: "/bookmarks", icon: "🔖" },
-];
+// Profile section component to handle localStorage
+function ProfileSection() {
+  const [userName, setUserName] = useState("Your Name");
+  const [profilePicture, setProfilePicture] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Load user data from localStorage
+    const savedName = localStorage.getItem("userName");
+    const savedPicture = localStorage.getItem("userProfilePicture");
+    
+    if (savedName) setUserName(savedName);
+    if (savedPicture) setProfilePicture(savedPicture);
+
+    // Listen for storage changes
+    const handleStorageChange = () => {
+      const newName = localStorage.getItem("userName");
+      const newPicture = localStorage.getItem("userProfilePicture");
+      if (newName) setUserName(newName);
+      else setUserName("Your Name");
+      setProfilePicture(newPicture);
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
+
+  return (
+    <div className="px-6 py-4 border-b border-gray-200">
+      <div className="flex items-center gap-3">
+        <div className="relative">
+          <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+            {profilePicture ? (
+              <img 
+                src={profilePicture} 
+                alt="Profile" 
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <span className="text-xl">👤</span>
+            )}
+          </div>
+          <div className="absolute -bottom-1 -right-1 bg-yellow-400 rounded-full w-5 h-5 flex items-center justify-center">
+            <span className="text-xs">👑</span>
+          </div>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-gray-900 truncate">
+            {userName}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Lock button component to handle localStorage
+function LockButton() {
+  const [hasPassword, setHasPassword] = useState(false);
+
+  useEffect(() => {
+    setHasPassword(!!localStorage.getItem("appPassword"));
+
+    const handleStorageChange = () => {
+      setHasPassword(!!localStorage.getItem("appPassword"));
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
+
+  const handleLock = () => {
+    if (hasPassword) {
+      localStorage.setItem("appLocked", "true");
+      window.location.reload();
+    }
+  };
+
+  return (
+    <div className="mt-4">
+      <button
+        onClick={handleLock}
+        disabled={!hasPassword}
+        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition ${
+          hasPassword
+            ? "text-gray-600 hover:bg-gray-100"
+            : "text-gray-400 bg-gray-50 cursor-not-allowed"
+        }`}
+        title={!hasPassword ? "Set a password in Settings first" : "Lock app"}
+      >
+        <span>🔒</span>
+        <span>Lock App</span>
+      </button>
+    </div>
+  );
+}
 
 export default function Sidebar() {
   const { sidebarOpen, setSidebarOpen } = useSidebar();
@@ -64,6 +158,9 @@ export default function Sidebar() {
           )}
         </div>
 
+        {/* User Profile Section */}
+        <ProfileSection />
+
         {/* Navigation Menu */}
         <nav className="flex-1 px-4 py-4 overflow-y-auto">
           <div className="flex flex-col gap-1">
@@ -86,9 +183,8 @@ export default function Sidebar() {
             })}
           </div>
 
-          {/* Separator */}
-          <div className="border-t border-gray-200 my-4"></div>
-
+          {/* Lock Button */}
+          <LockButton />
         </nav>
 
         {/* Scroll Indicator */}
