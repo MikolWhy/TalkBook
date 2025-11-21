@@ -12,7 +12,7 @@
 // LATER: We'll add PinGate component here to protect all pages with PIN
 
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Cabin } from "next/font/google";
 import "./globals.css";
 import { SidebarProvider } from "./components/SidebarProvider";
 
@@ -20,23 +20,20 @@ import { SidebarProvider } from "./components/SidebarProvider";
 // FONT SETUP
 // ============================================================================
 //
-// Geist fonts = modern, clean fonts from Vercel
-// - Geist Sans = for body text (main font)
-// - Geist Mono = for code/monospace text
+// Cabin font = modern, clean font from Google Fonts
+// - Cabin = for body text (main font)
 //
 // next/font/google = Next.js optimizes fonts automatically
 // - Downloads fonts at build time
 // - Self-hosts fonts (faster than Google Fonts CDN)
 // - Zero layout shift (fonts are optimized)
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const cabin = Cabin({
+  variable: "--font-cabin",
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  style: ["normal", "italic"],
+  display: "swap",
 });
 
 // ============================================================================
@@ -177,7 +174,7 @@ export default function RootLayout({
           The browser/React doesn't care about line breaks in attributes
       */}
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${cabin.variable} antialiased`}
         suppressHydrationWarning
       >
         {/* ================================================================
