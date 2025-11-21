@@ -53,6 +53,7 @@
 // Import NLP libraries
 import nlp from "compromise";
 import * as chrono from "chrono-node";
+import { isBlacklisted } from "../blacklist/manager";
 
 // Helper function to strip HTML tags from rich text editor content
 // Converts HTML to plain text for NLP processing
@@ -165,13 +166,29 @@ export async function extractMetadata(
         "somewhere", "somehow", "anywhere", "everywhere",
         // Pronouns
         "we", "they", "i", "you", "he", "she", "it", "us", "them",
-        // Common verbs that might be capitalized mid-sentence
-        "had", "was", "were", "did", "does", "has", "have",
+        // Common verbs that might be capitalized mid-sentence or appear after indicators
+        "had", "was", "were", "did", "does", "has", "have", "got", "get",
+        "talk", "talked", "talking", "talks",
+        "went", "go", "going", "gone",
+        "saw", "see", "seeing", "seen",
+        "met", "meet", "meeting", "meets",
+        "called", "call", "calling", "calls",
+        "texted", "text", "texting", "texts",
+        "jumped", "jump", "jumping", "jumps",
+        "ran", "run", "running", "runs",
+        "walked", "walk", "walking", "walks",
+        "played", "play", "playing", "plays",
+        "worked", "work", "working", "works",
+        "studied", "study", "studying", "studies",
         // Time/place words
         "today", "tomorrow", "yesterday", "later", "earlier",
-        // Common nouns often capitalized but not names
+        // Common nouns often capitalized but not names - EXPANDED
         "group", "team", "project", "meeting", "library", "school", "university", "company",
         "pumpkin", "field", "house", "car", "phone", "book", "movie", "game",
+        "gym", "park", "store", "mall", "restaurant", "cafe", "coffee", "shop",
+        "office", "work", "home", "place", "room", "building", "street", "city",
+        "beach", "pool", "lake", "river", "mountain", "hill", "forest", "woods",
+        "party", "event", "concert", "show", "class", "course", "lesson",
         // Other common words
         "our", "your", "my", "his", "her", "their", "its"
       ]);
@@ -287,25 +304,23 @@ export async function extractMetadata(
       // 2. If capitalized standalone word (likely a name) → include (catches "Joy", "MADISON")
       // 3. If capitalized AND appears after name indicator AND NOT a common noun → include
       // 4. If lowercase AND appears after name indicator AND compromise doesn't tag it as grammatical → include
-      if (isProperNoun) {
-        // Compromise identified it as a proper noun - trust it
+      // CRITICAL: ALWAYS filter against commonNonNames first - these are NEVER names
+      if (isProperNoun && !commonNonNames.has(cleanTextLower)) {
+        // Compromise identified it as a proper noun - trust it (unless it's in commonNonNames)
         potentialNames.push(cleanText);
-      } else if (isCapitalized) {
+      } else if (isCapitalized && !commonNonNames.has(cleanTextLower)) {
         // Capitalized word - might be a name
         // Be smart: check if it appears after a name indicator OR if it's truly name-like
         const looksLikeName = cleanText.length >= 2 && cleanText.length <= 20 && /^[A-Za-z]+$/.test(cleanText);
         
-        if (looksLikeName && !isVerb) {
-          // It's capitalized and not a verb
+        if (looksLikeName && !isVerb && !isCommonNoun) {
+          // It's capitalized, not a verb, not a common noun
           // Check name indicators first (stronger signal)
           if (appearsAfterIndicator || appearsAfterIndicatorInText) {
-            // Appears after name indicator - likely a name even if it's a common noun
-            // But still check if it's a known common noun
-            if (!isCommonNoun) {
-              potentialNames.push(cleanText);
-            }
-          } else if (!isCommonNoun) {
-            // No name indicator but not a common noun either
+            // Appears after name indicator - likely a name
+            potentialNames.push(cleanText);
+          } else {
+            // No name indicator
             // Check if it's a grammatical word before including
             if (testWordTerm) {
               const testTags = testWordTerm.tags || [];
@@ -323,9 +338,9 @@ export async function extractMetadata(
             }
           }
         }
-      } else if (!isCapitalized && (appearsAfterIndicator || appearsAfterIndicatorInText)) {
+      } else if (!isCapitalized && (appearsAfterIndicator || appearsAfterIndicatorInText) && !commonNonNames.has(cleanTextLower)) {
         // Lowercase word after name indicator → likely a name (like "henry", "zayn", "cindy")
-        // Be more lenient - if it appears after a name indicator, trust it's a name
+        // Be careful - still check if it's a common word
         if (testWordTerm) {
           const testTags = testWordTerm.tags || [];
           const testIsCommonNoun = testTags.some((tag: string) => 
@@ -336,18 +351,17 @@ export async function extractMetadata(
             tag.includes("Adjective") || tag.includes("Adverb")
           );
           
-          // If compromise doesn't tag it as a common noun or grammatical word, it's likely a name
-          // Also check length - names are typically 2-15 characters
-          if (!testIsCommonNoun && !testIsGrammatical && cleanText.length >= 2 && cleanText.length <= 15) {
-            potentialNames.push(cleanText.charAt(0).toUpperCase() + cleanText.slice(1).toLowerCase());
-          } else if (cleanText.length >= 2 && cleanText.length <= 15 && /^[a-z]+$/.test(cleanText)) {
-            // Even if compromise tags it as a common noun, if it's a simple lowercase word
-            // after a name indicator and looks name-like, include it (be lenient)
+          // Include ONLY if compromise doesn't tag it as a common noun or grammatical word
+          // Names are typically 2-15 characters
+          const looksLikeName = cleanText.length >= 2 && cleanText.length <= 15 && /^[a-z]+$/.test(cleanText);
+          if (looksLikeName && !testIsCommonNoun && !testIsGrammatical) {
             potentialNames.push(cleanText.charAt(0).toUpperCase() + cleanText.slice(1).toLowerCase());
           }
         } else {
-          // No test word term found, but it appears after indicator - trust it's a name
-          if (cleanText.length >= 2 && cleanText.length <= 15 && /^[a-z]+$/.test(cleanText)) {
+          // No test word term found, but it appears after indicator
+          // Still be careful - only include if it looks name-like
+          const looksLikeName = cleanText.length >= 2 && cleanText.length <= 15 && /^[a-z]+$/.test(cleanText);
+          if (looksLikeName) {
             potentialNames.push(cleanText.charAt(0).toUpperCase() + cleanText.slice(1).toLowerCase());
           }
         }
@@ -541,6 +555,10 @@ export async function extractMetadata(
   } catch (error) {
     console.error("Error extracting dates:", error);
   }
+
+  // Filter out blacklisted words from people and topics
+  result.people = result.people.filter(person => !isBlacklisted(person));
+  result.topics = result.topics.filter(topic => !isBlacklisted(topic));
 
   return result;
 }
