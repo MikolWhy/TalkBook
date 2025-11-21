@@ -80,10 +80,11 @@ import DashboardLayout from "../../components/DashboardLayout";
 // Original teammate code: import RichTextEditor from "../../../src/components/RichTextEditor";
 import RichTextEditor, { RichTextEditorRef } from "../../../src/components/RichTextEditor";
 // NLP components and functions (MICHAEL's code - added for prompt system)
-import NLPResultsDisplay from "../../../src/components/NLPResultsDisplay";
 import PromptSuggestions from "../../../src/components/PromptSuggestions";
+import TopicSuggestions from "../../../src/components/TopicSuggestions";
 import { extractMetadata } from "../../../src/lib/nlp/extract";
-import { generatePrompts, filterUsedPrompts, filterExpiredPrompts, clearUsedPrompts, Prompt, getUsedPromptsCount, markPromptAsUsed } from "../../../src/lib/nlp/prompts";
+import { generatePrompts, filterUsedPrompts, filterExpiredPrompts, Prompt, markPromptAsUsed, getTopicSuggestions, TopicSuggestion } from "../../../src/lib/nlp/prompts";
+import { getActiveJournalId } from "../../../src/lib/journals/manager";
 
 // TODO: implement entry creation form
 
@@ -102,6 +103,7 @@ export default function NewEntryPage() {
   const [mood, setMood] = useState<string | null>(null); // State to store selected mood
   const [tags, setTags] = useState<string[]>([]); // State to store tags
   const [tagInput, setTagInput] = useState(""); // State for tag input field
+  const [cardColor, setCardColor] = useState<string>("default"); // State for card color
 
   // ============================================================================
   // MICHAEL'S CODE - NLP Prompt System State
@@ -110,12 +112,12 @@ export default function NewEntryPage() {
     people: string[];
     topics: string[];
     dates: Date[];
-    sentiment: number;
   } | null>(null);
   
-  // State for prompts
-  const [allPrompts, setAllPrompts] = useState<Prompt[]>([]); // All available prompts
-  const [insertedPromptIds, setInsertedPromptIds] = useState<Set<string>>(new Set()); // Prompts currently in editor
+  // State for prompts (SIMPLIFIED: Only people prompts are clickable)
+  const [allPrompts, setAllPrompts] = useState<Prompt[]>([]); // All available prompts (people only)
+  const [topicSuggestions, setTopicSuggestions] = useState<TopicSuggestion[]>([]); // Topic suggestions (non-clickable)
+  const [insertedPromptIds, setInsertedPromptIds] = useState<Set<string>>(new Set()); // Prompts currently in editor (temporarily used)
   
   // Filter prompts: show only those NOT currently inserted in editor
   const availablePrompts = allPrompts.filter(p => !insertedPromptIds.has(p.id));
@@ -127,144 +129,113 @@ export default function NewEntryPage() {
   useEffect(() => {
     const runExtractionAndPrompts = async () => {
       try {
-        // Get actual entries from localStorage (last 7 days)
+        // SIMPLIFIED: Separate logic for people prompts vs topic suggestions
+        // People prompts: Use last 7 days (for variety)
+        // Topic suggestions: Use last 2 entries only (as requested)
+        
         const storedEntries = JSON.parse(
           localStorage.getItem("journalEntries") || "[]"
         );
         
-        // Filter entries from last 7 days
+        // FILTER BY ACTIVE JOURNAL FIRST
+        const activeJournalId = getActiveJournalId();
+        const journalEntries = storedEntries.filter((entry: any) => 
+          (entry.journalId || "journal-1") === activeJournalId
+        );
+        
+        // Filter entries from last 7 days for people prompts
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
         
-        // #4: Filter Recent Entries and Exclude Drafts from Extraction
-        // WHY: User requested that extraction only run on saved entries, not drafts.
-        //      Drafts shouldn't contribute to prompt generation until they're saved as regular entries.
-        // HOW: Filter by date (last 7 days) AND exclude drafts (entry.draft !== true).
-        //      Only regular saved entries are included in extraction.
-        // SYNTAX BREAKDOWN:
-        //   - storedEntries.filter((entry: any) => { ... })
-        //     - Array.filter() - JavaScript Array method, creates new array with filtered elements
-        //     - Arrow function: (entry: any) => { ... } - callback function for each element
-        //     - TypeScript: (entry: any) - any type allows any object structure
-        //   - new Date(entry.createdAt) - Creates Date object from ISO string
-        //     - entry.createdAt: ISO 8601 string (e.g., "2025-11-20T12:34:56.789Z")
-        //   - entryDate >= sevenDaysAgo - Date comparison
-        //     - >= operator: greater than or equal to (works with Date objects)
-        //     - sevenDaysAgo: Date object calculated earlier (7 days before now)
-        //   - entry.draft !== true - Strict inequality check
-        //     - !== : strict not equal (checks both value and type)
-        //     - true: boolean literal
-        //     - This excludes entries where draft is true, includes undefined/null/false
-        //   - return isRecent && isNotDraft - Logical AND
-        //     - && operator: returns first falsy value or last truthy value
-        //     - Both conditions must be true for entry to be included
-        // REFERENCES:
-        //   - Array.filter(): JavaScript Array.prototype.filter() - MDN Web Docs
-        //   - Date comparison: JavaScript Date objects can be compared with >=, <=, etc.
-        //   - Strict inequality: JavaScript !== operator - MDN Web Docs
-        //   - Logical AND: JavaScript && operator - MDN Web Docs
-        // APPROACH: Simple filter - check both date and draft status. Not over-engineered.
-        // CONNECTION: This ensures drafts don't pollute prompt generation until they're finalized.
-        //             Works with #7/#11 (draft saving) and #12 (extraction on draft conversion).
-        const recentEntries = storedEntries.filter((entry: any) => {
-          const entryDate = new Date(entry.createdAt); // Convert ISO string to Date object
-          const isRecent = entryDate >= sevenDaysAgo; // Check if within last 7 days
-          const isNotDraft = entry.draft !== true; // Exclude drafts - only include saved entries
-          return isRecent && isNotDraft; // Both conditions must be true
+        const recentEntriesForPeople = journalEntries.filter((entry: any) => {
+          const entryDate = new Date(entry.createdAt);
+          const isRecent = entryDate >= sevenDaysAgo;
+          const isNotDraft = entry.draft !== true;
+          return isRecent && isNotDraft;
         });
         
-        // Combine content from recent SAVED entries for extraction
-        // EXCLUDE drafts - drafts don't contribute to prompt generation until they're saved as regular entries
-        const combinedText = recentEntries
+        // Filter last 3 entries for topic suggestions (sorted by date, newest first)
+        // ONLY from active journal
+        const sortedEntries = [...journalEntries].sort(
+          (a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+        const lastThreeEntries = sortedEntries
+          .filter((entry: any) => entry.draft !== true)
+          .slice(0, 3);
+        
+        // Combine content from recent entries for people extraction
+        const combinedTextForPeople = recentEntriesForPeople
           .map((entry: any) => entry.content || "")
-          .filter((content: string) => content.trim().length > 0) // Only include entries with actual content
+          .filter((content: string) => content.trim().length > 0)
           .join(" ");
         
-        // If no entries, use empty result (will show default prompts)
-        let result;
-        let originalText;
+        // Combine content from last 3 entries for topic extraction
+        const combinedTextForTopics = lastThreeEntries
+          .map((entry: any) => entry.content || "")
+          .filter((content: string) => content.trim().length > 0)
+          .join(" ");
         
-        if (combinedText.trim().length > 0) {
-          // Extract metadata from actual entries
-          result = await extractMetadata(combinedText);
-          originalText = combinedText;
-          
-          // Debug: log extracted entities
-          if (process.env.NODE_ENV === "development") {
-            console.log("📊 Extracted entities:", {
-              people: result.people,
-              topics: result.topics,
-              dates: result.dates.length,
-              sentiment: result.sentiment,
-            });
-          }
-        } else {
-          // No entries yet - return null to trigger default prompts
-          result = null;
-          originalText = undefined;
+        // Extract metadata for people prompts (from last 7 days)
+        let peopleResult = null;
+        let peopleOriginalText = undefined;
+        
+        if (combinedTextForPeople.trim().length > 0) {
+          peopleResult = await extractMetadata(combinedTextForPeople);
+          peopleOriginalText = combinedTextForPeople;
         }
         
-        setExtractedData(result);
+        // Extract metadata for topic suggestions (from last 3 entries)
+        let topicsResult = null;
+        let topicsPeopleResult = null; // Also extract people from same entries to catch all names
         
-        // #5: Generate More Prompts Initially to Ensure Variety After Filtering
-        // WHY: After filtering out used prompts, we might end up with very few prompts.
-        //      By generating 10 initially (instead of 5), we have a larger pool to filter from,
-        //      ensuring we still have good variety even after removing used ones.
-        // HOW: Call generatePrompts with count=10, then filter and limit to 5 for display.
-        // APPROACH: Generate more than needed, filter, then limit - ensures variety.
-        //           This is a simple strategy - not over-engineered.
-        // CONNECTION: Works with filterUsedPrompts() and filterExpiredPrompts() to show best prompts.
-        // Generate prompts based on extracted data (or null for defaults)
-        // Increase count to ensure we get a good mix after filtering
-        const generatedPrompts = await generatePrompts(result, "cozy", 10, originalText);
-        
-        // Debug: log generated prompts before filtering
-        if (process.env.NODE_ENV === "development" && generatedPrompts.length > 0) {
-          console.log("💡 Generated prompts (before filtering):", generatedPrompts.map(p => p.text));
+        if (combinedTextForTopics.trim().length > 0) {
+          topicsResult = await extractMetadata(combinedTextForTopics);
+          // Also extract people from the same text to catch names that might appear as topics
+          topicsPeopleResult = await extractMetadata(combinedTextForTopics);
         }
         
-        // Check if these are default prompts (no extracted data)
-        const areDefaults = !result;
+        setExtractedData(peopleResult);
         
-        // Filter out prompts that were permanently used (from localStorage)
-        // BUT: Don't filter defaults - they're always available as fallbacks
-        const unusedPrompts = areDefaults 
-          ? generatedPrompts // Defaults: don't filter by usage
-          : filterUsedPrompts(generatedPrompts); // Extracted: filter used ones
+        // Generate people prompts (clickable)
+        const generatedPrompts = await generatePrompts(peopleResult, "cozy", 5, peopleOriginalText);
         
-        // Debug: log filtering results
-        if (process.env.NODE_ENV === "development" && !areDefaults) {
-          console.log("🔍 Prompt filtering:", {
-            generated: generatedPrompts.length,
-            unused: unusedPrompts.length,
-            filteredOut: generatedPrompts.length - unusedPrompts.length,
-          });
-        }
+        // Filter out used prompts
+        const unusedPrompts = peopleResult 
+          ? filterUsedPrompts(generatedPrompts)
+          : generatedPrompts; // Don't filter defaults
         
-        // Filter out expired prompts (default: 7 days)
-        // TODO: Get expiryDays from settings store when available
-        const expiryDays = 7; // Default, will be configurable in settings
+        // Filter out expired prompts
+        const expiryDays = 7;
         const validPrompts = filterExpiredPrompts(unusedPrompts, expiryDays);
         
-        // If all extracted prompts were filtered out (all used), fall back to default prompts
-        // Default prompts are always shown (not filtered by usage) since they're generic fallbacks
+        // Fallback to defaults if no prompts available
         let finalPrompts = validPrompts;
-        if (validPrompts.length === 0 && result) {
-          // Had extracted data but all prompts were used - get defaults (don't filter them)
+        if (validPrompts.length === 0 && peopleResult) {
           const defaultPromptsRaw = await generatePrompts(null, "cozy", 5);
-          finalPrompts = defaultPromptsRaw; // Defaults are always available
-        }
-        
-        // Debug: log final prompts
-        if (process.env.NODE_ENV === "development") {
-          console.log("✅ Final prompts:", finalPrompts.map(p => p.text));
-          const usedCount = getUsedPromptsCount();
-          if (usedCount > 0) {
-            console.log(`ℹ️ ${usedCount} prompt(s) are marked as used and filtered out. To reset for testing, run: clearUsedPrompts()`);
-          }
+          finalPrompts = defaultPromptsRaw;
         }
         
         setAllPrompts(finalPrompts);
+        
+        // Generate topic suggestions (non-clickable, from last 3 entries)
+        // Exclude names - only show non-name topics
+        if (topicsResult && topicsResult.topics.length > 0) {
+          // Combine names from both extractions to get complete list
+          // This ensures we catch names even if they weren't in the 7-day extraction
+          const namesFromPeopleExtraction = peopleResult?.people || [];
+          const namesFromTopicsExtraction = topicsPeopleResult?.people || [];
+          // Combine and deduplicate (case-insensitive)
+          const allNames = new Set<string>();
+          [...namesFromPeopleExtraction, ...namesFromTopicsExtraction].forEach(name => {
+            allNames.add(name.toLowerCase().trim());
+          });
+          const namesToExclude = Array.from(allNames);
+          
+          const suggestions = getTopicSuggestions(topicsResult, 8, namesToExclude); // Cap at 8 topics, exclude names
+          setTopicSuggestions(suggestions);
+        } else {
+          setTopicSuggestions([]);
+        }
       } catch (error) {
         console.error("Error extracting metadata or generating prompts:", error);
       }
@@ -274,47 +245,24 @@ export default function NewEntryPage() {
   }, []); // Empty dependency array = run once on mount
 
   // Handle prompt being inserted into editor
+  // SIMPLIFIED: Mark as temporarily used when clicked (even if user edits it)
+  // Will be permanently marked when entry is saved, or unmarked if user exits without saving
   const handlePromptInserted = (promptId: string) => {
-    // Add to inserted set (removes from available list)
     setInsertedPromptIds((prev) => {
       const newSet = new Set(prev);
-      newSet.add(promptId);
+      newSet.add(promptId); // Mark as temporarily used
       return newSet;
     });
   };
 
   // Monitor editor content to detect when prompts are removed
+  // DISABLED: User wants prompts to remain marked as used even if they edit the text
+  // Only if they exit without saving should prompts reappear (which happens automatically on unmount)
+  /* 
   useEffect(() => {
-    if (!content || insertedPromptIds.size === 0) return;
-
-    // Check which inserted prompts are still in the editor content
-    const stillInEditor = new Set<string>();
-    
-    insertedPromptIds.forEach((promptId) => {
-      const prompt = allPrompts.find(p => p.id === promptId);
-      if (prompt) {
-        // Check if prompt text (or similar) is still in content
-        // Look for the prompt text as a heading (h3)
-        const promptText = prompt.text;
-        // Check if it exists as a heading in the HTML
-        const headingPattern = new RegExp(`<h3[^>]*>.*?${promptText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}.*?</h3>`, "i");
-        if (headingPattern.test(content)) {
-          stillInEditor.add(promptId);
-        }
-      }
-    });
-
-    // If a prompt was removed from editor, remove it from inserted set
-    // This makes it available again in the prompt list
-    const removed = Array.from(insertedPromptIds).filter(id => !stillInEditor.has(id));
-    if (removed.length > 0) {
-      setInsertedPromptIds((prev) => {
-        const newSet = new Set(prev);
-        removed.forEach(id => newSet.delete(id));
-        return newSet;
-      });
-    }
+    // ... code ...
   }, [content, insertedPromptIds, allPrompts]);
+  */
 
   // TODO: When entry is saved (Aadil implements save functionality):
   // 1. Extract metadata from current entry content: extractMetadata(content)
@@ -361,6 +309,20 @@ export default function NewEntryPage() {
   const getTagColor = (index: number) => {
     return tagColors[index % tagColors.length];
   };
+
+  // Card color options for journal entries
+  const cardColorOptions = [
+    { id: "default", name: "Default", bgClass: "bg-white", borderClass: "border-gray-200" },
+    { id: "mint", name: "Mint Green", bgClass: "bg-emerald-50", borderClass: "border-emerald-200" },
+    { id: "blue", name: "Baby Blue", bgClass: "bg-blue-50", borderClass: "border-blue-200" },
+    { id: "pink", name: "Light Pink", bgClass: "bg-pink-50", borderClass: "border-pink-200" },
+    { id: "red", name: "Light Red", bgClass: "bg-red-50", borderClass: "border-red-200" },
+    { id: "purple", name: "Light Purple", bgClass: "bg-purple-50", borderClass: "border-purple-200" },
+    { id: "orange", name: "Light Orange", bgClass: "bg-orange-50", borderClass: "border-orange-200" },
+    { id: "yellow", name: "Warm Yellow", bgClass: "bg-amber-50", borderClass: "border-amber-200" },
+    { id: "rose", name: "Light Rose", bgClass: "bg-rose-50", borderClass: "border-rose-200" },
+    { id: "indigo", name: "Light Indigo", bgClass: "bg-indigo-50", borderClass: "border-indigo-200" },
+  ];
 
   // Function to add a tag
   const handleAddTag = () => {
@@ -483,6 +445,8 @@ export default function NewEntryPage() {
       content: content, // Rich text HTML content from editor
       mood: mood, // Selected mood or null
       tags: tags, // Array of tag strings
+      cardColor: cardColor, // Card color selection
+      journalId: getActiveJournalId(), // Assign to active journal
       createdAt: new Date().toISOString(), // ISO 8601 timestamp string
       updatedAt: new Date().toISOString(), // Same as createdAt for new entries
       draft: true, // Mark as draft
@@ -529,11 +493,19 @@ export default function NewEntryPage() {
       content: content,
       mood: mood,
       tags: tags,
+      cardColor: cardColor, // Card color selection
+      journalId: getActiveJournalId(), // Assign to active journal
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       draft: false, // Not a draft
       promptIds: Array.from(insertedPromptIds), // Store prompt IDs with entry
     };
+    
+    console.log("💾 [Save Entry] Saving entry:", {
+      title: entry.title,
+      contentLength: content.length,
+      draft: entry.draft
+    });
 
     // Get existing entries from localStorage
     const existingEntries = JSON.parse(
@@ -553,7 +525,6 @@ export default function NewEntryPage() {
       insertedPromptIds.forEach((promptId) => {
         markPromptAsUsed(promptId);
       });
-      console.log("Used prompts after marking:", getUsedPromptsCount());
     }
 
     // Navigate back to journal page
@@ -561,7 +532,10 @@ export default function NewEntryPage() {
   };
 
   // Function to navigate back to journal page
+  // SIMPLIFIED: Unmark temporarily used prompts if user exits without saving
   const handleBack = () => {
+    // Clear temporarily inserted prompts - they weren't saved, so they should be available again
+    setInsertedPromptIds(new Set());
     router.push("/journal");
   };
 
@@ -600,7 +574,7 @@ export default function NewEntryPage() {
       </div>
       
       {/* ============================================================================ */}
-      {/* MICHAEL'S CODE - Prompt Suggestions Component */}
+      {/* SIMPLIFIED: Clickable Name Prompts */}
       {/* ============================================================================ */}
       {availablePrompts.length > 0 && (
         <PromptSuggestions
@@ -610,59 +584,11 @@ export default function NewEntryPage() {
         />
       )}
       
-      {/* Debug: Show used prompts count and reset button (for testing) */}
-      {process.env.NODE_ENV === "development" && getUsedPromptsCount() > 0 && (
-        <div className="mb-6 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <p className="text-sm text-yellow-800 mb-2">
-            ℹ️ <strong>Testing Mode:</strong> {getUsedPromptsCount()} prompt(s) marked as used and hidden.
-          </p>
-          <button
-            onClick={() => {
-              clearUsedPrompts();
-              // Reload prompts from actual entries
-              const runExtractionAndPrompts = async () => {
-                try {
-                  const storedEntries = JSON.parse(
-                    localStorage.getItem("journalEntries") || "[]"
-                  );
-                  
-                  const sevenDaysAgo = new Date();
-                  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-                  
-                  const recentEntries = storedEntries.filter((entry: any) => {
-                    const entryDate = new Date(entry.createdAt);
-                    return entryDate >= sevenDaysAgo;
-                  });
-                  
-                  const combinedText = recentEntries
-                    .map((entry: any) => entry.content || "")
-                    .join(" ");
-                  
-                  let result;
-                  let originalText;
-                  
-                  if (combinedText.trim().length > 0) {
-                    result = await extractMetadata(combinedText);
-                    originalText = combinedText;
-                  } else {
-                    result = null;
-                    originalText = undefined;
-                  }
-                  
-                  const generatedPrompts = await generatePrompts(result, "cozy", 5, originalText);
-                  setAllPrompts(generatedPrompts);
-                  setInsertedPromptIds(new Set());
-                } catch (error) {
-                  console.error("Error:", error);
-                }
-              };
-              runExtractionAndPrompts();
-            }}
-            className="px-3 py-1.5 bg-yellow-200 text-yellow-900 rounded text-xs font-medium hover:bg-yellow-300 transition-colors"
-          >
-            Reset Used Prompts (Testing Only)
-          </button>
-        </div>
+      {/* ============================================================================ */}
+      {/* SIMPLIFIED: Non-Clickable Topic Suggestions */}
+      {/* ============================================================================ */}
+      {topicSuggestions.length > 0 && (
+        <TopicSuggestions suggestions={topicSuggestions} />
       )}
 
       {/* ============================================================================ */}
@@ -678,7 +604,7 @@ export default function NewEntryPage() {
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-400"
               placeholder="Enter a title for your journal entry..."
             />
           </div>
@@ -696,6 +622,34 @@ export default function NewEntryPage() {
             placeholder="Start writing your journal entry..."
           />
         </div>
+
+        {/* Card Color Selector */}
+        <div>
+          <div className="mb-2">
+            <h2 className="text-lg font-bold text-gray-900">Card Color</h2>
+            <p className="text-sm text-gray-600">Choose a color for your journal card (optional)</p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {cardColorOptions.map((colorOption) => (
+              <button
+                key={colorOption.id}
+                onClick={() => setCardColor(colorOption.id)}
+                className={`px-4 py-3 rounded-lg border-2 transition-all ${
+                  colorOption.bgClass
+                } ${
+                  colorOption.borderClass
+                } ${
+                  cardColor === colorOption.id
+                    ? "ring-2 ring-blue-500 ring-offset-2 scale-105"
+                    : "hover:scale-105"
+                }`}
+              >
+                <div className="text-sm font-medium text-gray-700">{colorOption.name}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div>
           <div className="mb-2">
             <h2 className="text-lg font-bold text-gray-900">Mood</h2>
@@ -747,7 +701,7 @@ export default function NewEntryPage() {
               value={tagInput}
               onChange={(e) => setTagInput(e.target.value)}
               onKeyPress={handleTagInputKeyPress}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-400"
               placeholder="Add a tag and press Enter..."
             />
             <button
@@ -783,16 +737,15 @@ export default function NewEntryPage() {
       {/* ============================================================================ */}
       {/* MICHAEL'S CODE - NLP Results Display (Temporary for testing) */}
       {/* ============================================================================ */}
-      {extractedData && (
+      {/* extractedData && (
         <div className="mb-6">
           <NLPResultsDisplay
             people={extractedData.people}
             topics={extractedData.topics}
             dates={extractedData.dates}
-            sentiment={extractedData.sentiment}
           />
         </div>
-      )}
+      ) */}
     </DashboardLayout>
   );
 }

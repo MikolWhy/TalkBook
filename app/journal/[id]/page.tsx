@@ -50,6 +50,35 @@ const getTagColor = (index: number) => {
   return tagColors[index % tagColors.length];
 };
 
+// Card color options for journal entries
+const cardColorOptions = [
+  { id: "default", name: "Default", bgClass: "bg-white", borderClass: "border-gray-200" },
+  { id: "mint", name: "Mint Green", bgClass: "bg-emerald-50", borderClass: "border-emerald-200" },
+  { id: "blue", name: "Baby Blue", bgClass: "bg-blue-50", borderClass: "border-blue-200" },
+  { id: "pink", name: "Light Pink", bgClass: "bg-pink-50", borderClass: "border-pink-200" },
+  { id: "red", name: "Light Red", bgClass: "bg-red-50", borderClass: "border-red-200" },
+  { id: "purple", name: "Light Purple", bgClass: "bg-purple-50", borderClass: "border-purple-200" },
+  { id: "orange", name: "Light Orange", bgClass: "bg-orange-50", borderClass: "border-orange-200" },
+  { id: "yellow", name: "Warm Yellow", bgClass: "bg-amber-50", borderClass: "border-amber-200" },
+  { id: "rose", name: "Light Rose", bgClass: "bg-rose-50", borderClass: "border-rose-200" },
+  { id: "indigo", name: "Light Indigo", bgClass: "bg-indigo-50", borderClass: "border-indigo-200" },
+];
+
+// Helper function to format date as a title if title is empty
+const formatDateAsTitle = (date: Date): string => {
+  const day = date.getDate();
+  const daySuffix = 
+    day === 1 || day === 21 || day === 31 ? "st" :
+    day === 2 || day === 22 ? "nd" :
+    day === 3 || day === 23 ? "rd" : "th";
+  
+  return date.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  }).replace(/\d+/, `${day}${daySuffix}`);
+};
+
 export default function EditEntryPage() {
   const params = useParams();
   const router = useRouter();
@@ -62,6 +91,7 @@ export default function EditEntryPage() {
   const [mood, setMood] = useState<string | null>(null);
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
+  const [cardColor, setCardColor] = useState<string>("default");
   const [loading, setLoading] = useState(true);
   const [entryNotFound, setEntryNotFound] = useState(false);
   const [isDraft, setIsDraft] = useState(false); // Track if entry is a draft
@@ -135,6 +165,7 @@ export default function EditEntryPage() {
         setContent(entry.content || ""); // Use empty string if content missing
         setMood(entry.mood || null); // Use null if mood missing
         setTags(entry.tags || []); // Use empty array if tags missing
+        setCardColor(entry.cardColor || "default"); // Load card color or use default
         setIsDraft(entry.draft === true); // Load draft status (strict check)
         setOriginalPromptIds(entry.promptIds || []); // Store original prompt IDs
         setInsertedPromptIds(new Set(entry.promptIds || [])); // Convert array to Set
@@ -257,6 +288,7 @@ export default function EditEntryPage() {
         content: content,
         mood: mood,
         tags: tags,
+        cardColor: cardColor,
         updatedAt: new Date().toISOString(),
         draft: true, // Keep as draft
         promptIds: Array.from(insertedPromptIds), // Store prompt IDs with entry
@@ -319,6 +351,7 @@ export default function EditEntryPage() {
         content: content,
         mood: mood,
         tags: tags,
+        cardColor: cardColor,
         updatedAt: new Date().toISOString(),
         draft: false, // Remove draft status
         promptIds: Array.from(insertedPromptIds), // Store prompt IDs with entry
@@ -456,7 +489,7 @@ export default function EditEntryPage() {
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-400"
             placeholder="Enter a title for your journal entry..."
           />
         </div>
@@ -471,6 +504,33 @@ export default function EditEntryPage() {
             onChange={(newContent: string) => setContent(newContent)}
             placeholder="Start writing your journal entry..."
           />
+        </div>
+
+        {/* Card Color Selector */}
+        <div>
+          <div className="mb-2">
+            <h2 className="text-lg font-bold text-gray-900">Card Color</h2>
+            <p className="text-sm text-gray-600">Choose a color for your journal card (optional)</p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {cardColorOptions.map((colorOption) => (
+              <button
+                key={colorOption.id}
+                onClick={() => setCardColor(colorOption.id)}
+                className={`px-4 py-3 rounded-lg border-2 transition-all ${
+                  colorOption.bgClass
+                } ${
+                  colorOption.borderClass
+                } ${
+                  cardColor === colorOption.id
+                    ? "ring-2 ring-blue-500 ring-offset-2 scale-105"
+                    : "hover:scale-105"
+                }`}
+              >
+                <div className="text-sm font-medium text-gray-700">{colorOption.name}</div>
+              </button>
+            ))}
+          </div>
         </div>
 
         <div>
@@ -525,7 +585,7 @@ export default function EditEntryPage() {
               value={tagInput}
               onChange={(e) => setTagInput(e.target.value)}
               onKeyPress={handleTagInputKeyPress}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-400"
               placeholder="Add a tag and press Enter..."
             />
             <button

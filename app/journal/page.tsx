@@ -62,6 +62,17 @@ import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import DashboardLayout from "../components/DashboardLayout";
 import IOSList, { IOSListItem } from "../components/IOSList";
+import { 
+  initializeJournals, 
+  getJournals, 
+  getActiveJournalId, 
+  setActiveJournal,
+  createJournal,
+  renameJournal,
+  deleteJournal,
+  getJournalById,
+  type Journal 
+} from "../../src/lib/journals/manager";
 
 // Mood ID to emoji mapping
 const moodMap: Record<string, string> = {
@@ -131,15 +142,39 @@ export default function JournalPage() {
   const [selectedTagFilter, setSelectedTagFilter] = useState<string | null>(null);
   const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
   const filterDropdownRef = useRef<HTMLDivElement>(null);
+  
+  // Journal management state
+  const [journals, setJournals] = useState<Journal[]>([]);
+  const [activeJournalId, setActiveJournalIdState] = useState<string>("");
+  const [isJournalDropdownOpen, setIsJournalDropdownOpen] = useState(false);
+  const [isManageDialogOpen, setIsManageDialogOpen] = useState(false);
+  const [newJournalName, setNewJournalName] = useState("");
+  const [editingJournalId, setEditingJournalId] = useState<string | null>(null);
+  const [editingJournalName, setEditingJournalName] = useState("");
+  const journalDropdownRef = useRef<HTMLDivElement>(null);
 
   // Load entries from localStorage
+  // Initialize journals on mount
+  useEffect(() => {
+    initializeJournals();
+    const loadedJournals = getJournals();
+    setJournals(loadedJournals);
+    setActiveJournalIdState(getActiveJournalId());
+  }, []);
+
   const loadEntries = () => {
     try {
       const storedEntries = JSON.parse(
         localStorage.getItem("journalEntries") || "[]"
       );
+      
+      // Filter entries by active journal
+      const journalEntries = storedEntries.filter(
+        (entry: any) => (entry.journalId || "journal-1") === activeJournalId
+      );
+      
       // Sort by createdAt (newest first)
-      const sortedEntries = storedEntries.sort(
+      const sortedEntries = journalEntries.sort(
         (a: any, b: any) =>
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
@@ -176,9 +211,25 @@ export default function JournalPage() {
     }
   }, [isFilterDropdownOpen]);
 
-  // Load entries on mount and when page becomes visible
+  // Click-outside detection for journal dropdown
   useEffect(() => {
-    loadEntries();
+    const handleClickOutside = (event: MouseEvent) => {
+      if (journalDropdownRef.current && !journalDropdownRef.current.contains(event.target as Node)) {
+        setIsJournalDropdownOpen(false);
+      }
+    };
+
+    if (isJournalDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isJournalDropdownOpen]);
+
+  // Load entries on mount and when page becomes visible or active journal changes
+  useEffect(() => {
+    if (activeJournalId) {
+      loadEntries();
+    }
 
     // Reload when page becomes visible (user navigates back from new entry page)
     const handleVisibilityChange = () => {
@@ -199,7 +250,7 @@ export default function JournalPage() {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("focus", loadEntries);
     };
-  }, []);
+  }, [activeJournalId]);
 
   // #13: Get All Unique Tags for Filter Dropdown
   // WHY: User requested filter-by-tag dropdown showing all available tags.
@@ -287,35 +338,52 @@ export default function JournalPage() {
   // APPROACH: Simple conditional rendering - conventional React pattern.
   //           Badge positioned below mood emoji in startContent for visual hierarchy.
   // CONNECTION: Works with #7/#11 (draft saving) - badges show draft status.
+  // Card color options (matching new/edit pages)
+  const cardColorOptions: Record<string, { bgClass: string; borderClass: string }> = {
+    default: { bgClass: "bg-white", borderClass: "border-gray-200" },
+    mint: { bgClass: "bg-emerald-50", borderClass: "border-emerald-200" },
+    blue: { bgClass: "bg-blue-50", borderClass: "border-blue-200" },
+    pink: { bgClass: "bg-pink-50", borderClass: "border-pink-200" },
+    red: { bgClass: "bg-red-50", borderClass: "border-red-200" },
+    purple: { bgClass: "bg-purple-50", borderClass: "border-purple-200" },
+    orange: { bgClass: "bg-orange-50", borderClass: "border-orange-200" },
+    yellow: { bgClass: "bg-amber-50", borderClass: "border-amber-200" },
+    rose: { bgClass: "bg-rose-50", borderClass: "border-rose-200" },
+    indigo: { bgClass: "bg-indigo-50", borderClass: "border-indigo-200" },
+  };
+
   const listItems: IOSListItem[] = filteredEntries.map((entry) => {
     const moodEmoji = entry.mood ? moodMap[entry.mood] || "😐" : "😐";
     const contentPreview = truncateText(stripHtml(entry.content || ""));
     const displayTitle = entry.title || formatDate(entry.createdAt);
     const isDraft = entry.draft === true;
+    const colorConfig = cardColorOptions[entry.cardColor as string] || cardColorOptions.default;
 
     return {
       id: entry.id,
       title: displayTitle,
       description: contentPreview || "No content",
+      bgColor: colorConfig.bgClass,
+      borderColor: colorConfig.borderClass,
       startContent: (
-        <div className="flex flex-col items-center gap-1">
-          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-100 text-blue-600 text-lg">
+        <div className="flex flex-col items-center gap-2">
+          <div className="text-4xl leading-none transition-transform hover:scale-110">
             {moodEmoji}
           </div>
           {isDraft && (
-            <span className="px-1.5 py-0.5 bg-yellow-100 text-yellow-800 text-xs font-medium rounded border border-yellow-300">
-              Draft
+            <span className="px-2 py-1 bg-amber-100 text-amber-700 text-[10px] font-semibold rounded-full border border-amber-200 shadow-sm">
+              DRAFT
             </span>
           )}
         </div>
       ),
       endContent: entry.tags && entry.tags.length > 0 ? (
-        <div className="flex flex-col items-end gap-1">
-          <div className="flex flex-wrap gap-1 justify-end max-w-[100px]">
+        <div className="flex flex-col items-end gap-1.5">
+          <div className="flex flex-wrap gap-1.5 justify-end max-w-[120px]">
             {entry.tags.slice(0, 2).map((tag: string, index: number) => (
               <span
                 key={tag}
-                className={`px-2 py-0.5 rounded-full text-xs font-medium border ${getTagColor(
+                className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border shadow-sm ${getTagColor(
                   index
                 )}`}
               >
@@ -323,7 +391,7 @@ export default function JournalPage() {
               </span>
             ))}
             {entry.tags.length > 2 && (
-              <span className="text-xs text-gray-500">+{entry.tags.length - 2}</span>
+              <span className="text-[11px] text-gray-500 font-medium mt-0.5">+{entry.tags.length - 2} more</span>
             )}
           </div>
         </div>
@@ -373,9 +441,55 @@ export default function JournalPage() {
     <DashboardLayout>
       <div className="container">
 
-        {/* Header Section with Title and New Entry Button */}
+        {/* Header Section with Journal Selector and New Entry Button */}
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Journal</h1>
+          {/* Journal Selector Dropdown */}
+          <div className="relative" ref={journalDropdownRef}>
+            <button
+              onClick={() => setIsJournalDropdownOpen(!isJournalDropdownOpen)}
+              className="flex items-center gap-2 text-2xl font-bold text-gray-900 hover:text-blue-600 transition-colors"
+            >
+              {getJournalById(activeJournalId)?.name || "Journal-1"}
+              <span className="text-lg">
+                {isJournalDropdownOpen ? "▲" : "▼"}
+              </span>
+            </button>
+
+            {isJournalDropdownOpen && (
+              <div className="absolute z-20 mt-2 w-64 bg-white border-2 border-gray-100 rounded-xl shadow-[0_8px_24px_rgba(0,0,0,0.12)] overflow-hidden">
+                <div className="max-h-60 overflow-y-auto">
+                  {journals.map((journal) => (
+                    <button
+                      key={journal.id}
+                      onClick={() => {
+                        setActiveJournalIdState(journal.id);
+                        setActiveJournal(journal.id);
+                        setIsJournalDropdownOpen(false);
+                      }}
+                      className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
+                        activeJournalId === journal.id 
+                          ? "bg-blue-50 font-semibold text-gray-900" 
+                          : "text-gray-700"
+                      }`}
+                    >
+                      {journal.name}
+                    </button>
+                  ))}
+                </div>
+                <div className="border-t-2 border-gray-100">
+                  <button
+                    onClick={() => {
+                      setIsManageDialogOpen(true);
+                      setIsJournalDropdownOpen(false);
+                    }}
+                    className="w-full px-4 py-3 text-left text-blue-600 hover:bg-blue-50 font-medium transition-colors"
+                  >
+                    ⚙️ Manage Journals
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* New Entry Button */}
           <Link
@@ -385,6 +499,146 @@ export default function JournalPage() {
             ✍️ New Entry
           </Link>
         </div>
+
+        {/* Manage Journals Dialog */}
+        {isManageDialogOpen && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[80vh] flex flex-col">
+              <div className="p-6 border-b-2 border-gray-100">
+                <h2 className="text-2xl font-bold text-gray-900">Manage Journals</h2>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                {/* Create New Journal */}
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700">
+                    Create New Journal
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newJournalName}
+                      onChange={(e) => setNewJournalName(e.target.value)}
+                      placeholder="Journal name..."
+                      maxLength={30}
+                      className="flex-1 px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-400"
+                    />
+                    <button
+                      onClick={() => {
+                        if (newJournalName.trim()) {
+                          try {
+                            const newJournal = createJournal(newJournalName);
+                            setJournals(getJournals());
+                            setNewJournalName("");
+                          } catch (error: any) {
+                            alert(error.message);
+                          }
+                        }
+                      }}
+                      disabled={!newJournalName.trim() || journals.length >= 15}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium"
+                    >
+                      Create
+                    </button>
+                  </div>
+                  {journals.length >= 15 && (
+                    <p className="text-xs text-red-500">Maximum of 15 journals reached</p>
+                  )}
+                </div>
+
+                {/* Existing Journals */}
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700">
+                    Your Journals ({journals.length}/15)
+                  </label>
+                  <div className="space-y-2">
+                    {journals.map((journal) => (
+                      <div
+                        key={journal.id}
+                        className="flex items-center gap-2 p-3 border-2 border-gray-100 rounded-lg hover:border-gray-200 transition-colors"
+                      >
+                        {editingJournalId === journal.id ? (
+                          <>
+                            <input
+                              type="text"
+                              value={editingJournalName}
+                              onChange={(e) => setEditingJournalName(e.target.value)}
+                              maxLength={30}
+                              className="flex-1 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                              autoFocus
+                            />
+                            <button
+                              onClick={() => {
+                                if (editingJournalName.trim()) {
+                                  renameJournal(journal.id, editingJournalName);
+                                  setJournals(getJournals());
+                                  setEditingJournalId(null);
+                                }
+                              }}
+                              className="px-2 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+                            >
+                              ✓
+                            </button>
+                            <button
+                              onClick={() => setEditingJournalId(null)}
+                              className="px-2 py-1 bg-gray-400 text-white rounded text-sm hover:bg-gray-500"
+                            >
+                              ✕
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <span className="flex-1 font-medium text-gray-900">
+                              {journal.name}
+                            </span>
+                            <button
+                              onClick={() => {
+                                setEditingJournalId(journal.id);
+                                setEditingJournalName(journal.name);
+                              }}
+                              className="px-2 py-1 text-blue-600 hover:bg-blue-50 rounded text-sm font-medium"
+                            >
+                              Rename
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (journals.length > 1) {
+                                  if (confirm(`Delete "${journal.name}"? All entries in this journal will be permanently deleted. This cannot be undone.`)) {
+                                    deleteJournal(journal.id);
+                                    setJournals(getJournals());
+                                    setActiveJournalIdState(getActiveJournalId());
+                                  }
+                                } else {
+                                  alert("Cannot delete the last journal");
+                                }
+                              }}
+                              disabled={journals.length === 1}
+                              className="px-2 py-1 text-red-600 hover:bg-red-50 rounded text-sm font-medium disabled:text-gray-300 disabled:cursor-not-allowed"
+                            >
+                              Delete
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 border-t-2 border-gray-100">
+                <button
+                  onClick={() => {
+                    setIsManageDialogOpen(false);
+                    setEditingJournalId(null);
+                  }}
+                  className="w-full px-4 py-3 bg-gray-600 text-white rounded-xl hover:bg-gray-700 transition-colors font-semibold"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         <div className=" flex h-[calc(100vh-200px)] gap-4 mt-6">
           {/* Left Sidebar - 1/3 width: Search and Scrollable List */}
           <div className="w-1/3 flex flex-col border-r border-gray-200 pr-4">
@@ -396,7 +650,7 @@ export default function JournalPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search entries..."
-                className="w-full px-4 py-2 border text-gray-900 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2 border text-gray-900 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-gray-400"
               />
 
               {/* #18: Filter by Tag Dropdown */}
@@ -424,7 +678,7 @@ export default function JournalPage() {
                         </span>
                       </span>
                     ) : (
-                      "Filter by tag..."
+                      <span className="text-gray-400">Filter by tag...</span>
                     )}
                   </span>
                   <span className="text-gray-400">
@@ -441,7 +695,7 @@ export default function JournalPage() {
                         setIsFilterDropdownOpen(false);
                       }}
                       className={`w-full px-4 py-2 text-left hover:bg-gray-100 transition-colors ${
-                        selectedTagFilter === null ? "bg-blue-50 font-medium" : ""
+                        selectedTagFilter === null ? "bg-blue-50 font-medium text-gray-900" : "text-gray-400"
                       }`}
                     >
                       All Entries
@@ -507,24 +761,22 @@ export default function JournalPage() {
 
           {/* Right Section - 2/3 width: View Selected Page */}
           <div className="w-2/3 flex flex-col">
-            <div className="flex-1 border border-gray-200 rounded-lg p-6 bg-gray-50 overflow-y-auto">
+            <div className="flex-1 border-2 border-gray-100 rounded-2xl p-8 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-y-auto">
               {selectedEntry ? (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between border-b pb-4">
-                    <div>
-                      <h2 className="text-2xl font-bold text-gray-900">
+                <div className="space-y-6">
+                  <div className="flex items-start justify-between pb-6 border-b-2 border-gray-100">
+                    <div className="flex-1">
+                      <h2 className="text-3xl font-bold text-gray-900 tracking-tight leading-tight">
                         {selectedEntry.title || "Untitled Entry"}
                       </h2>
-                      <p className="text-sm text-gray-500 mt-1">
+                      <p className="text-sm text-gray-500 mt-2 font-medium">
                         {formatDate(selectedEntry.createdAt)}
                       </p>
                     </div>
-                    <div className="flex items-center gap-3">
-                      {selectedEntry.mood && (
-                        <span className="text-2xl" title={selectedEntry.mood}>
-                          {moodMap[selectedEntry.mood] || "😐"}
-                        </span>
-                      )}
+                    <div className="flex items-center gap-3 ml-4">
+                      <span className="text-5xl leading-none" title={selectedEntry.mood || "neutral"}>
+                        {selectedEntry.mood ? (moodMap[selectedEntry.mood] || "😐") : "😐"}
+                      </span>
                     </div>
                   </div>
                   {selectedEntry.tags && selectedEntry.tags.length > 0 && (
@@ -532,7 +784,7 @@ export default function JournalPage() {
                       {selectedEntry.tags.map((tag: string, index: number) => (
                         <span
                           key={tag}
-                          className={`px-3 py-1 rounded-full text-sm font-medium border ${getTagColor(
+                          className={`px-4 py-2 rounded-full text-sm font-semibold border-2 shadow-sm transition-transform hover:scale-105 ${getTagColor(
                             index
                           )}`}
                         >
@@ -544,30 +796,34 @@ export default function JournalPage() {
                   <div className="prose max-w-none">
                     {selectedEntry.content ? (
                       <div
-                        className="text-gray-700 leading-relaxed"
+                        className="text-gray-700 text-[15px] leading-relaxed"
                         dangerouslySetInnerHTML={{ __html: selectedEntry.content }}
                       />
                     ) : (
-                      <p className="text-gray-500 italic">No content</p>
+                      <p className="text-gray-400 italic text-center py-8">No content</p>
                     )}
                   </div>
-                  <div className="pt-4 border-t flex gap-3">
+                  <div className="pt-6 border-t-2 border-gray-100 flex gap-3">
                     <Link
                       href={`/journal/${selectedEntry.id}`}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                      className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 active:scale-95 transition-all font-semibold shadow-sm hover:shadow-md"
                     >
                       Edit Entry
                     </Link>
                     <button
                       onClick={() => handleDeleteEntry(selectedEntry.id)}
-                      className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium"
+                      className="px-6 py-3 bg-red-500 text-white rounded-xl hover:bg-red-600 active:scale-95 transition-all font-semibold shadow-sm hover:shadow-md"
                     >
                       Delete Entry
                     </button>
                   </div>
                 </div>
               ) : (
-                <p className="text-gray-500 text-center mt-8">Select an entry from the list to view it here</p>
+                <div className="flex flex-col items-center justify-center h-full text-center">
+                  <div className="text-6xl mb-4 opacity-20">📝</div>
+                  <p className="text-gray-400 text-lg font-medium">Select an entry to view</p>
+                  <p className="text-gray-300 text-sm mt-2">Choose from the list on the left</p>
+                </div>
               )}
             </div>
           </div>

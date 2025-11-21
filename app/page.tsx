@@ -224,9 +224,12 @@ export default function HomePage() {
               <p className="text-gray-700">
                 This is essential for making progress in your health, happiness, and your life.
               </p>
-              <button className="w-fit bg-white text-pink-600 px-4 py-2 rounded-lg font-semibold hover:bg-pink-100 transition">
+              <a 
+                href="/help"
+                className="w-fit bg-white text-pink-600 px-4 py-2 rounded-lg font-semibold hover:bg-pink-100 transition inline-block"
+              >
                 Learn more
-              </button>
+              </a>
               
               {/* Pagination Dots */}
               <div className="flex gap-2 mt-4">
