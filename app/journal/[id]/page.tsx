@@ -17,6 +17,9 @@ import RichTextEditor, { RichTextEditorRef } from "../../../src/components/RichT
 import PromptSuggestions from "../../../src/components/PromptSuggestions";
 import { extractMetadata } from "../../../src/lib/nlp/extract";
 import { generatePrompts, filterUsedPrompts, filterExpiredPrompts, Prompt, markPromptAsUsed } from "../../../src/lib/nlp/prompts";
+import { getEntries, getEntryById, updateEntry, saveEntries } from "../../../src/lib/cache/entriesCache";
+import { awardEntryXP } from "../../../src/lib/gamification/xp";
+import XPNotification from "../../components/XPNotification";
 
 // Mood options (same as new entry page)
 const moodOptions = [
@@ -149,10 +152,8 @@ export default function EditEntryPage() {
   useEffect(() => {
     const loadEntry = () => {
       try {
-        const storedEntries = JSON.parse(
-          localStorage.getItem("journalEntries") || "[]" // Fallback to empty array string
-        );
-        const entry = storedEntries.find((e: any) => e.id === entryId); // Find entry by ID
+        // OPTIMIZATION: Use cached entry
+        const entry = getEntryById(entryId as string);
 
         if (!entry) {
           setEntryNotFound(true); // Set error state
@@ -267,23 +268,10 @@ export default function EditEntryPage() {
     }
 
     try {
-      const storedEntries = JSON.parse(
-        localStorage.getItem("journalEntries") || "[]"
-      );
-
-      // Find entry index
-      const entryIndex = storedEntries.findIndex((e: any) => e.id === entryId);
-      if (entryIndex === -1) {
-        alert("Entry not found. It may have been deleted.");
-        router.push("/journal");
-        return;
-      }
-
       const entryTitle = title.trim() || formatDateAsTitle(new Date());
 
-      // Update entry as draft (no extraction)
-      const updatedEntry = {
-        ...storedEntries[entryIndex],
+      // OPTIMIZATION: Use cache update
+      const success = updateEntry(entryId as string, {
         title: entryTitle,
         content: content,
         mood: mood,
@@ -291,11 +279,14 @@ export default function EditEntryPage() {
         cardColor: cardColor,
         updatedAt: new Date().toISOString(),
         draft: true, // Keep as draft
-        promptIds: Array.from(insertedPromptIds), // Store prompt IDs with entry
-      };
+        promptIds: Array.from(insertedPromptIds),
+      });
 
-      storedEntries[entryIndex] = updatedEntry;
-      localStorage.setItem("journalEntries", JSON.stringify(storedEntries));
+      if (!success) {
+        alert("Entry not found. It may have been deleted.");
+        router.push("/journal");
+        return;
+      }
 
       // Don't mark prompts as used for drafts
       // Don't run extraction - drafts don't contribute to prompt generation
@@ -324,29 +315,20 @@ export default function EditEntryPage() {
     }
 
     try {
-      const storedEntries = JSON.parse(
-        localStorage.getItem("journalEntries") || "[]"
-      );
-
-      // Find entry index
-      const entryIndex = storedEntries.findIndex((e: any) => e.id === entryId);
-      if (entryIndex === -1) {
-        alert("Entry not found. It may have been deleted.");
-        router.push("/journal");
-        return;
-      }
-
       const entryTitle = title.trim() || formatDateAsTitle(new Date());
 
-      // Extract metadata from final content (only on save, not while editing)
-      // Only extract if this was a draft (first time saving properly)
-      if (isDraft) {
-        await extractMetadata(content);
+      // OPTIMIZATION: Extract and cache metadata when saving
+      // Always extract on save to update cache if content changed
+      let cachedMetadata = null;
+      try {
+        cachedMetadata = await extractMetadata(content);
+        console.log("✅ [Optimization] Updated cached metadata:", cachedMetadata);
+      } catch (error) {
+        console.error("Error extracting metadata:", error);
       }
 
-      // Update entry
-      const updatedEntry = {
-        ...storedEntries[entryIndex],
+      // OPTIMIZATION: Use cache update
+      const success = updateEntry(entryId as string, {
         title: entryTitle,
         content: content,
         mood: mood,
@@ -354,11 +336,17 @@ export default function EditEntryPage() {
         cardColor: cardColor,
         updatedAt: new Date().toISOString(),
         draft: false, // Remove draft status
-        promptIds: Array.from(insertedPromptIds), // Store prompt IDs with entry
-      };
+        promptIds: Array.from(insertedPromptIds),
+        extractedPeople: cachedMetadata?.people || [],
+        extractedTopics: cachedMetadata?.topics || [],
+        extractedDates: cachedMetadata?.dates || [],
+      });
 
-      storedEntries[entryIndex] = updatedEntry;
-      localStorage.setItem("journalEntries", JSON.stringify(storedEntries));
+      if (!success) {
+        alert("Entry not found. It may have been deleted.");
+        router.push("/journal");
+        return;
+      }
 
       // Mark prompts as used (original prompts stay marked as used)
       // Note: insertedPromptIds contains prompts from original entry + any new ones

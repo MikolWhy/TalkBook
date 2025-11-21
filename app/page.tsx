@@ -19,8 +19,10 @@
 // needed to use server components + required when using useState, useEffect, event handlers, etc
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import DashboardLayout from "./components/DashboardLayout";
+import XPProgressBar from "./components/XPProgressBar";
+import { getEntries } from "../src/lib/cache/entriesCache";
 // useState = React hook for storing data that can change
 // - Syntax: const [value, setValue] = useState(initialValue)
 // - value = current value
@@ -102,15 +104,6 @@ const habitCards: HabitCard[] = [
   // { id: 5, name: "Meditate", duration: "10 min", icon: "🧘", color: "bg-green-100" },
 ];
 
-//placeholder code for now (NON-FUNCTIONAL)
-const dates = [
-  // Array of dates for the date selector
-  // isSelected: true marks which date is currently selected
-  { day: 21, weekday: "Sun" },
-  { day: 20, weekday: "Sat", isSelected: true },
-  { day: 19, weekday: "Fri" },
-];
-
 // ============================================================================
 // MAIN COMPONENT
 // ============================================================================
@@ -138,32 +131,102 @@ const dates = [
 // - Change layout: Modify the JSX inside return()
 
 export default function HomePage() {
-  // ========================================================================
-  // STATE MANAGEMENT (React Hooks)
-  // ========================================================================
-  //
-  // WHAT IS STATE?
-  // State = data that can change and causes the page to re-render
-  // When state changes, React automatically updates the UI
-  //
-  // useState SYNTAX:
-  // const [variableName, setVariableName] = useState(initialValue);
-  //
-  // - variableName = current value (read this)
-  // - setVariableName = function to update value (call this to change it)
-  // - useState(initialValue) = starting value
-  //
-  // HOW TO USE:
-  // - Read: {selectedTab} (displays current value)
-  // - Update: setSelectedTab("Daily") (changes the value)
-  //
-  // EXAMPLE: Adding sidebar collapse state
-  // const [sidebarOpen, setSidebarOpen] = useState(true);
-  // Then use: sidebarOpen ? "w-64" : "w-0" in className
-  
-  // State for tab selection (Daily, Weekly, Monthly)
-  // Initial value: "Daily" (this tab is selected by default)
-  const [selectedTab, setSelectedTab] = useState("Daily");
+  const [entries, setEntries] = useState<any[]>([]);
+  const [habits, setHabits] = useState<any[]>([]);
+  const [userName, setUserName] = useState<string>("Your Name");
+  const [todayHabitLogs, setTodayHabitLogs] = useState<Record<number, any>>({});
+
+  useEffect(() => {
+    const loadedEntries = getEntries().filter((e: any) => !e.draft);
+    setEntries(loadedEntries);
+    
+    // Load user name from localStorage
+    const storedName = typeof window !== "undefined" ? localStorage.getItem("talkbook-profile-name") : null;
+    if (storedName) {
+      setUserName(storedName);
+    }
+    
+    // Load habits data
+    loadHabitsData();
+  }, []);
+
+  const loadHabitsData = async () => {
+    try {
+      const { getActiveHabits, getHabitLogs } = await import("../src/lib/db/repo");
+      const habitsData = await getActiveHabits(1);
+      setHabits(habitsData);
+      
+      // Load today's logs
+      const today = new Date().toISOString().split('T')[0];
+      const logsData: Record<number, any> = {};
+      for (const habit of habitsData) {
+        if (habit.id) {
+          const logs = await getHabitLogs(habit.id, today, today);
+          if (logs.length > 0) {
+            logsData[habit.id] = logs[0];
+          }
+        }
+      }
+      setTodayHabitLogs(logsData);
+    } catch (error) {
+      console.error("Failed to load habits:", error);
+    }
+  };
+
+  // Calculate quick stats
+  const stats = useMemo(() => {
+    const totalEntries = entries.length;
+    
+    // Calculate current streak
+    const sortedEntries = [...entries].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+    
+    let currentStreak = 0;
+    if (sortedEntries.length > 0) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const lastEntry = new Date(sortedEntries[0].createdAt);
+      lastEntry.setHours(0, 0, 0, 0);
+      
+      const daysSinceLastEntry = Math.floor((today.getTime() - lastEntry.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (daysSinceLastEntry <= 1) {
+        let streakDate = new Date(lastEntry);
+        for (let i = 0; i < sortedEntries.length; i++) {
+          const entryDate = new Date(sortedEntries[i].createdAt);
+          entryDate.setHours(0, 0, 0, 0);
+          
+          const diff = Math.floor((streakDate.getTime() - entryDate.getTime()) / (1000 * 60 * 60 * 24));
+          if (diff === 0) {
+            currentStreak++;
+          } else if (diff === 1) {
+            currentStreak++;
+            streakDate = entryDate;
+          } else {
+            break;
+          }
+        }
+      }
+    }
+    
+    // Total words
+    const totalWords = entries.reduce((sum, e) => {
+      const plainText = e.content.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+      return sum + plainText.split(/\s+/).filter((w: string) => w.length > 0).length;
+    }, 0);
+    
+    return { totalEntries, currentStreak, totalWords };
+  }, [entries]);
+
+  // Calculate habit stats
+  const habitStats = useMemo(() => {
+    const totalHabits = habits.length;
+    const completedToday = Object.values(todayHabitLogs).filter((log: any) => log?.value > 0).length;
+    const completionRate = totalHabits > 0 ? Math.round((completedToday / totalHabits) * 100) : 0;
+    
+    return { totalHabits, completedToday, completionRate };
+  }, [habits, todayHabitLogs]);
 
   // ========================================================================
   // RETURN STATEMENT (JSX - What Gets Displayed)
@@ -189,15 +252,53 @@ export default function HomePage() {
   
   return (
     <DashboardLayout>
+        {/* XP Progress Bar - Full Width */}
+        <div className="mb-8">
+          <XPProgressBar />
+        </div>
+
+        {/* Quick Stats - 3 Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 mb-8">
+          <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-6 shadow-md border-2 border-blue-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-blue-600 font-semibold text-sm uppercase tracking-wide mb-1">Entries</p>
+                <p className="text-4xl font-bold text-gray-900">{stats.totalEntries}</p>
+              </div>
+              <div className="bg-blue-500 p-3 rounded-xl">
+                <span className="text-3xl">📝</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-xl p-6 shadow-md border-2 border-orange-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-orange-600 font-semibold text-sm uppercase tracking-wide mb-1">Streak</p>
+                <p className="text-4xl font-bold text-gray-900">{stats.currentStreak} 🔥</p>
+              </div>
+              <div className="bg-orange-500 p-3 rounded-xl">
+                <span className="text-3xl">📅</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 shadow-md border-2 border-green-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-green-600 font-semibold text-sm uppercase tracking-wide mb-1">Words</p>
+                <p className="text-4xl font-bold text-gray-900">{stats.totalWords.toLocaleString()}</p>
+              </div>
+              <div className="bg-green-500 p-3 rounded-xl">
+                <span className="text-3xl">✍️</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* ====================================================================
-            TOP SECTION - Two Cards Side by Side
+            PROMOTIONAL BANNER + QUICK ACTION
             ====================================================================
-            
-            Grid Layout:
-            - grid = creates grid container
-            - grid-cols-1 = 1 column on mobile
-            - lg:grid-cols-2 = 2 columns on large screens
-            - gap-6 = space between cards
         */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           
@@ -216,35 +317,37 @@ export default function HomePage() {
               - flex flex-col = vertical stack
               - gap-4 = space between elements
           */}
-          <div className="bg-pink-50 rounded-xl p-6 relative overflow-hidden">
-            <div className="flex flex-col gap-4 relative z-10">
-              <h2 className="text-2xl font-bold text-gray-900">
-                How to Build a New Habit
+          <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 relative overflow-hidden border-2 border-purple-100 shadow-md">
+            <div className="flex flex-col gap-3 relative z-10">
+              <h2 className="text-3xl font-bold text-gray-900">
+                {userName === "Your Name" ? "Welcome!" : `Welcome back, ${userName}!`}
               </h2>
-              <p className="text-gray-700">
-                This is essential for making progress in your health, happiness, and your life.
+              <p className="text-gray-700 text-lg font-medium">
+                1 Page 1 Habit 1 Step at a time. Consistency is key !
               </p>
-              <a 
-                href="/help"
-                className="w-fit bg-white text-pink-600 px-4 py-2 rounded-lg font-semibold hover:bg-pink-100 transition inline-block"
-              >
-                Learn more
-              </a>
               
-              {/* Pagination Dots */}
-              <div className="flex gap-2 mt-4">
-                <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
-                <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
-                <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
+              <div className="flex gap-3 mt-2">
+                <a 
+                  href="/journal/new"
+                  className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition inline-block shadow-md"
+                >
+                  ✍️ New Entry
+                </a>
+                <a 
+                  href="/habits/new"
+                  className="bg-white text-purple-600 border-2 border-purple-600 px-6 py-3 rounded-lg font-semibold hover:bg-purple-50 transition inline-block"
+                >
+                  ➕ Create New Habit
+                </a>
               </div>
             </div>
             
-            {/* Illustration Placeholder (Positioned Absolutely) */}
-            <div className="absolute right-0 bottom-0 w-32 h-32 opacity-50">
-              <div className="bg-blue-200 rounded-full w-full h-full flex items-center justify-center">
-                <span className="text-4xl">🚀</span>
-              </div>
+            {/* Decorative Elements */}
+            <div className="absolute right-4 top-4 text-6xl opacity-20">
+              ✨
+            </div>
+            <div className="absolute right-16 bottom-4 text-5xl opacity-20">
+              🌟
             </div>
           </div>
 
@@ -260,248 +363,169 @@ export default function HomePage() {
               - We'll create a simple circular progress indicator
               - Using SVG or CSS for the circle
           */}
-          <div className="bg-gray-900 rounded-xl p-6 text-white">
+          <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl p-6 text-white shadow-xl border border-gray-700">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold">Statistics</h2>
-              <button className="text-gray-400 hover:text-white">⋯</button>
+              <h2 className="text-xl font-bold">Today's Progress</h2>
+              <a href="/stats" className="text-gray-400 hover:text-white transition">
+                📊
+              </a>
             </div>
             
-            {/* Circular Progress */}
+            {/* Circular Progress - Habit Completion Rate */}
             <div className="flex flex-col items-center mb-6">
-              {/* Progress Circle (Simplified) */}
-              <div className="relative w-32 h-32 mb-4">
-                <svg className="transform -rotate-90 w-32 h-32">
+              <div className="relative w-36 h-36 mb-4">
+                <svg className="transform -rotate-90 w-36 h-36">
                   {/* Background circle */}
                   <circle
-                    cx="64"
-                    cy="64"
-                    r="56"
-                    stroke="rgba(255,255,255,0.2)"
-                    strokeWidth="8"
+                    cx="72"
+                    cy="72"
+                    r="64"
+                    stroke="rgba(255,255,255,0.1)"
+                    strokeWidth="10"
                     fill="none"
                   />
-                  {/* Progress circle (75%) */}
+                  {/* Progress circle */}
                   <circle
-                    cx="64"
-                    cy="64"
-                    r="56"
-                    stroke="white"
-                    strokeWidth="8"
+                    cx="72"
+                    cy="72"
+                    r="64"
+                    stroke="#10B981"
+                    strokeWidth="10"
                     fill="none"
-                    strokeDasharray={`${2 * Math.PI * 56}`}
-                    strokeDashoffset={`${2 * Math.PI * 56 * 0.25}`}
+                    strokeDasharray={`${2 * Math.PI * 64}`}
+                    strokeDashoffset={`${2 * Math.PI * 64 * (1 - habitStats.completionRate / 100)}`}
                     strokeLinecap="round"
+                    className="transition-all duration-700"
                   />
                 </svg>
-                {/* Percentage Text (Centered) */}
+                {/* Percentage Text */}
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="text-center">
-                    <div className="text-3xl font-bold">75%</div>
-                    <div className="text-xs text-gray-400">Overall Progress</div>
+                    <div className="text-4xl font-black text-green-400">{habitStats.completionRate}%</div>
+                    <div className="text-xs text-gray-400 font-medium">Habits Done</div>
                   </div>
                 </div>
               </div>
+              <p className="text-sm text-gray-300 text-center">
+                {habitStats.completedToday} of {habitStats.totalHabits} completed
+              </p>
             </div>
             
-            {/* Metrics Row */}
-            <div className="grid grid-cols-3 gap-4">
+            {/* Quick Stats */}
+            <div className="grid grid-cols-3 gap-3 pt-4 border-t border-gray-700">
               <div className="text-center">
-                <div className="flex items-center justify-center gap-1 mb-1">
-                  <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                  <div className="text-2xl font-bold">7</div>
-                </div>
-                <div className="text-xs text-gray-400">Best Streaks</div>
+                <div className="text-2xl font-bold text-orange-400">{stats.currentStreak}</div>
+                <div className="text-xs text-gray-400 mt-1">Entry Streak</div>
               </div>
               <div className="text-center">
-                <div className="flex items-center justify-center gap-1 mb-1">
-                  <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                  <div className="text-2xl font-bold">8</div>
-                </div>
-                <div className="text-xs text-gray-400">Perfect Days</div>
+                <div className="text-2xl font-bold text-blue-400">{stats.totalEntries}</div>
+                <div className="text-xs text-gray-400 mt-1">Total Entries</div>
               </div>
               <div className="text-center">
-                <div className="flex items-center justify-center gap-1 mb-1">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <div className="text-2xl font-bold">24</div>
-                </div>
-                <div className="text-xs text-gray-400">Habits Done</div>
+                <div className="text-2xl font-bold text-purple-400">{habitStats.totalHabits}</div>
+                <div className="text-xs text-gray-400 mt-1">Active Habits</div>
               </div>
             </div>
           </div>
         </div>
 
         {/* ====================================================================
-            BOTTOM SECTION - Tabs, Date Selector, Habit Cards
+            HABIT CARDS SECTION
             ====================================================================
-            
-            Flexbox Layout:
-            - flex flex-col = vertical stack
-            - gap-6 = space between tabs and content
         */}
-        <div className="flex flex-col gap-6">
-          
-          {/* ================================================================
-              TAB NAVIGATION
-              ================================================================
-              
-              ARRAY LITERAL IN JSX:
-              {["Daily", "Weekly", "Monthly"].map((tab) => (...))}
-              - Creates array inline: ["Daily", "Weekly", "Monthly"]
-              - .map() loops through it, creates button for each
-              - tab = current string value ("Daily", then "Weekly", etc.)
-              
-              EVENT HANDLER EXPLANATION:
-              onClick={() => setSelectedTab(tab)}
-              - onClick = event handler (runs when button is clicked)
-              - () => = arrow function (what happens on click)
-              - setSelectedTab(tab) = updates state to selected tab
-              - When state changes, React re-renders with new className
-              
-              CONDITIONAL STYLING:
-              selectedTab === tab ? "active-style" : "inactive-style"
-              - === = strict equality (checks if values are equal)
-              - If selectedTab equals current tab, use active styles
-              - Active: border-b-2 (underline), dark text, bold
-              - Inactive: gray text, no underline
-              
-              TO ADD MORE TABS:
-              - Add to array: ["Daily", "Weekly", "Monthly", "Yearly"]
-              - The map() will automatically create a button for it
-              
-              TO CHANGE TAB STYLES:
-              - Modify the className strings in the ternary operator
-              - Active: border-b-2 border-gray-900 (underline, dark)
-              - Inactive: text-gray-500 (gray text)
-          */}
-          <div className="flex gap-4 border-b border-gray-200">
-            {/* 
-              Inline array: ["Daily", "Weekly", "Monthly"]
-              .map() creates a button for each tab name
-              onClick updates selectedTab state, which triggers re-render
-            */}
-            {["Daily", "Weekly", "Monthly"].map((tab) => (
-              <button
-                key={tab} // React needs unique key
-                onClick={() => setSelectedTab(tab)} // Update state on click
-                className={
-                  // Check if this tab is selected
-                  selectedTab === tab
-                    ? "px-4 py-2 border-b-2 border-gray-900 text-gray-900 font-semibold"
-                    : "px-4 py-2 text-gray-500 hover:text-gray-900 transition"
-                }
-              >
-                {tab} {/* Display tab name */}
-              </button>
-            ))}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-bold text-gray-900">Your Habits</h2>
+            <a
+              href="/habits"
+              className="text-purple-600 hover:text-purple-700 font-semibold text-sm"
+            >
+              View All →
+            </a>
           </div>
-
-          {/* ================================================================
-              CONTENT ROW - Date Selector + Habit Cards
-              ================================================================
-              
-              Grid Layout:
-              - grid = creates grid
-              - grid-cols-[auto_1fr] = left column auto-width, right takes remaining
-              - gap-6 = space between columns
-          */}
-          <div className="grid grid-cols-[auto_1fr] gap-6">
-            
-            {/* ================================================================
-                DATE SELECTOR (Left Column)
-                ================================================================
-                
-                Flexbox for Vertical Stack:
-                - flex flex-col = vertical layout
-                - gap-2 = small gap between date cards
-                - items-center = centers horizontally
-            */}
-            <div className="flex flex-col gap-2 items-center">
-              {/* Up Arrow */}
-              <button className="text-gray-400 hover:text-gray-600">▲</button>
-              
-              {/* Date Cards */}
-              {dates.map((date, index) => (
-                <div
-                  key={index}
-                  className={
-                    date.isSelected
-                      ? "w-16 py-3 bg-gray-900 text-white rounded-lg text-center"
-                      : "w-16 py-3 bg-gray-100 text-gray-600 rounded-lg text-center"
-                  }
-                >
-                  <div className="text-sm font-semibold">{date.day}</div>
-                  <div className="text-xs">{date.weekday}</div>
-                </div>
-              ))}
-              
-              {/* Down Arrow */}
-              <button className="text-gray-400 hover:text-gray-600">▼</button>
-            </div>
-
-            {/* ================================================================
-                HABIT CARDS (Right Column - Horizontal Scroll)
-                ================================================================
-                
-                HORIZONTAL SCROLLING SETUP:
-                - overflow-x-auto = allows horizontal scrolling when content overflows
-                - pb-2 = padding-bottom (gives space for scrollbar)
-                
-                INNER CONTAINER:
-                - flex = horizontal layout (cards side by side)
-                - gap-4 = space between cards: 1rem (16px)
-                - min-w-max = minimum width: max-content (prevents cards from shrinking)
-                
-                TEMPLATE LITERAL IN className:
-                className={`${habit.color} rounded-xl p-6 ...`}
-                - Backticks `` = template literal (allows variable insertion)
-                - ${habit.color} = inserts the color value (e.g., "bg-purple-100")
-                - This is how we use dynamic Tailwind classes
-                
-                MAP FUNCTION:
-                {habitCards.map((habit) => (...))}
-                - Loops through habitCards array
-                - Creates a card div for each habit
-                - habit = current HabitCard object
-                
-                CARD STRUCTURE:
-                - habit.color = background color (from data)
-                - rounded-xl = extra rounded corners
-                - p-6 = padding inside card
-                - min-w-[200px] = minimum width: 200px (prevents cards from being too narrow)
-                - flex flex-col = vertical stack inside card
-                
-                TO ADD MORE HABIT CARDS:
-                - Add to habitCards array at top of file
-                - The map() will automatically create a card for it
-                
-                TO CHANGE CARD COLORS:
-                - Modify color property in habitCards array
-                - Use Tailwind: bg-purple-100, bg-pink-100, bg-blue-100, etc.
-                
-                TO CHANGE CARD SIZE:
-                - Modify min-w-[200px] to min-w-[300px] (wider) or min-w-[150px] (narrower)
-            */}
-            <div className="overflow-x-auto pb-2">
-              {/* Inner container for horizontal layout */}
+          
+          <div className="overflow-x-auto pb-2">
               <div className="flex gap-4 min-w-max">
-                {/* 
-                  Loop through habitCards array
-                  Creates a card for each habit
-                  Template literal ${habit.color} inserts the color class
-                */}
-                {habitCards.map((habit) => (
-                  <div
-                    key={habit.id} // React needs unique key (using habit.id)
-                    className={`${habit.color} rounded-xl p-6 min-w-[200px] flex flex-col gap-2`}
-                  >
-                    <div className="text-3xl mb-2">{habit.icon}</div> {/* Icon emoji */}
-                    <h3 className="font-bold text-gray-900">{habit.name}</h3> {/* Habit name */}
-                    <p className="text-sm text-gray-600">{habit.duration}</p> {/* Duration */}
+                {habits.length === 0 ? (
+                  // Empty state
+                  <div className="flex items-center justify-center w-full py-12 px-6">
+                    <div className="text-center">
+                      <p className="text-6xl mb-4">💪</p>
+                      <p className="text-gray-900 font-semibold text-lg mb-2">No habits yet</p>
+                      <p className="text-gray-600 mb-4">Start building better habits today!</p>
+                      <a
+                        href="/habits/new"
+                        className="inline-block bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-700 transition"
+                      >
+                        Create Your First Habit
+                      </a>
+                    </div>
                   </div>
-                ))}
+                ) : (
+                  // Real habit cards
+                  habits.slice(0, 6).map((habit) => {
+                    const todayLog = todayHabitLogs[habit.id!];
+                    const isCompleted = todayLog?.value > 0;
+                    const progressValue = habit.type === 'numeric' && habit.target 
+                      ? Math.min(100, (todayLog?.value || 0) / habit.target * 100)
+                      : isCompleted ? 100 : 0;
+
+                    return (
+                      <a
+                        key={habit.id}
+                        href="/habits"
+                        className="block min-w-[220px] rounded-xl p-6 transition-all hover:scale-105 hover:shadow-xl cursor-pointer"
+                        style={{
+                          backgroundColor: habit.color + '20',
+                          borderLeft: `4px solid ${habit.color}`,
+                        }}
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <h3 className="font-bold text-gray-900 text-lg">{habit.name}</h3>
+                          {isCompleted && (
+                            <span className="text-2xl">✅</span>
+                          )}
+                        </div>
+                        
+                        {habit.type === 'numeric' ? (
+                          <div>
+                            <p className="text-sm text-gray-600 mb-2">
+                              {todayLog?.value || 0} / {habit.target || '∞'} {habit.unit || 'units'}
+                            </p>
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div
+                                className="h-2 rounded-full transition-all duration-500"
+                                style={{
+                                  width: `${progressValue}%`,
+                                  backgroundColor: habit.color,
+                                }}
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-600">
+                            {isCompleted ? '✓ Completed today' : 'Not done yet'}
+                          </p>
+                        )}
+                      </a>
+                    );
+                  })
+                )}
+                
+                {/* Add new habit card */}
+                {habits.length > 0 && habits.length < 6 && (
+                  <a
+                    href="/habits/new"
+                    className="min-w-[220px] rounded-xl p-6 border-2 border-dashed border-gray-300 hover:border-purple-500 transition-all flex items-center justify-center cursor-pointer hover:bg-purple-50"
+                  >
+                    <div className="text-center">
+                      <p className="text-4xl mb-2">➕</p>
+                      <p className="text-gray-600 font-semibold">Add Habit</p>
+                    </div>
+                  </a>
+                )}
               </div>
             </div>
-          </div>
         </div>
     </DashboardLayout>
   );

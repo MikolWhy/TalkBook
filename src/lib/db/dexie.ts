@@ -45,3 +45,29 @@
 
 // TODO: implement dexie database class
 
+import Dexie, { Table } from 'dexie';
+import { Habit, HabitLog } from './schema';
+
+export class TalkBookDB extends Dexie {
+  // Zayn's tables
+  habits!: Table<Habit, number>;
+  habitLogs!: Table<HabitLog, number>;
+
+  // TODO: Aadil will add: profiles, entries, entities, settings, dailyAggregates
+
+  constructor() {
+    super('TalkBookDB');
+
+    // Define schema version 1
+    this.version(1).stores({
+      // Zayn's tables
+      habits: '++id, profileId, archived, createdAt, order',
+      habitLogs: '++id, habitId, date, [habitId+date], completedAt',
+      
+      // TODO: Aadil will add other tables here
+    });
+  }
+}
+
+// Export singleton instance
+export const db = new TalkBookDB();

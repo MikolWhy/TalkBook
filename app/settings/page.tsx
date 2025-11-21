@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "../components/DashboardLayout";
 import { getBlacklist, addToBlacklist, removeFromBlacklist } from "../../src/lib/blacklist/manager";
+import { rebuildAllMetadata } from "../../src/lib/cache/rebuildCache";
+import { resetXP } from "../../src/lib/gamification/xp";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -31,6 +33,10 @@ export default function SettingsPage() {
   
   // Reset confirmation
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  
+  // Rebuild cache state
+  const [isRebuilding, setIsRebuilding] = useState(false);
+  const [rebuildMessage, setRebuildMessage] = useState("");
 
   useEffect(() => {
     // Load existing settings
@@ -170,29 +176,76 @@ export default function SettingsPage() {
   };
 
   // Reset all data
-  const handleResetAllData = () => {
-    // Clear all localStorage except password and profile settings
-    localStorage.removeItem("journalEntries");
-    localStorage.removeItem("talkbook-used-prompts");
-    localStorage.removeItem("talkbook-blacklist");
-    localStorage.removeItem("talkbook-journals");
-    localStorage.removeItem("talkbook-active-journal");
+  const handleResetAllData = async () => {
+    try {
+      // === CLEAR ALL JOURNAL DATA ===
+      localStorage.removeItem("journalEntries"); // All entries
+      localStorage.removeItem("talkbook-journals"); // All journals
+      localStorage.removeItem("talkbook-active-journal"); // Active journal
+      
+      // === CLEAR ALL NLP/EXTRACTION DATA ===
+      localStorage.removeItem("talkbook-used-prompts"); // Used prompts
+      localStorage.removeItem("talkbook-blacklist"); // Blacklist
+      
+      // === CLEAR ALL XP/GAMIFICATION DATA ===
+      resetXP(); // XP, level, last entry date
+      
+      // === CLEAR ALL HABIT DATA (IndexedDB) ===
+      const { db } = await import("../../src/lib/db/dexie");
+      await db.habitLogs.clear();
+      await db.habits.clear();
+      console.log("✅ All habit data cleared from IndexedDB");
+      
+      // === CLEAR IN-MEMORY CACHE ===
+      const { saveEntries: saveCachedEntries, invalidateCache } = await import("../../src/lib/cache/entriesCache");
+      saveCachedEntries([]); // Clear all entries in cache
+      invalidateCache(); // Force cache reload
+      console.log("✅ Entries cache cleared");
+      
+      // === REINITIALIZE WITH DEFAULTS ===
+      // Create default journal
+      localStorage.setItem("talkbook-journals", JSON.stringify([{
+        id: "journal-1",
+        name: "Journal-1",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }]));
+      localStorage.setItem("talkbook-active-journal", "journal-1");
+      
+      // Reset UI state
+      setBlacklist([]);
+      setShowResetConfirm(false);
+      
+      // Dispatch event for XP bar to update
+      window.dispatchEvent(new Event("xp-updated"));
+      
+      alert("🗑️ All data deleted successfully!\n\n✅ Entries, journals, habits, XP, cache - all cleared.\n✓ Your profile (name, picture) and password were preserved.");
+      
+      // Redirect to homepage (fresh start)
+      router.push("/");
+    } catch (error) {
+      console.error("Error during reset:", error);
+      alert("Error clearing some data. Please try again or refresh the page.");
+    }
+  };
+
+  const handleRebuildCache = async () => {
+    setIsRebuilding(true);
+    setRebuildMessage("Rebuilding cache... This may take a moment.");
     
-    // Reinitialize with default journal
-    localStorage.setItem("talkbook-journals", JSON.stringify([{
-      id: "journal-1",
-      name: "Journal-1",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }]));
-    localStorage.setItem("talkbook-active-journal", "journal-1");
-    
-    setBlacklist([]);
-    setShowResetConfirm(false);
-    alert("All journal data has been reset. Your profile and password settings were preserved.");
-    
-    // Redirect to journal page
-    router.push("/journal");
+    try {
+      const result = await rebuildAllMetadata();
+      setRebuildMessage(`✅ Successfully rebuilt cache! Updated ${result.updated} entries.`);
+      
+      // Reload page after 2 seconds
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+    } catch (error) {
+      console.error("Error rebuilding cache:", error);
+      setRebuildMessage("❌ Error rebuilding cache. Please try again.");
+      setIsRebuilding(false);
+    }
   };
 
   return (
@@ -431,12 +484,52 @@ export default function SettingsPage() {
           )}
         </div>
 
+        {/* Rebuild Cache */}
+        <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-6 shadow-sm">
+          <h2 className="text-xl font-bold text-blue-900 mb-4">🔄 Rebuild Metadata Cache</h2>
+          <p className="text-sm text-blue-700 mb-4">
+            <strong>Safe operation</strong> - Only refreshes extracted metadata (names, topics) from your existing entries. 
+            Does NOT delete any data. Use this if you see incorrect words in prompts or after updates.
+          </p>
+          <p className="text-xs text-blue-600 mb-4 italic">
+            ✓ Keeps all entries, journals, habits, and XP intact
+          </p>
+          
+          <button
+            onClick={handleRebuildCache}
+            disabled={isRebuilding}
+            className={`px-6 py-2 rounded-lg transition-colors font-semibold ${
+              isRebuilding
+                ? "bg-gray-400 text-gray-700 cursor-not-allowed"
+                : "bg-blue-600 text-white hover:bg-blue-700"
+            }`}
+          >
+            {isRebuilding ? "Rebuilding..." : "Rebuild Cache"}
+          </button>
+
+          {rebuildMessage && (
+            <p className="text-sm mt-3 text-blue-900 font-medium">
+              {rebuildMessage}
+            </p>
+          )}
+        </div>
+
         {/* Reset Data */}
         <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-6 shadow-sm">
-          <h2 className="text-xl font-bold text-red-900 mb-4">⚠️ Reset All Data</h2>
-          <p className="text-sm text-red-700 mb-4">
-            This will permanently delete all journal entries, extracted data, prompts, and journals. 
-            Your profile settings and password will be preserved.
+          <h2 className="text-xl font-bold text-red-900 mb-4">⚠️ Delete All Data</h2>
+          <p className="text-sm text-red-700 mb-2">
+            <strong>⚠️ DANGER ZONE:</strong> This will permanently delete EVERYTHING:
+          </p>
+          <ul className="text-sm text-red-700 mb-4 ml-6 list-disc space-y-1">
+            <li>All journal entries and drafts</li>
+            <li>All journals (folders)</li>
+            <li>All habits and habit logs</li>
+            <li>All XP and level progress</li>
+            <li>All extracted metadata and cache</li>
+            <li>All prompts and blacklist</li>
+          </ul>
+          <p className="text-xs text-red-600 mb-4 font-semibold">
+            ✓ Profile settings (name, picture) and password will be preserved
           </p>
           
           {!showResetConfirm ? (
@@ -444,7 +537,7 @@ export default function SettingsPage() {
               onClick={() => setShowResetConfirm(true)}
               className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-semibold"
             >
-              Reset All Data
+              Delete All Data
             </button>
           ) : (
             <div className="space-y-3">

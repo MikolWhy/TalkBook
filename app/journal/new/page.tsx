@@ -84,7 +84,10 @@ import PromptSuggestions from "../../../src/components/PromptSuggestions";
 import TopicSuggestions from "../../../src/components/TopicSuggestions";
 import { extractMetadata } from "../../../src/lib/nlp/extract";
 import { generatePrompts, filterUsedPrompts, filterExpiredPrompts, Prompt, markPromptAsUsed, getTopicSuggestions, TopicSuggestion } from "../../../src/lib/nlp/prompts";
-import { getActiveJournalId } from "../../../src/lib/journals/manager";
+import { getActiveJournalId, getJournals, type Journal } from "../../../src/lib/journals/manager";
+import { getEntries, addEntry } from "../../../src/lib/cache/entriesCache";
+import { awardEntryXP } from "../../../src/lib/gamification/xp";
+import XPNotification from "../../components/XPNotification";
 
 // TODO: implement entry creation form
 
@@ -104,6 +107,8 @@ export default function NewEntryPage() {
   const [tags, setTags] = useState<string[]>([]); // State to store tags
   const [tagInput, setTagInput] = useState(""); // State for tag input field
   const [cardColor, setCardColor] = useState<string>("default"); // State for card color
+  const [journals, setJournals] = useState<Journal[]>([]); // All available journals
+  const [selectedJournalId, setSelectedJournalId] = useState<string>(""); // Selected journal for this entry
 
   // ============================================================================
   // MICHAEL'S CODE - NLP Prompt System State
@@ -113,11 +118,26 @@ export default function NewEntryPage() {
     topics: string[];
     dates: Date[];
   } | null>(null);
+
+  // Load journals and set default selected journal
+  useEffect(() => {
+    const allJournals = getJournals();
+    setJournals(allJournals);
+    const activeJournal = getActiveJournalId();
+    setSelectedJournalId(activeJournal || (allJournals.length > 0 ? allJournals[0].id : ""));
+  }, []);
   
   // State for prompts (SIMPLIFIED: Only people prompts are clickable)
   const [allPrompts, setAllPrompts] = useState<Prompt[]>([]); // All available prompts (people only)
   const [topicSuggestions, setTopicSuggestions] = useState<TopicSuggestion[]>([]); // Topic suggestions (non-clickable)
   const [insertedPromptIds, setInsertedPromptIds] = useState<Set<string>>(new Set()); // Prompts currently in editor (temporarily used)
+  
+  // XP Notification State
+  const [showXPNotification, setShowXPNotification] = useState(false);
+  const [xpEarned, setXpEarned] = useState(0);
+  const [leveledUp, setLeveledUp] = useState(false);
+  const [oldLevel, setOldLevel] = useState<number | undefined>(undefined);
+  const [newLevel, setNewLevel] = useState<number | undefined>(undefined);
   
   // Filter prompts: show only those NOT currently inserted in editor
   const availablePrompts = allPrompts.filter(p => !insertedPromptIds.has(p.id));
@@ -131,11 +151,10 @@ export default function NewEntryPage() {
       try {
         // SIMPLIFIED: Separate logic for people prompts vs topic suggestions
         // People prompts: Use last 7 days (for variety)
-        // Topic suggestions: Use last 2 entries only (as requested)
+        // Topic suggestions: Use last 3 entries only (as requested)
         
-        const storedEntries = JSON.parse(
-          localStorage.getItem("journalEntries") || "[]"
-        );
+        // OPTIMIZATION: Use cached entries instead of parsing localStorage
+        const storedEntries = getEntries();
         
         // FILTER BY ACTIVE JOURNAL FIRST
         const activeJournalId = getActiveJournalId();
@@ -163,35 +182,90 @@ export default function NewEntryPage() {
           .filter((entry: any) => entry.draft !== true)
           .slice(0, 3);
         
-        // Combine content from recent entries for people extraction
-        const combinedTextForPeople = recentEntriesForPeople
-          .map((entry: any) => entry.content || "")
-          .filter((content: string) => content.trim().length > 0)
-          .join(" ");
+        // OPTIMIZATION: Use cached metadata if available, otherwise extract from content
+        // This dramatically speeds up page load by avoiding redundant NLP processing
         
-        // Combine content from last 3 entries for topic extraction
-        const combinedTextForTopics = lastThreeEntries
-          .map((entry: any) => entry.content || "")
-          .filter((content: string) => content.trim().length > 0)
-          .join(" ");
+        // Aggregate cached people from last 7 days
+        const allPeople = new Set<string>();
+        let needsExtractionForPeople = false;
         
-        // Extract metadata for people prompts (from last 7 days)
+        for (const entry of recentEntriesForPeople) {
+          if (entry.extractedPeople && Array.isArray(entry.extractedPeople)) {
+            // Use cached data
+            entry.extractedPeople.forEach((person: string) => allPeople.add(person));
+          } else {
+            // Entry doesn't have cached metadata
+            needsExtractionForPeople = true;
+            break;
+          }
+        }
+        
+        // If any entry lacks cached data, fall back to traditional extraction
         let peopleResult = null;
         let peopleOriginalText = undefined;
         
-        if (combinedTextForPeople.trim().length > 0) {
-          peopleResult = await extractMetadata(combinedTextForPeople);
-          peopleOriginalText = combinedTextForPeople;
+        if (needsExtractionForPeople) {
+          console.log("⚠️ [Optimization] Some entries lack cached metadata, running extraction...");
+          const combinedTextForPeople = recentEntriesForPeople
+            .map((entry: any) => entry.content || "")
+            .filter((content: string) => content.trim().length > 0)
+            .join(" ");
+          
+          if (combinedTextForPeople.trim().length > 0) {
+            peopleResult = await extractMetadata(combinedTextForPeople);
+            peopleOriginalText = combinedTextForPeople;
+          }
+        } else if (allPeople.size > 0) {
+          console.log("✅ [Optimization] Using cached metadata, skipping extraction!");
+          peopleResult = {
+            people: Array.from(allPeople),
+            topics: [],
+            dates: []
+          };
         }
         
-        // Extract metadata for topic suggestions (from last 3 entries)
-        let topicsResult = null;
-        let topicsPeopleResult = null; // Also extract people from same entries to catch all names
+        // Aggregate cached topics from last 3 entries
+        const allTopics = new Set<string>();
+        const allTopicsPeople = new Set<string>();
+        let needsExtractionForTopics = false;
         
-        if (combinedTextForTopics.trim().length > 0) {
-          topicsResult = await extractMetadata(combinedTextForTopics);
-          // Also extract people from the same text to catch names that might appear as topics
-          topicsPeopleResult = await extractMetadata(combinedTextForTopics);
+        for (const entry of lastThreeEntries) {
+          if (entry.extractedTopics && Array.isArray(entry.extractedTopics) &&
+              entry.extractedPeople && Array.isArray(entry.extractedPeople)) {
+            // Use cached data
+            entry.extractedTopics.forEach((topic: string) => allTopics.add(topic));
+            entry.extractedPeople.forEach((person: string) => allTopicsPeople.add(person));
+          } else {
+            // Entry doesn't have cached metadata
+            needsExtractionForTopics = true;
+            break;
+          }
+        }
+        
+        let topicsResult = null;
+        let topicsPeopleResult = null;
+        
+        if (needsExtractionForTopics) {
+          console.log("⚠️ [Optimization] Some entries lack cached metadata for topics, running extraction...");
+          const combinedTextForTopics = lastThreeEntries
+            .map((entry: any) => entry.content || "")
+            .filter((content: string) => content.trim().length > 0)
+            .join(" ");
+          
+          if (combinedTextForTopics.trim().length > 0) {
+            topicsResult = await extractMetadata(combinedTextForTopics);
+            // OPTIMIZATION FIX #3: Remove duplicate extraction call
+            // We can reuse topicsResult.people instead of extracting again
+            topicsPeopleResult = topicsResult;
+          }
+        } else if (allTopics.size > 0) {
+          console.log("✅ [Optimization] Using cached topic metadata!");
+          topicsResult = {
+            people: Array.from(allTopicsPeople),
+            topics: Array.from(allTopics),
+            dates: []
+          };
+          topicsPeopleResult = topicsResult;
         }
         
         setExtractedData(peopleResult);
@@ -446,23 +520,15 @@ export default function NewEntryPage() {
       mood: mood, // Selected mood or null
       tags: tags, // Array of tag strings
       cardColor: cardColor, // Card color selection
-      journalId: getActiveJournalId(), // Assign to active journal
+      journalId: selectedJournalId || getActiveJournalId(), // Use selected journal or fallback to active
       createdAt: new Date().toISOString(), // ISO 8601 timestamp string
       updatedAt: new Date().toISOString(), // Same as createdAt for new entries
       draft: true, // Mark as draft
       promptIds: Array.from(insertedPromptIds), // Convert Set to Array for storage
     };
 
-    // Get existing entries from localStorage
-    const existingEntries = JSON.parse(
-      localStorage.getItem("journalEntries") || "[]" // Fallback to empty array if null
-    );
-
-    // Add new entry (spread operator creates new array)
-    const updatedEntries = [...existingEntries, entry];
-
-    // Save to localStorage (must be string, so JSON.stringify converts object to JSON)
-    localStorage.setItem("journalEntries", JSON.stringify(updatedEntries));
+    // OPTIMIZATION: Use cache instead of localStorage
+    addEntry(entry);
 
     // Don't mark prompts as used for drafts - they'll be marked when draft is saved properly
     // Don't run extraction - drafts don't contribute to prompt generation
@@ -479,13 +545,24 @@ export default function NewEntryPage() {
   // APPROACH: Simple - just mark prompts as used. Extraction happens on-demand when generating prompts.
   //           This is conventional - extraction on read, not on write.
   // CONNECTION: Works with filterUsedPrompts() to hide used prompts in future entries.
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!content.trim()) {
       alert("Please add some content before saving.");
       return;
     }
 
     const entryTitle = title.trim() || formatDateAsTitle(new Date());
+    
+    // OPTIMIZATION: Extract metadata once at save time and cache with entry
+    // This prevents re-extraction on every page load
+    let cachedMetadata = null;
+    try {
+      cachedMetadata = await extractMetadata(content);
+      console.log("✅ [Optimization] Extracted and cached metadata at save time:", cachedMetadata);
+    } catch (error) {
+      console.error("Error extracting metadata:", error);
+      // Continue saving even if extraction fails
+    }
 
     const entry = {
       id: Date.now().toString(),
@@ -494,29 +571,27 @@ export default function NewEntryPage() {
       mood: mood,
       tags: tags,
       cardColor: cardColor, // Card color selection
-      journalId: getActiveJournalId(), // Assign to active journal
+      journalId: selectedJournalId || getActiveJournalId(), // Use selected journal or fallback to active
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       draft: false, // Not a draft
       promptIds: Array.from(insertedPromptIds), // Store prompt IDs with entry
+      // OPTIMIZATION: Store extracted metadata with entry for instant access
+      extractedPeople: cachedMetadata?.people || [],
+      extractedTopics: cachedMetadata?.topics || [],
+      extractedDates: cachedMetadata?.dates || [],
     };
     
     console.log("💾 [Save Entry] Saving entry:", {
       title: entry.title,
       contentLength: content.length,
-      draft: entry.draft
+      draft: entry.draft,
+      cachedPeople: entry.extractedPeople.length,
+      cachedTopics: entry.extractedTopics.length
     });
 
-    // Get existing entries from localStorage
-    const existingEntries = JSON.parse(
-      localStorage.getItem("journalEntries") || "[]"
-    );
-
-    // Add new entry
-    const updatedEntries = [...existingEntries, entry];
-
-    // Save to localStorage
-    localStorage.setItem("journalEntries", JSON.stringify(updatedEntries));
+    // OPTIMIZATION: Use cache instead of localStorage
+    addEntry(entry);
 
     // MICHAEL'S CODE: Mark inserted prompts as permanently used
     // This prevents them from appearing again in future prompt suggestions
@@ -527,8 +602,58 @@ export default function NewEntryPage() {
       });
     }
 
-    // Navigate back to journal page
-    router.push("/journal");
+    // Award XP for entry
+    const wordCount = content.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().split(/\s+/).filter((w: string) => w.length > 0).length;
+    
+    // Calculate current journal streak from all entries
+    const allEntries = getEntries().filter((e: any) => !e.draft);
+    const sortedEntries = [...allEntries].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+    
+    let journalStreak = 0;
+    if (sortedEntries.length > 0) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const lastEntry = new Date(sortedEntries[0].createdAt);
+      lastEntry.setHours(0, 0, 0, 0);
+      const daysSinceLastEntry = Math.floor((today.getTime() - lastEntry.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (daysSinceLastEntry <= 1) {
+        let streakDate = new Date(lastEntry);
+        for (let i = 0; i < sortedEntries.length; i++) {
+          const entryDate = new Date(sortedEntries[i].createdAt);
+          entryDate.setHours(0, 0, 0, 0);
+          const diff = Math.floor((streakDate.getTime() - entryDate.getTime()) / (1000 * 60 * 60 * 24));
+          if (diff === 0) {
+            journalStreak++;
+          } else if (diff === 1) {
+            journalStreak++;
+            streakDate = entryDate;
+          } else {
+            break;
+          }
+        }
+      }
+    }
+    
+    const xpResult = awardEntryXP(wordCount, journalStreak);
+    console.log("🎉 XP Awarded:", xpResult);
+    
+    // Show XP notification
+    setXpEarned(xpResult.xp);
+    setLeveledUp(xpResult.leveledUp);
+    setOldLevel(xpResult.oldLevel);
+    setNewLevel(xpResult.newLevel);
+    setShowXPNotification(true);
+    
+    // Dispatch event for XP bar to update
+    window.dispatchEvent(new Event("xp-updated"));
+
+    // Navigate back to journal page after a short delay (let notification show)
+    setTimeout(() => {
+      router.push("/journal");
+    }, xpResult.leveledUp ? 4500 : 3500);
   };
 
   // Function to navigate back to journal page
@@ -609,6 +734,29 @@ export default function NewEntryPage() {
             />
           </div>
         </div>
+        
+        {/* Journal Selector */}
+        {journals.length > 0 && (
+          <div>
+            <div className="mb-2">
+              <h2 className="text-lg font-bold text-gray-900">Journal</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <select
+                value={selectedJournalId}
+                onChange={(e) => setSelectedJournalId(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+              >
+                {journals.map((journal) => (
+                  <option key={journal.id} value={journal.id}>
+                    {journal.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
+        
         <div className="">
           <div className="mb-2">
             <h2 className="text-lg font-bold text-gray-900">Entry Content</h2>
@@ -746,6 +894,16 @@ export default function NewEntryPage() {
           />
         </div>
       ) */}
+
+      {/* XP Notification */}
+      <XPNotification
+        xp={xpEarned}
+        show={showXPNotification}
+        onComplete={() => setShowXPNotification(false)}
+        leveledUp={leveledUp}
+        oldLevel={oldLevel}
+        newLevel={newLevel}
+      />
     </DashboardLayout>
   );
 }

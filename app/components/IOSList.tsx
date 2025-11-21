@@ -111,7 +111,7 @@ export default function IOSList({
                 '--ring-color': `rgb(${ringColorRGB})`,
               } as React.CSSProperties}
               classNames={{
-                base: `ios-list-item-animate ${item.bgColor || 'bg-white'} rounded-2xl my-1.5 mx-0 p-0 min-h-[100px] transition-all duration-300 ease-out cursor-pointer border-2 ${item.borderColor || 'border-gray-100'} shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] hover:-translate-y-0.5 hover:scale-[1.005] active:translate-y-0 active:scale-100`,
+                base: `ios-list-item-animate ${item.bgColor || 'bg-white'} rounded-2xl my-1.5 mx-0 p-0 min-h-[100px] transition-all duration-300 ease-out cursor-pointer border-2 ${item.borderColor || 'border-gray-100'} shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] hover:-translate-y-0.5 hover:scale-[1.005] active:translate-y-0 active:scale-100 [&>span[aria-hidden="true"]]:hidden`,
                 wrapper: "px-5 py-4 flex flex-row items-center gap-4 min-h-[100px] justify-between",
               }}
             >

@@ -184,3 +184,12 @@ body {
   --tw-ring-color: var(--ring-color, rgb(96, 165, 250));
   box-shadow: 0 0 0 4px var(--ring-color, rgb(96, 165, 250)) inset !important;
 }
+
+/* Hide the checkmark selection indicator in list items */
+.ios-list-item-animate > span[aria-hidden="true"] {
+  display: none !important;
+}
+
+.ios-list-item-animate svg[role="presentation"] {
+  display: none !important;
+}
