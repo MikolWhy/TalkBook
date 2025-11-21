@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "../components/DashboardLayout";
 import { getBlacklist, addToBlacklist, removeFromBlacklist } from "../../src/lib/blacklist/manager";
+import { rebuildAllMetadata } from "../../src/lib/cache/rebuildCache";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -31,6 +32,10 @@ export default function SettingsPage() {
   
   // Reset confirmation
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  
+  // Rebuild cache state
+  const [isRebuilding, setIsRebuilding] = useState(false);
+  const [rebuildMessage, setRebuildMessage] = useState("");
 
   useEffect(() => {
     // Load existing settings
@@ -193,6 +198,25 @@ export default function SettingsPage() {
     
     // Redirect to journal page
     router.push("/journal");
+  };
+
+  const handleRebuildCache = async () => {
+    setIsRebuilding(true);
+    setRebuildMessage("Rebuilding cache... This may take a moment.");
+    
+    try {
+      const result = await rebuildAllMetadata();
+      setRebuildMessage(`✅ Successfully rebuilt cache! Updated ${result.updated} entries.`);
+      
+      // Reload page after 2 seconds
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+    } catch (error) {
+      console.error("Error rebuilding cache:", error);
+      setRebuildMessage("❌ Error rebuilding cache. Please try again.");
+      setIsRebuilding(false);
+    }
   };
 
   return (
@@ -428,6 +452,33 @@ export default function SettingsPage() {
 
           {blacklistSuccess && (
             <p className="text-green-600 text-sm mt-3">✓ {blacklistSuccess}</p>
+          )}
+        </div>
+
+        {/* Rebuild Cache */}
+        <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-6 shadow-sm">
+          <h2 className="text-xl font-bold text-blue-900 mb-4">🔄 Rebuild Metadata Cache</h2>
+          <p className="text-sm text-blue-700 mb-4">
+            If you see non-name words in prompts (like "Today", "Soccer"), click this to re-extract metadata from all entries using the latest logic. 
+            This fixes entries saved with old extraction rules.
+          </p>
+          
+          <button
+            onClick={handleRebuildCache}
+            disabled={isRebuilding}
+            className={`px-6 py-2 rounded-lg transition-colors font-semibold ${
+              isRebuilding
+                ? "bg-gray-400 text-gray-700 cursor-not-allowed"
+                : "bg-blue-600 text-white hover:bg-blue-700"
+            }`}
+          >
+            {isRebuilding ? "Rebuilding..." : "Rebuild Cache"}
+          </button>
+
+          {rebuildMessage && (
+            <p className="text-sm mt-3 text-blue-900 font-medium">
+              {rebuildMessage}
+            </p>
           )}
         </div>
 

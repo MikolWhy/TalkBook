@@ -142,33 +142,53 @@ export async function extractMetadata(
     for (const sentence of testSentences) {
       const testDoc = nlp(sentence);
       
-      // Find the term we're testing
-      const terms = testDoc.terms().out("array") as any[];
-      const targetTerm = terms.find(t => {
-        const tText = (t.text || "").toLowerCase().replace(/[.,!?;:'"]/g, "");
-        return tText === cleanWordLower;
-      });
+      // Check if compromise detects this word as a person in this sentence
+      const detectedPeople = testDoc.people().out("array") as string[];
+      const isPerson = detectedPeople.some(p => p.toLowerCase().trim() === cleanWordLower);
       
-      if (targetTerm) {
-        const tags = targetTerm.tags || [];
-        
-        // Count how compromise tags this word across different contexts
-        if (tags.some((tag: string) => tag.includes("Person") || tag.includes("FirstName") || tag.includes("LastName"))) {
+      if (isPerson) {
+        nameCount += 2; // Strong signal - compromise detected it as a person
+      }
+      
+      // Also check for ProperNoun tags using match
+      const properNounMatch = testDoc.match(`#ProperNoun`);
+      if (properNounMatch.found) {
+        const properNouns = properNounMatch.out("array") as string[];
+        if (properNouns.some(noun => noun.toLowerCase().trim() === cleanWordLower)) {
           nameCount++;
         }
-        if (tags.some((tag: string) => tag.includes("ProperNoun"))) {
-          nameCount++;
-        }
-        if (tags.some((tag: string) => tag.includes("Noun") && !tag.includes("ProperNoun"))) {
+      }
+      
+      // Check for common noun (but not proper noun)
+      const commonNounMatch = testDoc.match(`#Noun`).not("#ProperNoun");
+      if (commonNounMatch.found) {
+        const commonNouns = commonNounMatch.out("array") as string[];
+        if (commonNouns.some(noun => noun.toLowerCase().trim() === cleanWordLower)) {
           nounCount++;
         }
-        if (tags.some((tag: string) => tag.includes("Verb"))) {
+      }
+      
+      // Check for verb
+      const verbMatch = testDoc.match(`#Verb`);
+      if (verbMatch.found) {
+        const verbs = verbMatch.out("array") as string[];
+        if (verbs.some(verb => verb.toLowerCase().trim() === cleanWordLower)) {
           verbCount++;
         }
-        if (tags.some((tag: string) => 
-          tag.includes("Adjective") || tag.includes("Adverb") || 
-          tag.includes("Pronoun") || tag.includes("Determiner")
-        )) {
+      }
+      
+      // Check for other grammatical types
+      const adjMatch = testDoc.match(`#Adjective`);
+      const advMatch = testDoc.match(`#Adverb`);
+      if (adjMatch.found) {
+        const adjs = adjMatch.out("array") as string[];
+        if (adjs.some(adj => adj.toLowerCase().trim() === cleanWordLower)) {
+          otherGrammaticalCount++;
+        }
+      }
+      if (advMatch.found) {
+        const advs = advMatch.out("array") as string[];
+        if (advs.some(adv => adv.toLowerCase().trim() === cleanWordLower)) {
           otherGrammaticalCount++;
         }
       }
@@ -375,72 +395,21 @@ export async function extractMetadata(
         return false;
       });
       
-      // Decision logic - be strict but also catch common patterns:
-      // 1. If compromise says it's a ProperNoun → include it (strong signal)
-      // 2. If capitalized standalone word (likely a name) → include (catches "Joy", "MADISON")
-      // 3. If capitalized AND appears after name indicator AND NOT a common noun → include
-      // 4. If lowercase AND appears after name indicator AND compromise doesn't tag it as grammatical → include
-      // CRITICAL: ALWAYS filter against grammaticalWords first - these are NEVER names
-      if (isProperNoun && !grammaticalWords.has(cleanTextLower)) {
-        // Compromise identified it as a proper noun - trust it (unless it's a grammatical word)
+      // Decision logic - STRICT: Only add if passes comprehensive validation
+      // We now use isValidPersonName() for ALL potential names to avoid false positives
+      // This prevents words like "Today", "Osmows" from being detected as names
+      
+      // Quick pre-filter: Only process if it looks name-like
+      const looksLikeName = cleanText.length >= 2 && cleanText.length <= 20 && /^[A-Za-z-]+$/.test(cleanText);
+      if (!looksLikeName) return;
+      
+      // Skip if it's clearly not a name based on basic checks
+      if (isVerb || isCommonNoun || isAdjective || isAdverb) return;
+      
+      // Now apply the STRICT validation function
+      // This checks if compromise consistently tags it as a name across multiple contexts
+      if (isValidPersonName(cleanText, plainText)) {
         potentialNames.push(cleanText);
-      } else if (isCapitalized && !grammaticalWords.has(cleanTextLower)) {
-        // Capitalized word - might be a name
-        // Be smart: check if it appears after a name indicator OR if it's truly name-like
-        const looksLikeName = cleanText.length >= 2 && cleanText.length <= 20 && /^[A-Za-z]+$/.test(cleanText);
-        
-        if (looksLikeName && !isVerb && !isCommonNoun) {
-          // It's capitalized, not a verb, not a common noun
-          // Check name indicators first (stronger signal)
-          if (appearsAfterIndicator || appearsAfterIndicatorInText) {
-            // Appears after name indicator - likely a name
-            potentialNames.push(cleanText);
-          } else {
-            // No name indicator
-            // Check if it's a grammatical word before including
-            if (testWordTerm) {
-              const testTags = testWordTerm.tags || [];
-              const testIsGrammatical = testTags.some((tag: string) => 
-                tag.includes("Pronoun") || tag.includes("Determiner") || 
-                tag.includes("Preposition") || tag.includes("Conjunction") ||
-                tag.includes("Adverb")
-              );
-              
-              // Only include if compromise doesn't tag it as grammatical
-              // and it's not an adjective/adverb
-              if (!testIsGrammatical && !isAdjective && !isAdverb) {
-                potentialNames.push(cleanText);
-              }
-            }
-          }
-        }
-      } else if (!isCapitalized && (appearsAfterIndicator || appearsAfterIndicatorInText) && !grammaticalWords.has(cleanTextLower)) {
-        // Lowercase word after name indicator → likely a name (like "henry", "zayn", "cindy")
-        // Be careful - still check if it's a common word
-        if (testWordTerm) {
-          const testTags = testWordTerm.tags || [];
-          const testIsCommonNoun = testTags.some((tag: string) => 
-            tag.includes("Noun") && !tag.includes("ProperNoun")
-          );
-          const testIsGrammatical = testTags.some((tag: string) => 
-            tag.includes("Pronoun") || tag.includes("Determiner") || tag.includes("Verb") ||
-            tag.includes("Adjective") || tag.includes("Adverb")
-          );
-          
-          // Include ONLY if compromise doesn't tag it as a common noun or grammatical word
-          // Names are typically 2-15 characters
-          const looksLikeName = cleanText.length >= 2 && cleanText.length <= 15 && /^[a-z]+$/.test(cleanText);
-          if (looksLikeName && !testIsCommonNoun && !testIsGrammatical) {
-            potentialNames.push(cleanText.charAt(0).toUpperCase() + cleanText.slice(1).toLowerCase());
-          }
-        } else {
-          // No test word term found, but it appears after indicator
-          // Still be careful - only include if it looks name-like
-          const looksLikeName = cleanText.length >= 2 && cleanText.length <= 15 && /^[a-z]+$/.test(cleanText);
-          if (looksLikeName) {
-            potentialNames.push(cleanText.charAt(0).toUpperCase() + cleanText.slice(1).toLowerCase());
-          }
-        }
       }
     });
     

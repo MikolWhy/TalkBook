@@ -73,6 +73,7 @@ import {
   getJournalById,
   type Journal 
 } from "../../src/lib/journals/manager";
+import { getEntries, saveEntries, deleteEntry as deleteCachedEntry } from "../../src/lib/cache/entriesCache";
 
 // Mood ID to emoji mapping
 const moodMap: Record<string, string> = {
@@ -164,9 +165,8 @@ export default function JournalPage() {
 
   const loadEntries = () => {
     try {
-      const storedEntries = JSON.parse(
-        localStorage.getItem("journalEntries") || "[]"
-      );
+      // OPTIMIZATION: Use cached entries
+      const storedEntries = getEntries();
       
       // Filter entries by active journal
       const journalEntries = storedEntries.filter(
@@ -418,12 +418,8 @@ export default function JournalPage() {
     }
 
     try {
-      const storedEntries = JSON.parse(
-        localStorage.getItem("journalEntries") || "[]"
-      );
-
-      const filteredEntries = storedEntries.filter((e: any) => e.id !== entryId);
-      localStorage.setItem("journalEntries", JSON.stringify(filteredEntries));
+      // OPTIMIZATION: Use cache deletion
+      deleteCachedEntry(entryId as string);
 
       // Reload entries
       loadEntries();
