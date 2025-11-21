@@ -6,20 +6,20 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "./SidebarProvider";
 import { useState, useEffect } from "react";
-import { BookHeart, Home, Dumbbell, BarChart, ArrowLeftFromLine } from "lucide-react";
+import { BookHeart, Home, Dumbbell, BarChart, ArrowLeftFromLine, SettingsIcon, HelpCircleIcon } from "lucide-react";
 // Navigation items - shared across all pages
 const navItems = [
   { label: "home", href: "/", icon: Home },
   { label: "journal", href: "/journal", icon: BookHeart },
   { label: "habits", href: "/habits", icon: Dumbbell },
   { label: "stats", href: "/stats", icon: BarChart },
-  { label: "Settings", href: "/settings", icon: "⚙️" },
-  { label: "Help", href: "/help", icon: "❓" },
+  { label: "Settings", href: "/settings", icon: SettingsIcon },
+  { label: "Help", href: "/help", icon: HelpCircleIcon },
 ];
 
 // Profile section component to handle localStorage
 function ProfileSection() {
-  const [userName, setUserName] = useState("Your Name");
+  const [userName, setUserName] = useState("your name");
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
 
   useEffect(() => {
@@ -35,7 +35,7 @@ function ProfileSection() {
       const newName = localStorage.getItem("userName");
       const newPicture = localStorage.getItem("userProfilePicture");
       if (newName) setUserName(newName);
-      else setUserName("Your Name");
+      else setUserName("your name");
       setProfilePicture(newPicture);
     };
 
@@ -191,22 +191,6 @@ export default function Sidebar() {
         {/* <div className="px-6 py-4 border-t border-gray-200 text-center">
           <span className="text-gray-400">▼</span>
         </div> */}
-        {/* User Profile Section */}
-        <div className="px-6 py-4 border-b border-gray-200">
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
-                <span className="text-xl">👤</span>
-              </div>
-              <div className="absolute -bottom-1 -right-1 bg-yellow-400 rounded-full w-5 h-5 flex items-center justify-center">
-                <span className="text-xs">👑</span>
-              </div>
-            </div>
-            <div>
-              <p className="font-semibold text-gray-900">Your Name</p>
-            </div>
-          </div>
-        </div>
       </aside>
     </>
   );
