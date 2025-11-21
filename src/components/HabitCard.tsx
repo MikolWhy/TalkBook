@@ -95,6 +95,8 @@ export default function HabitCard({ habit, streak, todayLog, onLog, onEdit, onAr
   const isCompleted = habit.type === "numeric" 
     ? (habit.target ? currentValue >= habit.target : currentValue > 0)
     : currentValue > 0;
+
+  const showStreak = habit.frequency !== "one-time";
   
   const [quickValue, setQuickValue] = useState<string>(currentValue.toString());
   const [isEditing, setIsEditing] = useState(false);
@@ -201,15 +203,19 @@ export default function HabitCard({ habit, streak, todayLog, onLog, onEdit, onAr
 
           {/* Stats Row */}
           <div className="flex items-center gap-4 text-sm text-gray-500 mb-3">
-            <span className="flex items-center gap-1">
-              🔥 <span className="font-medium text-gray-700">{streak}</span> day streak
-            </span>
+            {showStreak && (
+              <span className="flex items-center gap-1">
+                🔥 <span className="font-medium text-gray-700">{streak}</span> day streak
+              </span>
+            )}
             {habit.type === "numeric" && habit.target && (
               <span className="flex items-center gap-1">
                 🎯 Count: <span className="font-medium text-gray-700">{habit.target}</span> {habit.unit}
               </span>
             )}
-            <span className="text-xs text-gray-400 capitalize">{habit.frequency}</span>
+            <span className="text-xs text-gray-400 capitalize">
+              {habit.frequency === "one-time" ? "one-time goal" : habit.frequency}
+            </span>
           </div>
 
           {/* Progress Bar (for numeric habits) - always show space for consistency */}
