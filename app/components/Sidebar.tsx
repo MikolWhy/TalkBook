@@ -46,21 +46,16 @@ function ProfileSection() {
   return (
     <div className="px-6 py-4 border-b border-gray-200">
       <div className="flex items-center gap-3">
-        <div className="relative">
-          <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-            {profilePicture ? (
-              <img 
-                src={profilePicture} 
-                alt="Profile" 
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <span className="text-xl">👤</span>
-            )}
-          </div>
-          <div className="absolute -bottom-1 -right-1 bg-yellow-400 rounded-full w-5 h-5 flex items-center justify-center">
-            <span className="text-xs">👑</span>
-          </div>
+        <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+          {profilePicture ? (
+            <img 
+              src={profilePicture} 
+              alt="Profile" 
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-blue-400 to-purple-500"></div>
+          )}
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-gray-900 truncate">
