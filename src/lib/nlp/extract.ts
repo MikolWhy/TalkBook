@@ -53,6 +53,7 @@
 // Import NLP libraries
 import nlp from "compromise";
 import * as chrono from "chrono-node";
+import { isBlacklisted } from "../blacklist/manager";
 
 // Helper function to strip HTML tags from rich text editor content
 // Converts HTML to plain text for NLP processing
@@ -541,6 +542,10 @@ export async function extractMetadata(
   } catch (error) {
     console.error("Error extracting dates:", error);
   }
+
+  // Filter out blacklisted words from people and topics
+  result.people = result.people.filter(person => !isBlacklisted(person));
+  result.topics = result.topics.filter(topic => !isBlacklisted(topic));
 
   return result;
 }

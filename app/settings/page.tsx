@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "../components/DashboardLayout";
+import { getBlacklist, addToBlacklist, removeFromBlacklist } from "../../src/lib/blacklist/manager";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -22,6 +23,14 @@ export default function SettingsPage() {
   const [passwordError, setPasswordError] = useState("");
   const [passwordSuccess, setPasswordSuccess] = useState("");
   const [profileSuccess, setProfileSuccess] = useState("");
+  
+  // Blacklist settings
+  const [blacklist, setBlacklist] = useState<string[]>([]);
+  const [blacklistInput, setBlacklistInput] = useState("");
+  const [blacklistSuccess, setBlacklistSuccess] = useState("");
+  
+  // Reset confirmation
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   useEffect(() => {
     // Load existing settings
@@ -32,6 +41,7 @@ export default function SettingsPage() {
     setHasPassword(!!savedPassword);
     setUserName(savedName || "");
     setProfilePicture(savedPicture);
+    setBlacklist(getBlacklist());
   }, []);
 
   const handleSetPassword = () => {
@@ -138,6 +148,51 @@ export default function SettingsPage() {
     localStorage.removeItem("userProfilePicture");
     setProfileSuccess("Profile picture removed!");
     window.dispatchEvent(new Event('storage'));
+  };
+
+  // Blacklist handlers
+  const handleAddToBlacklist = () => {
+    const word = blacklistInput.trim();
+    if (word && !blacklist.includes(word.toLowerCase())) {
+      addToBlacklist(word);
+      setBlacklist(getBlacklist());
+      setBlacklistInput("");
+      setBlacklistSuccess(`"${word}" added to blacklist`);
+      setTimeout(() => setBlacklistSuccess(""), 3000);
+    }
+  };
+
+  const handleRemoveFromBlacklist = (word: string) => {
+    removeFromBlacklist(word);
+    setBlacklist(getBlacklist());
+    setBlacklistSuccess(`"${word}" removed from blacklist`);
+    setTimeout(() => setBlacklistSuccess(""), 3000);
+  };
+
+  // Reset all data
+  const handleResetAllData = () => {
+    // Clear all localStorage except password and profile settings
+    localStorage.removeItem("journalEntries");
+    localStorage.removeItem("talkbook-used-prompts");
+    localStorage.removeItem("talkbook-blacklist");
+    localStorage.removeItem("talkbook-journals");
+    localStorage.removeItem("talkbook-active-journal");
+    
+    // Reinitialize with default journal
+    localStorage.setItem("talkbook-journals", JSON.stringify([{
+      id: "journal-1",
+      name: "Journal-1",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }]));
+    localStorage.setItem("talkbook-active-journal", "journal-1");
+    
+    setBlacklist([]);
+    setShowResetConfirm(false);
+    alert("All journal data has been reset. Your profile and password settings were preserved.");
+    
+    // Redirect to journal page
+    router.push("/journal");
   };
 
   return (
@@ -306,6 +361,114 @@ export default function SettingsPage() {
             <p className="text-green-600 text-sm mt-4">✓ {passwordSuccess}</p>
           )}
         </div>
+
+        {/* Blacklist Settings */}
+        <div className="bg-white border-2 border-gray-100 rounded-2xl p-6 shadow-sm mb-6">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Word Blacklist</h2>
+          <p className="text-sm text-gray-600 mb-4">
+            Words added to the blacklist will not appear in prompts or topic suggestions, even if extracted from your entries.
+          </p>
+
+          {/* Add to Blacklist */}
+          <div className="mb-4">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Add Word to Blacklist
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={blacklistInput}
+                onChange={(e) => setBlacklistInput(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === "Enter") {
+                    handleAddToBlacklist();
+                  }
+                }}
+                placeholder="Enter a word..."
+                maxLength={30}
+                className="flex-1 px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-400"
+              />
+              <button
+                onClick={handleAddToBlacklist}
+                disabled={!blacklistInput.trim()}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-semibold"
+              >
+                Add
+              </button>
+            </div>
+          </div>
+
+          {/* Blacklist Display */}
+          {blacklist.length > 0 ? (
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Blacklisted Words ({blacklist.length})
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {blacklist.map((word) => (
+                  <div
+                    key={word}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 border-2 border-gray-200 rounded-lg"
+                  >
+                    <span className="text-sm font-medium text-gray-900">{word}</span>
+                    <button
+                      onClick={() => handleRemoveFromBlacklist(word)}
+                      className="text-red-600 hover:text-red-700 font-bold text-sm"
+                      title="Remove from blacklist"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500 italic">No blacklisted words yet</p>
+          )}
+
+          {blacklistSuccess && (
+            <p className="text-green-600 text-sm mt-3">✓ {blacklistSuccess}</p>
+          )}
+        </div>
+
+        {/* Reset Data */}
+        <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-6 shadow-sm">
+          <h2 className="text-xl font-bold text-red-900 mb-4">⚠️ Reset All Data</h2>
+          <p className="text-sm text-red-700 mb-4">
+            This will permanently delete all journal entries, extracted data, prompts, and journals. 
+            Your profile settings and password will be preserved.
+          </p>
+          
+          {!showResetConfirm ? (
+            <button
+              onClick={() => setShowResetConfirm(true)}
+              className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-semibold"
+            >
+              Reset All Data
+            </button>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm font-bold text-red-900">
+                Are you absolutely sure? This action cannot be undone!
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleResetAllData}
+                  className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-semibold"
+                >
+                  Yes, Reset Everything
+                </button>
+                <button
+                  onClick={() => setShowResetConfirm(false)}
+                  className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-semibold"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
       </div>
     </DashboardLayout>
   );
