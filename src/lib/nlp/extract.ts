@@ -1,9 +1,9 @@
-// nlp extraction - extracts entities and sentiment from journal entry text
-// uses compromise for people/topics, chrono-node for dates, wink-sentiment for sentiment
+// nlp extraction - extracts entities from journal entry text
+// uses compromise for people/topics, chrono-node for dates
 //
 // WHAT WE'RE CREATING:
 // - A function that reads journal entry text and extracts meaningful information
-// - Extracts: people (names), topics (nouns), dates mentioned, emotional sentiment
+// - Extracts: people (names), topics (nouns), dates mentioned
 // - This extracted data is used for: prompt generation, statistics, insights
 // - All processing happens client-side (privacy-first, no data sent to servers)
 //
@@ -24,7 +24,6 @@
 // LIBRARIES USED:
 // - compromise: extracts people (names) and topics (nouns) from text
 // - chrono-node: extracts dates mentioned in text (e.g., "yesterday", "next week")
-// - wink-sentiment: analyzes emotional tone (positive/negative sentiment score)
 //
 // DEVELOPMENT NOTES:
 // - Process plain text (strip HTML from rich text editor before processing)
@@ -36,10 +35,9 @@
 //
 // TODO: implement extractMetadata function
 // - Input: plain text string from journal entry
-// - Output: object with { people: string[], topics: string[], dates: Date[], sentiment: number }
+// - Output: object with { people: string[], topics: string[], dates: Date[] }
 // - Use compromise to extract people and topics
 // - Use chrono-node to extract dates
-// - Use wink-sentiment to get sentiment score
 // - Return normalized, deduplicated results
 //
 // SYNTAX: 
@@ -52,5 +50,515 @@
 //   // implementation
 // }
 
-// TODO: implement extractMetadata function
+// Import NLP libraries
+import nlp from "compromise";
+import * as chrono from "chrono-node";
+import { isBlacklisted } from "../blacklist/manager";
 
+// Helper function to strip HTML tags from rich text editor content
+// Converts HTML to plain text for NLP processing
+function stripHTML(html: string): string {
+  // Remove HTML tags using regex
+  // This is safe because we're only processing user's own journal entries
+  return html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+// Extract metadata from journal entry text
+// Input: HTML string from rich text editor
+// Output: Object with extracted people, topics, and dates
+export async function extractMetadata(
+  text: string
+): Promise<{
+  people: string[];
+  topics: string[];
+  dates: Date[];
+}> {
+  // Handle empty text
+  if (!text || text.trim().length === 0) {
+    return {
+      people: [],
+      topics: [],
+      dates: [],
+    };
+  }
+
+  // Convert HTML to plain text
+  const plainText = stripHTML(text);
+  
+  // Initialize result object
+  const result = {
+    people: [] as string[],
+    topics: [] as string[],
+    dates: [] as Date[],
+  };
+
+  // 1. Extract people (names) using compromise
+  try {
+    const doc = nlp(plainText);
+    
+    // HOW COMPROMISE WORKS:
+    // compromise analyzes text and identifies named entities (people, places, organizations)
+    // .people() = uses built-in knowledge base to find common names
+    // This catches names like "John", "Sarah", "Michael", etc.
+    const people = doc.people().out("array") as string[];
+    
+    // Get all terms with their grammatical tags
+    const allTerms = doc.terms().out("array") as any[];
+    
+    // Name indicators - words that often precede names in natural language
+    // These are linguistic patterns, not hardcoded word lists
+    // Added more indicators to catch common patterns like "talking to X", "went with X", "jumped on X", etc.
+    const nameIndicators = [
+      // Prepositions that commonly precede names
+      "with", "to", "from", "about", "and", "or", "on", "at",
+      // Action verbs that commonly precede names
+      "met", "talked", "talking", "saw", "called", "texted", "emailed", "visited",
+      "went", "came", "spoke", "speaking", "hang", "hanging", "meet", "meeting",
+      "jumped", "jump", "ran", "run", "walked", "walk", "sat", "sit", "stood", "stand",
+      "played", "play", "worked", "work", "studied", "study"
+    ];
+    
+    // Find potential names using compromise's linguistic analysis
+    const potentialNames: string[] = [];
+    
+    allTerms.forEach((term, index) => {
+      const text = term.text || term;
+      const tags = term.tags || [];
+      const cleanText = text.replace(/[.,!?;:]/g, "");
+      const cleanTextLower = cleanText.toLowerCase(); // Define this early!
+      
+      // Skip very short words
+      if (cleanText.length <= 1) return;
+      
+      // Use compromise's tags - check if it's a ProperNoun
+      // ProperNoun = capitalized word that compromise identifies as a proper noun
+      const isProperNoun = tags.some((tag: string) => tag.includes("ProperNoun") || tag.includes("Person"));
+      
+      // Check if it's capitalized (potential name)
+      const isCapitalized = text[0] === text[0].toUpperCase() && text[0] !== text[0].toLowerCase();
+      
+      // Skip if compromise tags it as a common noun, verb, adjective, etc.
+      // This prevents "work" from "from work" being detected
+      const isCommonNoun = tags.some((tag: string) => 
+        tag.includes("Noun") && !tag.includes("ProperNoun")
+      );
+      const isVerb = tags.some((tag: string) => tag.includes("Verb"));
+      const isAdjective = tags.some((tag: string) => tag.includes("Adjective"));
+      const isAdverb = tags.some((tag: string) => tag.includes("Adverb"));
+      const isPronoun = tags.some((tag: string) => tag.includes("Pronoun"));
+      const isDeterminer = tags.some((tag: string) => tag.includes("Determiner"));
+      
+      // Skip grammatical words that are clearly not names
+      // Skip pronouns, determiners, common prepositions, common conjunctions
+      if (isPronoun || isDeterminer) {
+        return;
+      }
+      
+      // CRITICAL: Filter out common English words that are often capitalized but aren't names
+      // These are prepositions, conjunctions, adverbs, common nouns that appear mid-sentence
+      const commonNonNames = new Set([
+        // Prepositions
+        "on", "in", "at", "to", "from", "with", "about", "after", "before", "during", "until", "for",
+        // Conjunctions
+        "and", "or", "but", "so", "then",
+        // Common adverbs/determiners
+        "the", "a", "an", "there", "here", "where", "when", "why", "how",
+        "somewhere", "somehow", "anywhere", "everywhere",
+        // Pronouns
+        "we", "they", "i", "you", "he", "she", "it", "us", "them",
+        // Common verbs that might be capitalized mid-sentence or appear after indicators
+        "had", "was", "were", "did", "does", "has", "have", "got", "get",
+        "talk", "talked", "talking", "talks",
+        "went", "go", "going", "gone",
+        "saw", "see", "seeing", "seen",
+        "met", "meet", "meeting", "meets",
+        "called", "call", "calling", "calls",
+        "texted", "text", "texting", "texts",
+        "jumped", "jump", "jumping", "jumps",
+        "ran", "run", "running", "runs",
+        "walked", "walk", "walking", "walks",
+        "played", "play", "playing", "plays",
+        "worked", "work", "working", "works",
+        "studied", "study", "studying", "studies",
+        // Time/place words
+        "today", "tomorrow", "yesterday", "later", "earlier",
+        // Common nouns often capitalized but not names - EXPANDED
+        "group", "team", "project", "meeting", "library", "school", "university", "company",
+        "pumpkin", "field", "house", "car", "phone", "book", "movie", "game",
+        "gym", "park", "store", "mall", "restaurant", "cafe", "coffee", "shop",
+        "office", "work", "home", "place", "room", "building", "street", "city",
+        "beach", "pool", "lake", "river", "mountain", "hill", "forest", "woods",
+        "party", "event", "concert", "show", "class", "course", "lesson",
+        // Other common words
+        "our", "your", "my", "his", "her", "their", "its"
+      ]);
+      
+      if (commonNonNames.has(cleanTextLower)) {
+        return; // Skip common non-name words
+      }
+      
+      // Additional check: analyze the word in a sentence context using compromise
+      // This helps catch words that compromise might not tag correctly in isolation
+      // Create a test sentence to see how compromise analyzes it
+      const testSentence = `I met ${cleanText} yesterday.`;
+      const testDoc = nlp(testSentence);
+      const testTerms = testDoc.terms().out("array") as any[];
+      const testWordTerm = testTerms.find(t => {
+        const tText = (t.text || "").toLowerCase().replace(/[.,!?;:]/g, "");
+        return tText === cleanTextLower;
+      });
+      
+      if (testWordTerm) {
+        const testTags = testWordTerm.tags || [];
+        const testIsPronoun = testTags.some((tag: string) => tag.includes("Pronoun"));
+        const testIsDeterminer = testTags.some((tag: string) => tag.includes("Determiner"));
+        const testIsVerb = testTags.some((tag: string) => tag.includes("Verb"));
+        const testIsAdjective = testTags.some((tag: string) => tag.includes("Adjective"));
+        const testIsAdverb = testTags.some((tag: string) => tag.includes("Adverb"));
+        const testIsCommonNoun = testTags.some((tag: string) => 
+          tag.includes("Noun") && !tag.includes("ProperNoun")
+        );
+        
+        // If compromise tags it as grammatical in a sentence context, skip it
+        if (testIsPronoun || testIsDeterminer || testIsVerb || testIsAdjective || testIsAdverb) {
+          return;
+        }
+        
+        // If it's a common noun in sentence context, skip it (prevents "work" from "from work")
+        if (testIsCommonNoun && !isProperNoun) {
+          return;
+        }
+      }
+      
+      // Check if previous word(s) contain a name indicator
+      // Check up to 2 words back to catch patterns like "talking with" → "henry"
+      let appearsAfterIndicator = false;
+      if (index > 0) {
+        // Check immediate previous term
+        const prevTerm = allTerms[index - 1];
+        const prevText = (prevTerm?.text || "").toLowerCase().replace(/[.,!?;:]/g, "");
+        if (nameIndicators.includes(prevText)) {
+          appearsAfterIndicator = true;
+        }
+        
+        // Also check 2 terms back for patterns like "talking with" → "henry"
+        // where "with" is the immediate previous term but "talking" is also a name indicator
+        if (!appearsAfterIndicator && index > 1) {
+          const prevTerm2 = allTerms[index - 2];
+          const prevText2 = (prevTerm2?.text || "").toLowerCase().replace(/[.,!?;:]/g, "");
+          // If previous term is "with", "to", "on", "at" and term before that is a verb indicator
+          if (["with", "to", "on", "at"].includes(prevText) && 
+              ["talking", "speaking", "went", "jumped", "walked", "ran", "met", "meet", "meeting"].includes(prevText2)) {
+            appearsAfterIndicator = true;
+          }
+        }
+      }
+      
+      // Also check in the full text for patterns like "with Zayn", "with zayn", "talking to henry", "and then Michael"
+      // Handle direct patterns, patterns with prepositions, and patterns with words in between
+      const textLower = plainText.toLowerCase();
+      const appearsAfterIndicatorInText = nameIndicators.some(indicator => {
+        // Direct pattern: "indicator X" (e.g., "with henry", "met zayn", "saw cindy")
+        const directPattern = new RegExp(`\\b${indicator}\\s+${cleanTextLower}\\b`, "i");
+        if (directPattern.test(textLower)) return true;
+        
+        // Pattern with one word in between: "indicator WORD X" (e.g., "and then Michael", "saw someone like cindy")
+        // Allow common words like "then", "also", "even", "just", "really" between indicator and name
+        const oneWordBetween = new RegExp(`\\b${indicator}\\s+\\w+\\s+${cleanTextLower}\\b`, "i");
+        if (oneWordBetween.test(textLower)) {
+          // Verify the word in between isn't a name indicator itself (avoid false positives)
+          const betweenMatch = textLower.match(new RegExp(`\\b${indicator}\\s+(\\w+)\\s+${cleanTextLower}\\b`, "i"));
+          if (betweenMatch && betweenMatch[1]) {
+            const wordBetween = betweenMatch[1].toLowerCase();
+            // Common connector words that can appear between indicators and names
+            const connectors = ["then", "also", "even", "just", "really", "sometimes", "maybe", "probably", "somewhere", "somehow"];
+            if (connectors.includes(wordBetween) || !nameIndicators.includes(wordBetween)) {
+              return true;
+            }
+          }
+        }
+        
+        // Pattern with "to": "indicator to X" (e.g., "talking to henry", "went to zayn")
+        if (["talking", "speaking", "went", "go", "going", "walked", "walk", "ran", "run"].includes(indicator)) {
+          const toPattern = new RegExp(`\\b${indicator}\\s+to\\s+${cleanTextLower}\\b`, "i");
+          if (toPattern.test(textLower)) return true;
+        }
+        
+        // Pattern with "with": "indicator with X" (e.g., "talking with henry", "went with cindy")
+        if (["talking", "speaking", "went", "go", "going", "walked", "walk", "met", "meet", "meeting", "jumped", "jump", "played", "play"].includes(indicator)) {
+          const withPattern = new RegExp(`\\b${indicator}\\s+with\\s+${cleanTextLower}\\b`, "i");
+          if (withPattern.test(textLower)) return true;
+        }
+        
+        // Pattern with "on": "indicator on X" (e.g., "jumped on cindy", "saw on screen Michael")
+        if (["jumped", "jump", "went", "go", "going", "ran", "run", "walked", "walk", "saw", "see"].includes(indicator)) {
+          const onPattern = new RegExp(`\\b${indicator}\\s+on\\s+${cleanTextLower}\\b`, "i");
+          if (onPattern.test(textLower)) return true;
+        }
+        
+        return false;
+      });
+      
+      // Decision logic - be strict but also catch common patterns:
+      // 1. If compromise says it's a ProperNoun → include it (strong signal)
+      // 2. If capitalized standalone word (likely a name) → include (catches "Joy", "MADISON")
+      // 3. If capitalized AND appears after name indicator AND NOT a common noun → include
+      // 4. If lowercase AND appears after name indicator AND compromise doesn't tag it as grammatical → include
+      // CRITICAL: ALWAYS filter against commonNonNames first - these are NEVER names
+      if (isProperNoun && !commonNonNames.has(cleanTextLower)) {
+        // Compromise identified it as a proper noun - trust it (unless it's in commonNonNames)
+        potentialNames.push(cleanText);
+      } else if (isCapitalized && !commonNonNames.has(cleanTextLower)) {
+        // Capitalized word - might be a name
+        // Be smart: check if it appears after a name indicator OR if it's truly name-like
+        const looksLikeName = cleanText.length >= 2 && cleanText.length <= 20 && /^[A-Za-z]+$/.test(cleanText);
+        
+        if (looksLikeName && !isVerb && !isCommonNoun) {
+          // It's capitalized, not a verb, not a common noun
+          // Check name indicators first (stronger signal)
+          if (appearsAfterIndicator || appearsAfterIndicatorInText) {
+            // Appears after name indicator - likely a name
+            potentialNames.push(cleanText);
+          } else {
+            // No name indicator
+            // Check if it's a grammatical word before including
+            if (testWordTerm) {
+              const testTags = testWordTerm.tags || [];
+              const testIsGrammatical = testTags.some((tag: string) => 
+                tag.includes("Pronoun") || tag.includes("Determiner") || 
+                tag.includes("Preposition") || tag.includes("Conjunction") ||
+                tag.includes("Adverb")
+              );
+              
+              // Only include if compromise doesn't tag it as grammatical
+              // and it's not an adjective/adverb
+              if (!testIsGrammatical && !isAdjective && !isAdverb) {
+                potentialNames.push(cleanText);
+              }
+            }
+          }
+        }
+      } else if (!isCapitalized && (appearsAfterIndicator || appearsAfterIndicatorInText) && !commonNonNames.has(cleanTextLower)) {
+        // Lowercase word after name indicator → likely a name (like "henry", "zayn", "cindy")
+        // Be careful - still check if it's a common word
+        if (testWordTerm) {
+          const testTags = testWordTerm.tags || [];
+          const testIsCommonNoun = testTags.some((tag: string) => 
+            tag.includes("Noun") && !tag.includes("ProperNoun")
+          );
+          const testIsGrammatical = testTags.some((tag: string) => 
+            tag.includes("Pronoun") || tag.includes("Determiner") || tag.includes("Verb") ||
+            tag.includes("Adjective") || tag.includes("Adverb")
+          );
+          
+          // Include ONLY if compromise doesn't tag it as a common noun or grammatical word
+          // Names are typically 2-15 characters
+          const looksLikeName = cleanText.length >= 2 && cleanText.length <= 15 && /^[a-z]+$/.test(cleanText);
+          if (looksLikeName && !testIsCommonNoun && !testIsGrammatical) {
+            potentialNames.push(cleanText.charAt(0).toUpperCase() + cleanText.slice(1).toLowerCase());
+          }
+        } else {
+          // No test word term found, but it appears after indicator
+          // Still be careful - only include if it looks name-like
+          const looksLikeName = cleanText.length >= 2 && cleanText.length <= 15 && /^[a-z]+$/.test(cleanText);
+          if (looksLikeName) {
+            potentialNames.push(cleanText.charAt(0).toUpperCase() + cleanText.slice(1).toLowerCase());
+          }
+        }
+      }
+    });
+    
+    // Combine compromise's results with our detection
+    const allPeople = [...people, ...potentialNames];
+    
+    // Normalize: capitalize first letter of each word, remove duplicates (case-insensitive)
+    // IMPORTANT: Preserve multi-word names (e.g., "Mary Jane" stays as "Mary Jane", not "Maryjane")
+    const normalizedNames = allPeople
+      .map((name) => {
+        // Remove punctuation but preserve spaces (for multi-word names)
+        // Also remove apostrophes and quotes that might create malformed names like "Guyhenrywhat's"
+        const clean = name.replace(/[.,!?;:'"]/g, "").trim();
+        if (clean.length <= 1) return null; // Filter out single characters
+        
+        // Filter out names that are suspiciously long (likely concatenated words)
+        // Most names are 2-20 characters per word, so a single "name" over 25 chars is suspicious
+        if (clean.length > 25 && !clean.includes(" ")) {
+          return null; // Likely a concatenated phrase, not a real name
+        }
+        
+        // Normalize: capitalize first letter of each word, lowercase rest
+        // Split by spaces to handle multi-word names properly
+        const words = clean.split(/\s+/).filter(word => word.length > 0);
+        if (words.length === 0) return null;
+        
+        // Filter out words that contain non-letter characters (except hyphens for names like "Mary-Jane")
+        const validWords = words.filter(word => /^[a-zA-Z-]+$/.test(word));
+        if (validWords.length === 0) return null;
+        
+        // Capitalize first letter of each word, lowercase the rest
+        // Also deduplicate repeated words (e.g. "Michael Michael" -> "Michael")
+        const uniqueWords = new Set<string>();
+        const normalizedWords: string[] = [];
+        
+        validWords.forEach(word => {
+          // Handle hyphenated names (e.g., "Mary-Jane")
+          const normalizedWord = word.split("-")
+            .map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+            .join("-");
+            
+          const lowerWord = normalizedWord.toLowerCase();
+          if (!uniqueWords.has(lowerWord)) {
+            uniqueWords.add(lowerWord);
+            normalizedWords.push(normalizedWord);
+          }
+        });
+        
+        const normalized = normalizedWords.join(" ");
+        
+        return normalized;
+      })
+      .filter((name): name is string => name !== null && name.length > 1); // Remove nulls and single chars
+    
+    // Use case-insensitive deduplication
+    const seen = new Set<string>();
+    result.people = normalizedNames.filter((name) => {
+      const lower = name.toLowerCase().trim();
+      if (seen.has(lower)) {
+        return false; // Already seen (case-insensitive)
+      }
+      seen.add(lower);
+      return true;
+    });
+  } catch (error) {
+    console.error("Error extracting people:", error);
+  }
+
+  // 2. Extract topics (nouns) using compromise
+  try {
+    const doc = nlp(plainText);
+    
+    // HOW COMPROMISE WORKS:
+    // compromise analyzes text and tags each word with parts of speech
+    // .nouns() = gets all nouns
+    // .not("#Pronoun") = excludes pronouns (our, your, my, etc.)
+    // .not("#Determiner") = excludes determiners (the, a, an, this, that)
+    // .not("#Preposition") = excludes prepositions (in, on, at, with)
+    // .not("#Conjunction") = excludes conjunctions (and, or, but)
+    // .not("#Adjective") = excludes adjectives (great, good, bad, etc.)
+    // .not("#Adverb") = excludes adverbs (very, really, today, etc.)
+    // .not("#Value") = excludes numbers
+    //
+    // This is MUCH smarter than hardcoding word lists - it uses linguistic analysis!
+    // CRITICAL: Exclude proper nouns (names) and people - these should only appear in people extraction, not topics
+    const nouns = doc
+      .nouns()
+      .not("#Pronoun")           // Filters out pronouns: our, your, my, his, her, their, etc.
+      .not("#Determiner")        // Filters out determiners: the, a, an, this, that, these, those
+      .not("#Preposition")       // Filters out prepositions: in, on, at, with, for, of, to
+      .not("#Conjunction")       // Filters out conjunctions: and, or, but, so
+      .not("#Adjective")         // Filters out adjectives: great, good, bad, nice, etc.
+      .not("#Adverb")            // Filters out adverbs: very, really, today, tomorrow, etc.
+      .not("#Value")             // Filters out numbers
+      .not("#ProperNoun")        // CRITICAL: Exclude proper nouns (names) - compromise's built-in filter
+      .not("#Person")            // CRITICAL: Exclude people/names - compromise's built-in filter
+      .out("array") as string[];
+    
+    // Minimal stop words list - only for words compromise might miss
+    // Most filtering is done by compromise's .not() filters above
+    const stopWords = new Set([
+      "is", "are", "was", "were", "be", "been", "being", // Verbs that might slip through
+      "have", "has", "had", "do", "does", "did"          // Common verbs
+    ]);
+    
+    // CRITICAL: Filter out pronouns that compromise might miss
+    // These are common pronouns that slip through as nouns (like "it", "her", "him", "they", "guy")
+    const commonPronouns = new Set([
+      // Personal pronouns
+      "it", "its", "he", "him", "she", "her", "they", "them", "we", "us",
+      // Possessive pronouns
+      "his", "hers", "theirs", "ours", "yours", "mine",
+      // Demonstrative pronouns
+      "this", "that", "these", "those",
+      // Interrogative pronouns
+      "what", "which", "who", "whom", "whose", "where", "when", "why", "how",
+      // Common words that are often pronouns
+      "guy", "guys", "person", "people", "thing", "things", "stuff",
+    ]);
+    
+    // Additional filter: exclude adjectives and adverbs that compromise might classify as nouns
+    // These words don't work well as topics in prompts
+    const invalidTopicWords = new Set([
+      "great", "good", "bad", "nice", "fine", "okay", "ok", "well", "better", "best", "worst",
+      "big", "small", "large", "little", "huge", "tiny", "long", "short", "high", "low",
+      "new", "old", "young", "hot", "cold", "warm", "cool", "fast", "slow", "quick",
+      "easy", "hard", "difficult", "simple", "complex", "important", "special", "normal",
+      "today", "tomorrow", "yesterday", "now", "then", "here", "there", "where", "when",
+      "very", "really", "quite", "too", "so", "much", "many", "more", "most", "less", "least",
+    ]);
+    
+    // Extract single words from noun phrases and filter
+    // CRITICAL: Also filter out proper nouns (names) that might have slipped through
+    const singleWordTopics = nouns
+      .flatMap((noun) => {
+        // Split phrases into individual words
+        return noun.split(/\s+/).filter((word) => word.length > 2);
+      })
+      .filter((word) => {
+        const lower = word.toLowerCase().replace(/[.,!?;:]/g, "");
+        // Filter out stop words, pronouns, invalid topic words, and very short words
+        if (
+          stopWords.has(lower) ||
+          commonPronouns.has(lower) ||
+          invalidTopicWords.has(lower) ||
+          lower.length <= 2
+        ) {
+          return false;
+        }
+        
+        // CRITICAL: Check if this word is a proper noun (name) using compromise
+        // This catches names that compromise's .not() filters might have missed
+        try {
+          const testDoc = nlp(word);
+          const terms = testDoc.terms().out("array") as any[];
+          const wordTerm = terms.find(t => {
+            const tText = (t.text || "").toLowerCase().replace(/[.,!?;:]/g, "");
+            return tText === lower;
+          });
+          
+          if (wordTerm) {
+            const tags = wordTerm.tags || [];
+            // If compromise tags it as a proper noun or person, exclude it
+            const isProperNoun = tags.some((tag: string) => 
+              tag.includes("ProperNoun") || tag.includes("Person")
+            );
+            if (isProperNoun) {
+              return false; // This is a name, exclude it
+            }
+          }
+        } catch (error) {
+          // If compromise fails, allow it (better to include than exclude incorrectly)
+        }
+        
+        return true;
+      })
+      .map((word) => word.toLowerCase().replace(/[.,!?;:]/g, ""));
+    
+    result.topics = [...new Set(singleWordTopics)].slice(0, 10); // Limit to top 10 topics
+  } catch (error) {
+    console.error("Error extracting topics:", error);
+  }
+
+  // 3. Extract dates using chrono-node
+  try {
+    const dateResults = chrono.parse(plainText);
+    result.dates = dateResults.map((result) => result.start.date());
+  } catch (error) {
+    console.error("Error extracting dates:", error);
+  }
+
+  // Filter out blacklisted words from people and topics
+  result.people = result.people.filter(person => !isBlacklisted(person));
+  result.topics = result.topics.filter(topic => !isBlacklisted(topic));
+
+  return result;
+}

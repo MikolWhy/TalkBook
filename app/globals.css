@@ -8,8 +8,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-cabin);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -22,7 +21,9 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "Cabin", sans-serif;
+  font-optical-sizing: auto;
+  font-variation-settings: "wdth" 100;
 }
 
 /* Tiptap Editor Styles */
@@ -108,4 +109,67 @@ body {
   background-color: #fef08a;
   padding: 0.1rem 0.2rem;
   border-radius: 0.2rem;
+}
+
+/* iOS List Scrollbar Styles */
+.ios-listbox-list {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+}
+
+.ios-listbox-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.ios-listbox-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ios-listbox-list::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.ios-listbox-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* iOS List Item Entrance Animation */
+@keyframes iosListItemEnter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ios-list-item-animate {
+  animation: iosListItemEnter 0.3s cubic-bezier(0.4, 0, 0.2, 1) backwards;
+}
+
+.ios-list-item-animate:nth-child(1) {
+  animation-delay: 0.02s;
+}
+
+.ios-list-item-animate:nth-child(2) {
+  animation-delay: 0.04s;
+}
+
+.ios-list-item-animate:nth-child(3) {
+  animation-delay: 0.06s;
+}
+
+.ios-list-item-animate:nth-child(4) {
+  animation-delay: 0.08s;
+}
+
+.ios-list-item-animate:nth-child(5) {
+  animation-delay: 0.1s;
+}
+
+.ios-list-item-animate:nth-child(n+6) {
+  animation-delay: 0.12s;
 }
