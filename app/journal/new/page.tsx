@@ -84,8 +84,10 @@ import PromptSuggestions from "../../../src/components/PromptSuggestions";
 import TopicSuggestions from "../../../src/components/TopicSuggestions";
 import { extractMetadata } from "../../../src/lib/nlp/extract";
 import { generatePrompts, filterUsedPrompts, filterExpiredPrompts, Prompt, markPromptAsUsed, getTopicSuggestions, TopicSuggestion } from "../../../src/lib/nlp/prompts";
-import { getActiveJournalId } from "../../../src/lib/journals/manager";
+import { getActiveJournalId, getJournals, type Journal } from "../../../src/lib/journals/manager";
 import { getEntries, addEntry } from "../../../src/lib/cache/entriesCache";
+import { awardEntryXP } from "../../../src/lib/gamification/xp";
+import XPNotification from "../../components/XPNotification";
 
 // TODO: implement entry creation form
 
@@ -105,6 +107,8 @@ export default function NewEntryPage() {
   const [tags, setTags] = useState<string[]>([]); // State to store tags
   const [tagInput, setTagInput] = useState(""); // State for tag input field
   const [cardColor, setCardColor] = useState<string>("default"); // State for card color
+  const [journals, setJournals] = useState<Journal[]>([]); // All available journals
+  const [selectedJournalId, setSelectedJournalId] = useState<string>(""); // Selected journal for this entry
 
   // ============================================================================
   // MICHAEL'S CODE - NLP Prompt System State
@@ -114,11 +118,26 @@ export default function NewEntryPage() {
     topics: string[];
     dates: Date[];
   } | null>(null);
+
+  // Load journals and set default selected journal
+  useEffect(() => {
+    const allJournals = getJournals();
+    setJournals(allJournals);
+    const activeJournal = getActiveJournalId();
+    setSelectedJournalId(activeJournal || (allJournals.length > 0 ? allJournals[0].id : ""));
+  }, []);
   
   // State for prompts (SIMPLIFIED: Only people prompts are clickable)
   const [allPrompts, setAllPrompts] = useState<Prompt[]>([]); // All available prompts (people only)
   const [topicSuggestions, setTopicSuggestions] = useState<TopicSuggestion[]>([]); // Topic suggestions (non-clickable)
   const [insertedPromptIds, setInsertedPromptIds] = useState<Set<string>>(new Set()); // Prompts currently in editor (temporarily used)
+  
+  // XP Notification State
+  const [showXPNotification, setShowXPNotification] = useState(false);
+  const [xpEarned, setXpEarned] = useState(0);
+  const [leveledUp, setLeveledUp] = useState(false);
+  const [oldLevel, setOldLevel] = useState<number | undefined>(undefined);
+  const [newLevel, setNewLevel] = useState<number | undefined>(undefined);
   
   // Filter prompts: show only those NOT currently inserted in editor
   const availablePrompts = allPrompts.filter(p => !insertedPromptIds.has(p.id));
@@ -501,7 +520,7 @@ export default function NewEntryPage() {
       mood: mood, // Selected mood or null
       tags: tags, // Array of tag strings
       cardColor: cardColor, // Card color selection
-      journalId: getActiveJournalId(), // Assign to active journal
+      journalId: selectedJournalId || getActiveJournalId(), // Use selected journal or fallback to active
       createdAt: new Date().toISOString(), // ISO 8601 timestamp string
       updatedAt: new Date().toISOString(), // Same as createdAt for new entries
       draft: true, // Mark as draft
@@ -552,7 +571,7 @@ export default function NewEntryPage() {
       mood: mood,
       tags: tags,
       cardColor: cardColor, // Card color selection
-      journalId: getActiveJournalId(), // Assign to active journal
+      journalId: selectedJournalId || getActiveJournalId(), // Use selected journal or fallback to active
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       draft: false, // Not a draft
@@ -583,8 +602,58 @@ export default function NewEntryPage() {
       });
     }
 
-    // Navigate back to journal page
-    router.push("/journal");
+    // Award XP for entry
+    const wordCount = content.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().split(/\s+/).filter((w: string) => w.length > 0).length;
+    
+    // Calculate current journal streak from all entries
+    const allEntries = getEntries().filter((e: any) => !e.draft);
+    const sortedEntries = [...allEntries].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+    
+    let journalStreak = 0;
+    if (sortedEntries.length > 0) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const lastEntry = new Date(sortedEntries[0].createdAt);
+      lastEntry.setHours(0, 0, 0, 0);
+      const daysSinceLastEntry = Math.floor((today.getTime() - lastEntry.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (daysSinceLastEntry <= 1) {
+        let streakDate = new Date(lastEntry);
+        for (let i = 0; i < sortedEntries.length; i++) {
+          const entryDate = new Date(sortedEntries[i].createdAt);
+          entryDate.setHours(0, 0, 0, 0);
+          const diff = Math.floor((streakDate.getTime() - entryDate.getTime()) / (1000 * 60 * 60 * 24));
+          if (diff === 0) {
+            journalStreak++;
+          } else if (diff === 1) {
+            journalStreak++;
+            streakDate = entryDate;
+          } else {
+            break;
+          }
+        }
+      }
+    }
+    
+    const xpResult = awardEntryXP(wordCount, journalStreak);
+    console.log("🎉 XP Awarded:", xpResult);
+    
+    // Show XP notification
+    setXpEarned(xpResult.xp);
+    setLeveledUp(xpResult.leveledUp);
+    setOldLevel(xpResult.oldLevel);
+    setNewLevel(xpResult.newLevel);
+    setShowXPNotification(true);
+    
+    // Dispatch event for XP bar to update
+    window.dispatchEvent(new Event("xp-updated"));
+
+    // Navigate back to journal page after a short delay (let notification show)
+    setTimeout(() => {
+      router.push("/journal");
+    }, xpResult.leveledUp ? 4500 : 3500);
   };
 
   // Function to navigate back to journal page
@@ -665,6 +734,29 @@ export default function NewEntryPage() {
             />
           </div>
         </div>
+        
+        {/* Journal Selector */}
+        {journals.length > 0 && (
+          <div>
+            <div className="mb-2">
+              <h2 className="text-lg font-bold text-gray-900">Journal</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <select
+                value={selectedJournalId}
+                onChange={(e) => setSelectedJournalId(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+              >
+                {journals.map((journal) => (
+                  <option key={journal.id} value={journal.id}>
+                    {journal.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
+        
         <div className="">
           <div className="mb-2">
             <h2 className="text-lg font-bold text-gray-900">Entry Content</h2>
@@ -802,6 +894,16 @@ export default function NewEntryPage() {
           />
         </div>
       ) */}
+
+      {/* XP Notification */}
+      <XPNotification
+        xp={xpEarned}
+        show={showXPNotification}
+        onComplete={() => setShowXPNotification(false)}
+        leveledUp={leveledUp}
+        oldLevel={oldLevel}
+        newLevel={newLevel}
+      />
     </DashboardLayout>
   );
 }
