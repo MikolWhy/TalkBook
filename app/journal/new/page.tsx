@@ -85,6 +85,7 @@ import TopicSuggestions from "../../../src/components/TopicSuggestions";
 import { extractMetadata } from "../../../src/lib/nlp/extract";
 import { generatePrompts, filterUsedPrompts, filterExpiredPrompts, Prompt, markPromptAsUsed, getTopicSuggestions, TopicSuggestion } from "../../../src/lib/nlp/prompts";
 import { getActiveJournalId } from "../../../src/lib/journals/manager";
+import { getEntries, addEntry } from "../../../src/lib/cache/entriesCache";
 
 // TODO: implement entry creation form
 
@@ -131,11 +132,10 @@ export default function NewEntryPage() {
       try {
         // SIMPLIFIED: Separate logic for people prompts vs topic suggestions
         // People prompts: Use last 7 days (for variety)
-        // Topic suggestions: Use last 2 entries only (as requested)
+        // Topic suggestions: Use last 3 entries only (as requested)
         
-        const storedEntries = JSON.parse(
-          localStorage.getItem("journalEntries") || "[]"
-        );
+        // OPTIMIZATION: Use cached entries instead of parsing localStorage
+        const storedEntries = getEntries();
         
         // FILTER BY ACTIVE JOURNAL FIRST
         const activeJournalId = getActiveJournalId();
@@ -163,35 +163,90 @@ export default function NewEntryPage() {
           .filter((entry: any) => entry.draft !== true)
           .slice(0, 3);
         
-        // Combine content from recent entries for people extraction
-        const combinedTextForPeople = recentEntriesForPeople
-          .map((entry: any) => entry.content || "")
-          .filter((content: string) => content.trim().length > 0)
-          .join(" ");
+        // OPTIMIZATION: Use cached metadata if available, otherwise extract from content
+        // This dramatically speeds up page load by avoiding redundant NLP processing
         
-        // Combine content from last 3 entries for topic extraction
-        const combinedTextForTopics = lastThreeEntries
-          .map((entry: any) => entry.content || "")
-          .filter((content: string) => content.trim().length > 0)
-          .join(" ");
+        // Aggregate cached people from last 7 days
+        const allPeople = new Set<string>();
+        let needsExtractionForPeople = false;
         
-        // Extract metadata for people prompts (from last 7 days)
+        for (const entry of recentEntriesForPeople) {
+          if (entry.extractedPeople && Array.isArray(entry.extractedPeople)) {
+            // Use cached data
+            entry.extractedPeople.forEach((person: string) => allPeople.add(person));
+          } else {
+            // Entry doesn't have cached metadata
+            needsExtractionForPeople = true;
+            break;
+          }
+        }
+        
+        // If any entry lacks cached data, fall back to traditional extraction
         let peopleResult = null;
         let peopleOriginalText = undefined;
         
-        if (combinedTextForPeople.trim().length > 0) {
-          peopleResult = await extractMetadata(combinedTextForPeople);
-          peopleOriginalText = combinedTextForPeople;
+        if (needsExtractionForPeople) {
+          console.log("⚠️ [Optimization] Some entries lack cached metadata, running extraction...");
+          const combinedTextForPeople = recentEntriesForPeople
+            .map((entry: any) => entry.content || "")
+            .filter((content: string) => content.trim().length > 0)
+            .join(" ");
+          
+          if (combinedTextForPeople.trim().length > 0) {
+            peopleResult = await extractMetadata(combinedTextForPeople);
+            peopleOriginalText = combinedTextForPeople;
+          }
+        } else if (allPeople.size > 0) {
+          console.log("✅ [Optimization] Using cached metadata, skipping extraction!");
+          peopleResult = {
+            people: Array.from(allPeople),
+            topics: [],
+            dates: []
+          };
         }
         
-        // Extract metadata for topic suggestions (from last 3 entries)
-        let topicsResult = null;
-        let topicsPeopleResult = null; // Also extract people from same entries to catch all names
+        // Aggregate cached topics from last 3 entries
+        const allTopics = new Set<string>();
+        const allTopicsPeople = new Set<string>();
+        let needsExtractionForTopics = false;
         
-        if (combinedTextForTopics.trim().length > 0) {
-          topicsResult = await extractMetadata(combinedTextForTopics);
-          // Also extract people from the same text to catch names that might appear as topics
-          topicsPeopleResult = await extractMetadata(combinedTextForTopics);
+        for (const entry of lastThreeEntries) {
+          if (entry.extractedTopics && Array.isArray(entry.extractedTopics) &&
+              entry.extractedPeople && Array.isArray(entry.extractedPeople)) {
+            // Use cached data
+            entry.extractedTopics.forEach((topic: string) => allTopics.add(topic));
+            entry.extractedPeople.forEach((person: string) => allTopicsPeople.add(person));
+          } else {
+            // Entry doesn't have cached metadata
+            needsExtractionForTopics = true;
+            break;
+          }
+        }
+        
+        let topicsResult = null;
+        let topicsPeopleResult = null;
+        
+        if (needsExtractionForTopics) {
+          console.log("⚠️ [Optimization] Some entries lack cached metadata for topics, running extraction...");
+          const combinedTextForTopics = lastThreeEntries
+            .map((entry: any) => entry.content || "")
+            .filter((content: string) => content.trim().length > 0)
+            .join(" ");
+          
+          if (combinedTextForTopics.trim().length > 0) {
+            topicsResult = await extractMetadata(combinedTextForTopics);
+            // OPTIMIZATION FIX #3: Remove duplicate extraction call
+            // We can reuse topicsResult.people instead of extracting again
+            topicsPeopleResult = topicsResult;
+          }
+        } else if (allTopics.size > 0) {
+          console.log("✅ [Optimization] Using cached topic metadata!");
+          topicsResult = {
+            people: Array.from(allTopicsPeople),
+            topics: Array.from(allTopics),
+            dates: []
+          };
+          topicsPeopleResult = topicsResult;
         }
         
         setExtractedData(peopleResult);
@@ -453,16 +508,8 @@ export default function NewEntryPage() {
       promptIds: Array.from(insertedPromptIds), // Convert Set to Array for storage
     };
 
-    // Get existing entries from localStorage
-    const existingEntries = JSON.parse(
-      localStorage.getItem("journalEntries") || "[]" // Fallback to empty array if null
-    );
-
-    // Add new entry (spread operator creates new array)
-    const updatedEntries = [...existingEntries, entry];
-
-    // Save to localStorage (must be string, so JSON.stringify converts object to JSON)
-    localStorage.setItem("journalEntries", JSON.stringify(updatedEntries));
+    // OPTIMIZATION: Use cache instead of localStorage
+    addEntry(entry);
 
     // Don't mark prompts as used for drafts - they'll be marked when draft is saved properly
     // Don't run extraction - drafts don't contribute to prompt generation
@@ -479,13 +526,24 @@ export default function NewEntryPage() {
   // APPROACH: Simple - just mark prompts as used. Extraction happens on-demand when generating prompts.
   //           This is conventional - extraction on read, not on write.
   // CONNECTION: Works with filterUsedPrompts() to hide used prompts in future entries.
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!content.trim()) {
       alert("Please add some content before saving.");
       return;
     }
 
     const entryTitle = title.trim() || formatDateAsTitle(new Date());
+    
+    // OPTIMIZATION: Extract metadata once at save time and cache with entry
+    // This prevents re-extraction on every page load
+    let cachedMetadata = null;
+    try {
+      cachedMetadata = await extractMetadata(content);
+      console.log("✅ [Optimization] Extracted and cached metadata at save time:", cachedMetadata);
+    } catch (error) {
+      console.error("Error extracting metadata:", error);
+      // Continue saving even if extraction fails
+    }
 
     const entry = {
       id: Date.now().toString(),
@@ -499,24 +557,22 @@ export default function NewEntryPage() {
       updatedAt: new Date().toISOString(),
       draft: false, // Not a draft
       promptIds: Array.from(insertedPromptIds), // Store prompt IDs with entry
+      // OPTIMIZATION: Store extracted metadata with entry for instant access
+      extractedPeople: cachedMetadata?.people || [],
+      extractedTopics: cachedMetadata?.topics || [],
+      extractedDates: cachedMetadata?.dates || [],
     };
     
     console.log("💾 [Save Entry] Saving entry:", {
       title: entry.title,
       contentLength: content.length,
-      draft: entry.draft
+      draft: entry.draft,
+      cachedPeople: entry.extractedPeople.length,
+      cachedTopics: entry.extractedTopics.length
     });
 
-    // Get existing entries from localStorage
-    const existingEntries = JSON.parse(
-      localStorage.getItem("journalEntries") || "[]"
-    );
-
-    // Add new entry
-    const updatedEntries = [...existingEntries, entry];
-
-    // Save to localStorage
-    localStorage.setItem("journalEntries", JSON.stringify(updatedEntries));
+    // OPTIMIZATION: Use cache instead of localStorage
+    addEntry(entry);
 
     // MICHAEL'S CODE: Mark inserted prompts as permanently used
     // This prevents them from appearing again in future prompt suggestions
