@@ -4,6 +4,7 @@
 const XP_STORAGE_KEY = "talkbook-xp";
 const LEVEL_STORAGE_KEY = "talkbook-level";
 const LAST_ENTRY_DATE_KEY = "talkbook-last-entry-date";
+const LAST_ALL_HABITS_BONUS_DATE_KEY = "talkbook-last-all-habits-bonus-date";
 
 // XP Rewards Configuration
 export const XP_CONFIG = {
@@ -22,6 +23,7 @@ export const XP_CONFIG = {
   HABIT_NUMERIC: 1,         // XP per numeric value logged
   HABIT_3_BONUS: 5,         // Bonus for completing 3+ habits in a day
   HABIT_5_BONUS: 10,        // Total bonus for completing 5+ habits in a day (5 + 5)
+  ALL_HABITS_COMPLETED_BONUS: 50, // Bonus XP for completing all habits in a day (once per day)
   
   // Habit Streak Multipliers
   HABIT_STREAK_7_DAYS: 2.0,   // 7-day habit streak
@@ -266,6 +268,51 @@ export function awardHabitXP(
       streakMultiplier,
       total: totalXP,
     },
+    leveledUp,
+    oldLevel: currentLevel,
+    newLevel: newState.level,
+  };
+}
+
+// Award bonus XP when all habits are completed (once per day)
+export function awardAllHabitsCompletedBonus(): { 
+  xp: number; 
+  awarded: boolean;
+  leveledUp: boolean; 
+  oldLevel: number;
+  newLevel: number;
+} {
+  if (typeof window === "undefined") {
+    return { xp: 0, awarded: false, leveledUp: false, oldLevel: 1, newLevel: 1 };
+  }
+
+  const today = new Date().toISOString().split("T")[0];
+  const lastBonusDate = localStorage.getItem(LAST_ALL_HABITS_BONUS_DATE_KEY);
+  
+  // Check if bonus was already awarded today
+  if (lastBonusDate === today) {
+    return { xp: 0, awarded: false, leveledUp: false, oldLevel: 1, newLevel: 1 };
+  }
+
+  // Get current state
+  const currentTotalXP = getCurrentXP();
+  const currentLevel = calculateLevelFromXP(currentTotalXP).level;
+
+  // Award bonus XP
+  const bonusXP = XP_CONFIG.ALL_HABITS_COMPLETED_BONUS;
+  const newTotalXP = currentTotalXP + bonusXP;
+  const newState = calculateLevelFromXP(newTotalXP);
+
+  // Save to localStorage
+  localStorage.setItem(XP_STORAGE_KEY, newTotalXP.toString());
+  localStorage.setItem(LEVEL_STORAGE_KEY, newState.level.toString());
+  localStorage.setItem(LAST_ALL_HABITS_BONUS_DATE_KEY, today);
+
+  const leveledUp = newState.level > currentLevel;
+
+  return {
+    xp: bonusXP,
+    awarded: true,
     leveledUp,
     oldLevel: currentLevel,
     newLevel: newState.level,

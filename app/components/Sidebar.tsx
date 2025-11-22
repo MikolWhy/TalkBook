@@ -13,8 +13,8 @@ const navItems = [
   { label: "journal", href: "/journal", icon: BookHeart },
   { label: "habits", href: "/habits", icon: Dumbbell },
   { label: "stats", href: "/stats", icon: BarChart },
-  { label: "Settings", href: "/settings", icon: SettingsIcon },
-  { label: "Help", href: "/help", icon: HelpCircleIcon },
+  { label: "settings", href: "/settings", icon: SettingsIcon },
+  { label: "help", href: "/help", icon: HelpCircleIcon },
 ];
 
 // Profile section component to handle localStorage
@@ -102,7 +102,7 @@ function LockButton() {
         title={!hasPassword ? "Set a password in Settings first" : "Lock app"}
       >
         <span>🔒</span>
-        <span>Lock App</span>
+        <span>lock app</span>
       </button>
     </div>
   );
