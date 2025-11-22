@@ -545,7 +545,7 @@ export default function EditEntryPage() {
 
       {/* Original Prompts Display (if any) */}
       {originalPromptIds.length > 0 && (
-        <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+        <div className="mb-6 p-4 border border-gray-200 rounded-lg" style={{ backgroundColor: "var(--background, #ffffff)", opacity: 0.95 }}>
           <h3 className="text-sm font-semibold text-gray-700 mb-2">
             Original Prompts (from when entry was created)
           </h3>
@@ -631,8 +631,9 @@ export default function EditEntryPage() {
                 className={`flex flex-col items-center justify-center w-16 h-16 rounded-lg border-2 transition-all hover:scale-105 ${
                   mood === moodOption.id
                     ? "border-blue-500 bg-blue-50 shadow-md"
-                    : "border-gray-300 bg-white hover:border-gray-400"
+                    : "border-gray-300 hover:border-gray-400"
                 }`}
+                style={mood !== moodOption.id ? { backgroundColor: "var(--background, #ffffff)" } : undefined}
                 title={moodOption.label}
               >
                 <span className="text-2xl">{moodOption.emoji}</span>

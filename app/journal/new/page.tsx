@@ -778,7 +778,8 @@ export default function NewEntryPage() {
               <select
                 value={selectedJournalId}
                 onChange={(e) => setSelectedJournalId(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                style={{ backgroundColor: "var(--background, #ffffff)" }}
               >
                 {journals.map((journal) => (
                   <option key={journal.id} value={journal.id}>
@@ -843,8 +844,9 @@ export default function NewEntryPage() {
                 className={`flex flex-col items-center justify-center w-16 h-16 rounded-lg border-2 transition-all hover:scale-105 ${
                   mood === moodOption.id
                     ? "border-blue-500 bg-blue-50 shadow-md"
-                    : "border-gray-300 bg-white hover:border-gray-400"
+                    : "border-gray-300 hover:border-gray-400"
                 }`}
+                style={mood !== moodOption.id ? { backgroundColor: "var(--background, #ffffff)" } : undefined}
                 title={moodOption.label}
               >
                 <span className="text-2xl">{moodOption.emoji}</span>

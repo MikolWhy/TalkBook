@@ -177,36 +177,38 @@ export default function HomePage() {
   const stats = useMemo(() => {
     const totalEntries = entries.length;
     
-    // Calculate current streak
-    const sortedEntries = [...entries].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+    // Calculate current streak (consecutive days with at least 1 entry)
+    // Get unique dates that have at least one entry
+    const datesWithEntries = new Set<string>();
+    entries.forEach((entry) => {
+      const entryDate = new Date(entry.createdAt);
+      entryDate.setHours(0, 0, 0, 0);
+      const dateString = entryDate.toISOString().split('T')[0];
+      datesWithEntries.add(dateString);
+    });
     
     let currentStreak = 0;
-    if (sortedEntries.length > 0) {
+    if (datesWithEntries.size > 0) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const lastEntry = new Date(sortedEntries[0].createdAt);
-      lastEntry.setHours(0, 0, 0, 0);
+      let currentDate = new Date(today);
       
-      const daysSinceLastEntry = Math.floor((today.getTime() - lastEntry.getTime()) / (1000 * 60 * 60 * 24));
-      
-      if (daysSinceLastEntry <= 1) {
-        let streakDate = new Date(lastEntry);
-        for (let i = 0; i < sortedEntries.length; i++) {
-          const entryDate = new Date(sortedEntries[i].createdAt);
-          entryDate.setHours(0, 0, 0, 0);
-          
-          const diff = Math.floor((streakDate.getTime() - entryDate.getTime()) / (1000 * 60 * 60 * 24));
-          if (diff === 0) {
-            currentStreak++;
-          } else if (diff === 1) {
-            currentStreak++;
-            streakDate = entryDate;
-          } else {
-            break;
-          }
+      // Start from today and go backwards day by day
+      // Count consecutive days that have at least one entry
+      while (true) {
+        const dateString = currentDate.toISOString().split('T')[0];
+        
+        if (datesWithEntries.has(dateString)) {
+          currentStreak++;
+          // Move to previous day
+          currentDate.setDate(currentDate.getDate() - 1);
+        } else {
+          // Gap in streak, stop counting
+          break;
         }
+        
+        // Safety limit to prevent infinite loops
+        if (currentStreak > 10000) break;
       }
     }
     
@@ -335,7 +337,8 @@ export default function HomePage() {
                 </a>
                 <a 
                   href="/habits/new"
-                  className="bg-white text-purple-600 border-2 border-purple-600 px-6 py-3 rounded-lg font-semibold hover:bg-purple-50 transition inline-block"
+                  className="text-purple-600 border-2 border-purple-600 px-6 py-3 rounded-lg font-semibold hover:bg-purple-50 transition inline-block"
+                  style={{ backgroundColor: "var(--background, #ffffff)" }}
                 >
                   ➕ Create New Habit
                 </a>

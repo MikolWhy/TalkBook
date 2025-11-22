@@ -102,9 +102,12 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
     }
 
     return (
-      <div className="border border-gray-300 rounded-lg overflow-hidden bg-white">
+      <div 
+        className="border border-gray-300 rounded-lg overflow-hidden"
+        style={{ backgroundColor: "var(--background, #ffffff)" }}
+      >
         {/* Toolbar */}
-        <div className="border-b border-gray-200 bg-gray-50 p-2 flex flex-wrap gap-1">
+        <div className="border-b border-gray-200 p-2 flex flex-wrap gap-1" style={{ backgroundColor: "var(--background, #ffffff)", opacity: 0.95 }}>
           {/* Bold Button */}
           <button
             onClick={() => editor.chain().focus().toggleBold().run()}

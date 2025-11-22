@@ -16,6 +16,7 @@ import { Cabin } from "next/font/google";
 import "./globals.css";
 import { SidebarProvider } from "./components/SidebarProvider";
 import LockScreen from "./components/LockScreen";
+import BackgroundColorProvider from "./components/BackgroundColorProvider";
 
 // ============================================================================
 // FONT SETUP
@@ -187,6 +188,7 @@ export default function RootLayout({
             - Available to all pages via useSidebar() hook
         */}
         <SidebarProvider>
+          <BackgroundColorProvider />
           <LockScreen />
           {/* ================================================================
               CHILDREN PROP

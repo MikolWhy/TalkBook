@@ -39,7 +39,7 @@ export default function LockScreen() {
 
   return (
     <div className="fixed inset-0 bg-gray-900 z-50 flex items-center justify-center">
-      <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full mx-4">
+      <div className="rounded-lg shadow-xl p-8 max-w-md w-full mx-4" style={{ backgroundColor: "var(--background, #ffffff)" }}>
         <div className="text-center mb-6">
           <div className="text-5xl mb-4">🔒</div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">App Locked</h2>

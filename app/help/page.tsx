@@ -9,7 +9,7 @@ export default function HelpPage() {
         <h1 className="text-3xl font-bold text-gray-900 mb-6">Help & Documentation</h1>
 
         {/* Getting Started */}
-        <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+        <div className="border border-gray-200 rounded-lg p-6 mb-6" style={{ backgroundColor: "var(--background, #ffffff)" }}>
           <h2 className="text-2xl font-semibold text-gray-900 mb-4">🚀 Getting Started</h2>
           <div className="space-y-4 text-gray-700">
             <p>
@@ -23,7 +23,7 @@ export default function HelpPage() {
         </div>
 
         {/* Journal */}
-        <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+        <div className="border border-gray-200 rounded-lg p-6 mb-6" style={{ backgroundColor: "var(--background, #ffffff)" }}>
           <h2 className="text-2xl font-semibold text-gray-900 mb-4">📝 Journal</h2>
           <div className="space-y-4 text-gray-700">
             <div>
@@ -44,7 +44,7 @@ export default function HelpPage() {
         </div>
 
         {/* Name Extraction */}
-        <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+        <div className="border border-gray-200 rounded-lg p-6 mb-6" style={{ backgroundColor: "var(--background, #ffffff)" }}>
           <h2 className="text-2xl font-semibold text-gray-900 mb-4">🤖 Smart Extraction</h2>
           <div className="space-y-4 text-gray-700">
             <div>
@@ -69,7 +69,7 @@ export default function HelpPage() {
         </div>
 
         {/* Habits */}
-        <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+        <div className="border border-gray-200 rounded-lg p-6 mb-6" style={{ backgroundColor: "var(--background, #ffffff)" }}>
           <h2 className="text-2xl font-semibold text-gray-900 mb-4">✅ Habits</h2>
           <div className="space-y-4 text-gray-700">
             <p>
@@ -79,7 +79,7 @@ export default function HelpPage() {
         </div>
 
         {/* Stats */}
-        <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+        <div className="border border-gray-200 rounded-lg p-6 mb-6" style={{ backgroundColor: "var(--background, #ffffff)" }}>
           <h2 className="text-2xl font-semibold text-gray-900 mb-4">📊 Stats</h2>
           <div className="space-y-4 text-gray-700">
             <p>
@@ -89,7 +89,7 @@ export default function HelpPage() {
         </div>
 
         {/* Settings */}
-        <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+        <div className="border border-gray-200 rounded-lg p-6 mb-6" style={{ backgroundColor: "var(--background, #ffffff)" }}>
           <h2 className="text-2xl font-semibold text-gray-900 mb-4">⚙️ Settings</h2>
           <div className="space-y-4 text-gray-700">
             <div>
@@ -113,7 +113,7 @@ export default function HelpPage() {
         </div>
 
         {/* Privacy */}
-        <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+        <div className="border border-gray-200 rounded-lg p-6 mb-6" style={{ backgroundColor: "var(--background, #ffffff)" }}>
           <h2 className="text-2xl font-semibold text-gray-900 mb-4">🔒 Privacy & Data</h2>
           <div className="space-y-4 text-gray-700">
             <p>
@@ -127,7 +127,7 @@ export default function HelpPage() {
         </div>
 
         {/* Tips */}
-        <div className="bg-white border border-gray-200 rounded-lg p-6">
+        <div className="border border-gray-200 rounded-lg p-6" style={{ backgroundColor: "var(--background, #ffffff)" }}>
           <h2 className="text-2xl font-semibold text-gray-900 mb-4">💡 Tips & Tricks</h2>
           <div className="space-y-4 text-gray-700">
             <ul className="list-disc list-inside space-y-2">

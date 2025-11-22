@@ -202,7 +202,7 @@ export default function NewHabitPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen p-8" style={{ backgroundColor: "var(--background, #ffffff)" }}>
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="mb-6">
@@ -215,7 +215,7 @@ export default function NewHabitPage() {
           <h1 className="text-2xl font-bold text-gray-900">Add Habit</h1>
         </div>
         
-        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="rounded-lg shadow p-6 space-y-6" style={{ backgroundColor: "var(--background, #ffffff)" }}>
           {/* Title */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -299,7 +299,8 @@ export default function NewHabitPage() {
             <select
               value={formData.frequency}
               onChange={(e) => handleFrequencyChange(e.target.value as any)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+              style={{ backgroundColor: "var(--background, #ffffff)" }}
             >
               <option value="one-time">One time</option>
               <option value="daily">Daily</option>

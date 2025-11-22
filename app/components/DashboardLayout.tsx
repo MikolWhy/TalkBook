@@ -12,7 +12,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const { sidebarOpen } = useSidebar();
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen flex" style={{ backgroundColor: "var(--background, #ffffff)" }}>
       <Sidebar />
       <main
         className={`${

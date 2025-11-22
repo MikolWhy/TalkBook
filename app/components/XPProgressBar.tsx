@@ -34,7 +34,13 @@ export default function XPProgressBar() {
   }, []);
 
   return (
-    <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl p-6 md:p-8 shadow-xl border-2 border-indigo-100">
+    <div 
+      className="rounded-2xl p-6 md:p-8 shadow-xl border-2"
+      style={{ 
+        backgroundColor: "var(--background, #ffffff)",
+        borderColor: "rgba(0, 0, 0, 0.1)"
+      }}
+    >
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">

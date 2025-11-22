@@ -465,7 +465,7 @@ export default function HabitsPage() {
 
       {/* Empty State */}
       {habits.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg shadow">
+        <div className="text-center py-12 rounded-lg shadow" style={{ backgroundColor: "var(--background, #ffffff)" }}>
           <div className="text-6xl mb-4">🎯</div>
           <h2 className="text-xl font-semibold text-gray-900 mb-2">No habits yet</h2>
           <p className="text-gray-600 mb-6">Start building better habits today!</p>

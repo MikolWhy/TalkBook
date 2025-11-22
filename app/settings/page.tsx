@@ -6,6 +6,7 @@ import DashboardLayout from "../components/DashboardLayout";
 import { getBlacklist, addToBlacklist, removeFromBlacklist } from "../../src/lib/blacklist/manager";
 import { rebuildAllMetadata } from "../../src/lib/cache/rebuildCache";
 import { resetXP } from "../../src/lib/gamification/xp";
+import { BACKGROUND_COLORS, type BackgroundColorKey } from "../components/BackgroundColorProvider";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -38,16 +39,26 @@ export default function SettingsPage() {
   const [isRebuilding, setIsRebuilding] = useState(false);
   const [rebuildMessage, setRebuildMessage] = useState("");
 
+  // Background color settings
+  const [backgroundColor, setBackgroundColor] = useState<BackgroundColorKey>("white");
+  const [backgroundColorSuccess, setBackgroundColorSuccess] = useState("");
+
   useEffect(() => {
     // Load existing settings
     const savedPassword = localStorage.getItem("appPassword");
     const savedName = localStorage.getItem("userName");
     const savedPicture = localStorage.getItem("userProfilePicture");
+    const savedBackgroundColor = localStorage.getItem("appBackgroundColor") as BackgroundColorKey | null;
     
     setHasPassword(!!savedPassword);
     setUserName(savedName || "");
     setProfilePicture(savedPicture);
     setBlacklist(getBlacklist());
+    
+    // Load background color preference
+    if (savedBackgroundColor && savedBackgroundColor in BACKGROUND_COLORS) {
+      setBackgroundColor(savedBackgroundColor);
+    }
   }, []);
 
   const handleSetPassword = () => {
@@ -156,6 +167,23 @@ export default function SettingsPage() {
     window.dispatchEvent(new Event('storage'));
   };
 
+  // Background color handler
+  const handleBackgroundColorChange = (colorKey: BackgroundColorKey) => {
+    setBackgroundColor(colorKey);
+    localStorage.setItem("appBackgroundColor", colorKey);
+    setBackgroundColorSuccess("Background color updated!");
+    
+    // Trigger background color update
+    window.dispatchEvent(new Event('background-color-changed'));
+    
+    // Apply immediately
+    const selectedColor = BACKGROUND_COLORS[colorKey];
+    document.documentElement.style.setProperty("--background", selectedColor.value);
+    document.body.style.backgroundColor = selectedColor.value;
+    
+    setTimeout(() => setBackgroundColorSuccess(""), 3000);
+  };
+
   // Blacklist handlers
   const handleAddToBlacklist = () => {
     const word = blacklistInput.trim();
@@ -254,7 +282,7 @@ export default function SettingsPage() {
         <h1 className="text-3xl font-bold text-gray-900 mb-6">Settings</h1>
 
         {/* Profile Settings */}
-        <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+        <div className="border border-gray-200 rounded-lg p-6 mb-6" style={{ backgroundColor: "var(--background, #ffffff)" }}>
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Profile Settings</h2>
           
           {/* Profile Picture */}
@@ -327,8 +355,57 @@ export default function SettingsPage() {
           )}
         </div>
 
+        {/* Appearance Settings - Background Color */}
+        <div className="border border-gray-200 rounded-lg p-6 mb-6" style={{ backgroundColor: "var(--background, #ffffff)" }}>
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Appearance Settings</h2>
+          
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-3">
+              Background Color
+            </label>
+            <p className="text-xs text-gray-500 mb-4">
+              Choose a background color for the entire application. All colors are designed to keep text readable.
+            </p>
+            
+            <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
+              {Object.entries(BACKGROUND_COLORS).map(([key, color]) => (
+                <button
+                  key={key}
+                  onClick={() => handleBackgroundColorChange(key as BackgroundColorKey)}
+                  className={`
+                    relative p-4 rounded-lg border-2 transition-all
+                    ${backgroundColor === key 
+                      ? "border-blue-500 ring-2 ring-blue-200" 
+                      : "border-gray-200 hover:border-gray-300"
+                    }
+                  `}
+                  style={{ backgroundColor: color.value }}
+                  title={color.name}
+                >
+                  <div 
+                    className="w-full h-16 rounded mb-2"
+                    style={{ backgroundColor: color.value }}
+                  />
+                  <span className="text-xs font-medium text-gray-900 block text-center">
+                    {color.name}
+                  </span>
+                  {backgroundColor === key && (
+                    <div className="absolute top-1 right-1">
+                      <span className="text-blue-600 text-lg">✓</span>
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {backgroundColorSuccess && (
+            <p className="text-green-600 text-sm mt-2">✓ {backgroundColorSuccess}</p>
+          )}
+        </div>
+
         {/* Password Settings */}
-        <div className="bg-white border border-gray-200 rounded-lg p-6">
+        <div className="border border-gray-200 rounded-lg p-6" style={{ backgroundColor: "var(--background, #ffffff)" }}>
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Password Protection</h2>
           
           {hasPassword ? (
@@ -416,7 +493,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Blacklist Settings */}
-        <div className="bg-white border-2 border-gray-100 rounded-2xl p-6 shadow-sm mb-6">
+        <div className="border-2 border-gray-100 rounded-2xl p-6 shadow-sm mb-6" style={{ backgroundColor: "var(--background, #ffffff)" }}>
           <h2 className="text-xl font-bold text-gray-900 mb-4">Word Blacklist</h2>
           <p className="text-sm text-gray-600 mb-4">
             Words added to the blacklist will not appear in prompts or topic suggestions, even if extracted from your entries.

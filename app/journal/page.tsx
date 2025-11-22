@@ -450,7 +450,7 @@ export default function JournalPage() {
             </button>
 
             {isJournalDropdownOpen && (
-              <div className="absolute z-20 mt-2 w-64 bg-white border-2 border-gray-100 rounded-xl shadow-[0_8px_24px_rgba(0,0,0,0.12)] overflow-hidden">
+              <div className="absolute z-20 mt-2 w-64 border-2 border-gray-100 rounded-xl shadow-[0_8px_24px_rgba(0,0,0,0.12)] overflow-hidden" style={{ backgroundColor: "var(--background, #ffffff)" }}>
                 <div className="max-h-60 overflow-y-auto">
                   {journals.map((journal) => (
                     <button
@@ -496,7 +496,7 @@ export default function JournalPage() {
         {/* Manage Journals Dialog */}
         {isManageDialogOpen && (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[80vh] flex flex-col">
+            <div className="rounded-2xl shadow-xl max-w-md w-full max-h-[80vh] flex flex-col" style={{ backgroundColor: "var(--background, #ffffff)" }}>
               <div className="p-6 border-b-2 border-gray-100">
                 <h2 className="text-2xl font-bold text-gray-900">Manage Journals</h2>
               </div>
@@ -659,7 +659,8 @@ export default function JournalPage() {
               <div className="relative" ref={filterDropdownRef}>
                 <button
                   onClick={() => setIsFilterDropdownOpen(!isFilterDropdownOpen)}
-                  className="w-full px-4 py-2 border text-gray-900 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white hover:bg-gray-50 transition-colors flex items-center justify-between"
+                  className="w-full px-4 py-2 border text-gray-900 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors flex items-center justify-between"
+                  style={{ backgroundColor: "var(--background, #ffffff)" }}
                 >
                   <span>
                     {selectedTagFilter ? (
@@ -681,7 +682,7 @@ export default function JournalPage() {
 
                 {/* Dropdown Menu */}
                 {isFilterDropdownOpen && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                  <div className="absolute z-10 w-full mt-1 border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto" style={{ backgroundColor: "var(--background, #ffffff)" }}>
                     <button
                       onClick={() => {
                         setSelectedTagFilter(null);
@@ -752,7 +753,7 @@ export default function JournalPage() {
 
           {/* Right Section - 2/3 width: View Selected Page */}
           <div className="w-2/3 flex flex-col">
-            <div className="flex-1 border-2 border-gray-100 rounded-2xl p-8 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-y-auto">
+            <div className="flex-1 border-2 border-gray-100 rounded-2xl p-8 shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-y-auto" style={{ backgroundColor: "var(--background, #ffffff)" }}>
               {selectedEntry ? (
                 <div className="space-y-6">
                   <div className="flex items-start justify-between pb-6 border-b-2 border-gray-100">

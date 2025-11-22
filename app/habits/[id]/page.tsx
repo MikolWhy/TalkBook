@@ -265,7 +265,7 @@ export default function EditHabitPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-8 flex items-center justify-center">
+      <div className="min-h-screen p-8 flex items-center justify-center" style={{ backgroundColor: "var(--background, #ffffff)" }}>
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading habit...</p>
@@ -279,7 +279,7 @@ export default function EditHabitPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen p-8" style={{ backgroundColor: "var(--background, #ffffff)" }}>
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="mb-6">
@@ -292,7 +292,7 @@ export default function EditHabitPage() {
           <h1 className="text-2xl font-bold text-gray-900">Edit Habit</h1>
         </div>
         
-        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="rounded-lg shadow p-6 space-y-6" style={{ backgroundColor: "var(--background, #ffffff)" }}>
           {/* Title */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -376,7 +376,8 @@ export default function EditHabitPage() {
             <select
               value={formData.frequency}
               onChange={(e) => handleFrequencyChange(e.target.value as any)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+              style={{ backgroundColor: "var(--background, #ffffff)" }}
             >
               <option value="one-time">One time</option>
               <option value="daily">Daily</option>

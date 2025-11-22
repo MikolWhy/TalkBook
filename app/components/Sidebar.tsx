@@ -118,7 +118,8 @@ export default function Sidebar() {
       {!sidebarOpen && (
         <button
           onClick={() => setSidebarOpen(true)}
-          className="fixed top-4 left-4 z-30 p-2.5 bg-white border border-gray-300 rounded-lg shadow-md hover:bg-gray-50 hover:shadow-lg transition-all"
+          className="fixed top-4 left-4 z-30 p-2.5 border border-gray-300 rounded-lg shadow-md hover:shadow-lg transition-all"
+          style={{ backgroundColor: "var(--background, #ffffff)" }}
           aria-label="Open sidebar"
           title="Open sidebar"
         >
@@ -129,8 +130,9 @@ export default function Sidebar() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed left-0 top-0 h-full bg-white border-r border-gray-200 z-10 flex flex-col ${sidebarOpen ? "w-64" : "w-0"
+        className={`fixed left-0 top-0 h-full border-r border-gray-200 z-10 flex flex-col ${sidebarOpen ? "w-64" : "w-0"
           } transition-all overflow-hidden`}
+        style={{ backgroundColor: "var(--background, #ffffff)" }}
       >
         {/* Logo Section with Toggle Button */}
         <div className="px-6 py-6 border-b border-gray-200 flex items-center justify-between">
