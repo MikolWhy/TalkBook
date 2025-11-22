@@ -98,7 +98,7 @@ export default function NewEntryPage() {
         const lastThreeEntries = sortedEntries
           .filter((entry: any) => entry.draft !== true)
           .slice(0, 3);
-        
+
         // use cached metadata if available, otherwise extract from content
         const allPeople = new Set<string>();
         let needsExtractionForPeople = false;
@@ -111,7 +111,7 @@ export default function NewEntryPage() {
             break;
           }
         }
-        
+
         let peopleResult = null;
         let peopleOriginalText = undefined;
 
@@ -177,10 +177,10 @@ export default function NewEntryPage() {
           topicsPeopleResult = topicsResult;
         }
 
-        
+
         // Generate people prompts (clickable) - up to 10, with non-defaults taking priority
         const generatedPrompts = await generatePrompts(peopleResult, "cozy", 10, peopleOriginalText);
-        
+
         // Filter out used prompts
         const unusedPrompts = peopleResult
           ? filterUsedPrompts(generatedPrompts)
@@ -210,7 +210,7 @@ export default function NewEntryPage() {
           allNames.add(name.toLowerCase().trim());
         });
         const namesToExclude = Array.from(allNames);
-        
+
         // Always get topic suggestions (will return defaults if no extracted topics)
         const suggestions = getTopicSuggestions(topicsResult || null, 8, namesToExclude); // Cap at 8 topics, exclude names
         setTopicSuggestions(suggestions);
@@ -622,44 +622,46 @@ export default function NewEntryPage() {
       {/* Header Section with Title and Back Button */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">New Entry</h1>
+        <div className="space-x-2">
 
-        {/* Back/Exit Button */}
-        <button
-          onClick={handleBack}
-          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
-        >
-          ← Back to Journal
-        </button>
+          {/* Back/Exit Button */}
+          <button
+            onClick={handleBack}
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+          >
+            ← Back to Journal
+          </button>
+          <button
+            onClick={handleSaveDraft}
+            disabled={isSaving}
+            className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSaving ? "Saving..." : "Save as Draft"}
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSaving ? "Saving..." : "Save Entry"}
+          </button>
+        </div>
       </div>
 
       {/* Two Column Layout: 2/3 left, 1/3 right */}
       <div className="flex gap-6">
         {/* Left Column (2/3) - Writing Section */}
         <div className="flex-[2] space-y-6 text-gray-900">
-          {/* Prompts Section - Side by Side */}
-          <div className="flex gap-4 items-stretch">
-            {/* ============================================================================ */}
-            {/* SIMPLIFIED: Clickable Name Prompts */}
-            {/* ============================================================================ */}
-            {availablePrompts.length > 0 && (
-              <div className="flex-1 flex flex-col">
-                <PromptSuggestions
-                  prompts={availablePrompts}
-                  editorRef={editorRef}
-                  onPromptInserted={handlePromptInserted}
-                />
-              </div>
-            )}
-
-            {/* ============================================================================ */}
-            {/* SIMPLIFIED: Non-Clickable Topic Suggestions */}
-            {/* ============================================================================ */}
-            {topicSuggestions.length > 0 && (
-              <div className="flex-1 flex flex-col">
-                <TopicSuggestions suggestions={topicSuggestions} />
-              </div>
-            )}
-          </div>
+          {/* ============================================================================ */}
+          {/* SIMPLIFIED: Clickable Name Prompts */}
+          {/* ============================================================================ */}
+          {availablePrompts.length > 0 && (
+            <PromptSuggestions
+              prompts={availablePrompts}
+              editorRef={editorRef}
+              onPromptInserted={handlePromptInserted}
+            />
+          )}
 
           <div className="flex items-start gap-4">
             {/* Title - 2/3 width */}
@@ -716,34 +718,17 @@ export default function NewEntryPage() {
               placeholder="Start writing your journal entry..."
             />
           </div>
-
-          {/* Action Buttons */}
-          <div className="flex justify-end gap-3 pt-4">
-            <button
-              onClick={handleBack}
-              className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSaveDraft}
-              disabled={isSaving}
-              className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSaving ? "Saving..." : "Save as Draft"}
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSaving ? "Saving..." : "Save Entry"}
-            </button>
-          </div>
         </div>
 
         {/* Right Column (1/3) - Settings and Suggestions */}
         <div className="flex-1 space-y-6 text-gray-900">
+          {/* ============================================================================ */}
+          {/* SIMPLIFIED: Non-Clickable Topic Suggestions */}
+          {/* ============================================================================ */}
+          {topicSuggestions.length > 0 && (
+            <TopicSuggestions suggestions={topicSuggestions} />
+          )}
+
           {/* Card Color Selector */}
           <div>
             <div className="mb-2">
@@ -779,8 +764,8 @@ export default function NewEntryPage() {
                   key={moodOption.id}
                   onClick={() => setMood(mood === moodOption.id ? null : moodOption.id)}
                   className={`flex flex-col items-center justify-center w-16 h-16 rounded-lg border-2 transition-all hover:scale-105 ${mood === moodOption.id
-                      ? "border-blue-500 bg-blue-50 shadow-md"
-                      : "border-gray-300 hover:border-gray-400"
+                    ? "border-blue-500 bg-blue-50 shadow-md"
+                    : "border-gray-300 hover:border-gray-400"
                     }`}
                   style={mood !== moodOption.id ? { backgroundColor: "var(--background, #ffffff)" } : undefined}
                   title={moodOption.label}
