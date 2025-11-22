@@ -27,6 +27,7 @@ import {
   PolarRadiusAxis,
   Radar,
 } from "recharts";
+import { BarChart as BarChartIcon, CheckCircle2, Flame, Zap, Smile, Clock, PenTool, TrendingUp, BookOpen } from "lucide-react";
 
 // Mood mapping
 const moodMap: Record<string, string> = {
@@ -465,7 +466,9 @@ export default function StatsPage() {
         </div>
         <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-4 md:p-6 text-white shadow-lg">
           <p className="text-orange-100 text-xs md:text-sm font-medium mb-1">Entry Streak</p>
-          <p className="text-3xl md:text-4xl font-bold">{journalStats.currentStreak} 🔥</p>
+          <p className="text-3xl md:text-4xl font-bold flex items-center gap-2">
+            {journalStats.currentStreak} <Flame className="w-8 h-8 md:w-10 md:h-10" />
+          </p>
         </div>
         <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-4 md:p-6 text-white shadow-lg">
           <p className="text-purple-100 text-xs md:text-sm font-medium mb-1">Habits</p>
@@ -477,7 +480,9 @@ export default function StatsPage() {
         </div>
         <div className="bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl p-4 md:p-6 text-white shadow-lg">
           <p className="text-teal-100 text-xs md:text-sm font-medium mb-1">Habit Streak</p>
-          <p className="text-3xl md:text-4xl font-bold">{habitStats.habitStreak} ⚡</p>
+          <p className="text-3xl md:text-4xl font-bold flex items-center gap-2">
+            {habitStats.habitStreak} <Zap className="w-8 h-8 md:w-10 md:h-10" />
+          </p>
         </div>
       </div>
 
@@ -488,7 +493,7 @@ export default function StatsPage() {
           <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 md:p-8 shadow-xl border-2 border-blue-100 lg:col-span-2">
             <div className="flex items-center gap-3 mb-6">
               <div className="bg-blue-500 p-3 rounded-xl">
-                <span className="text-2xl md:text-3xl">📊</span>
+                <BarChartIcon className="w-6 h-6 md:w-8 md:h-8 text-white" />
               </div>
               <h2 className="text-xl md:text-2xl font-bold text-gray-900">Your Activity</h2>
             </div>
@@ -535,7 +540,7 @@ export default function StatsPage() {
           <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-6 md:p-8 shadow-xl border-2 border-purple-100">
             <div className="flex items-center gap-3 mb-6">
               <div className="bg-purple-500 p-3 rounded-xl">
-                <span className="text-2xl md:text-3xl">✅</span>
+                <CheckCircle2 className="w-6 h-6 md:w-8 md:h-8 text-white" />
               </div>
               <h2 className="text-xl md:text-2xl font-bold text-gray-900">Top Habits</h2>
             </div>
@@ -562,7 +567,7 @@ export default function StatsPage() {
         <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-6 md:p-8 shadow-xl border-2 border-amber-100">
           <div className="flex items-center gap-3 mb-6">
             <div className="bg-amber-500 p-3 rounded-xl">
-              <span className="text-2xl md:text-3xl">😊</span>
+              <Smile className="w-6 h-6 md:w-8 md:h-8 text-white" />
             </div>
             <h2 className="text-xl md:text-2xl font-bold text-gray-900">Mood Pattern</h2>
           </div>
@@ -611,7 +616,7 @@ export default function StatsPage() {
           <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-2xl p-6 md:p-8 shadow-xl border-2 border-cyan-100">
             <div className="flex items-center gap-3 mb-6">
               <div className="bg-cyan-500 p-3 rounded-xl">
-                <span className="text-2xl md:text-3xl">⏰</span>
+                <Clock className="w-6 h-6 md:w-8 md:h-8 text-white" />
               </div>
               <h2 className="text-xl md:text-2xl font-bold text-gray-900">When You Write</h2>
             </div>
@@ -645,7 +650,7 @@ export default function StatsPage() {
               <p className="text-4xl md:text-5xl font-bold text-gray-900">{journalStats.totalWords.toLocaleString()}</p>
             </div>
             <div className="bg-rose-500 p-4 rounded-2xl">
-              <span className="text-4xl md:text-5xl">✍️</span>
+              <PenTool className="w-10 h-10 md:w-12 md:h-12 text-white" />
             </div>
           </div>
         </div>
@@ -657,7 +662,7 @@ export default function StatsPage() {
               <p className="text-4xl md:text-5xl font-bold text-gray-900">{habitStats.avgCompletionsPerDay}</p>
             </div>
             <div className="bg-violet-500 p-4 rounded-2xl">
-              <span className="text-4xl md:text-5xl">📈</span>
+              <TrendingUp className="w-10 h-10 md:w-12 md:h-12 text-white" />
             </div>
           </div>
         </div>
@@ -669,7 +674,7 @@ export default function StatsPage() {
               <p className="text-4xl md:text-5xl font-bold text-gray-900">{journals.length}</p>
             </div>
             <div className="bg-emerald-500 p-4 rounded-2xl">
-              <span className="text-4xl md:text-5xl">📚</span>
+              <BookOpen className="w-10 h-10 md:w-12 md:h-12 text-white" />
             </div>
           </div>
         </div>

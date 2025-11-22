@@ -78,6 +78,7 @@
 
 import { useState, useEffect } from "react";
 import { Habit } from "@/lib/db/schema";
+import { Flame, Target, Settings } from "lucide-react";
 
 interface HabitCardProps {
   habit: Habit;
@@ -205,12 +206,14 @@ export default function HabitCard({ habit, streak, todayLog, onLog, onEdit, onAr
           <div className="flex items-center gap-4 text-sm text-gray-500 mb-3">
             {showStreak && (
               <span className="flex items-center gap-1">
-                🔥 <span className="font-medium text-gray-700">{streak}</span> day streak
+                <Flame className="w-4 h-4 text-orange-500" />
+                <span className="font-medium text-gray-700">{streak}</span> day streak
               </span>
             )}
             {habit.type === "numeric" && habit.target && (
               <span className="flex items-center gap-1">
-                🎯 Count: <span className="font-medium text-gray-700">{habit.target}</span> {habit.unit}
+                <Target className="w-4 h-4 text-blue-500" />
+                Count: <span className="font-medium text-gray-700">{habit.target}</span> {habit.unit}
               </span>
             )}
             <span className="text-xs text-gray-400 capitalize">
@@ -259,10 +262,10 @@ export default function HabitCard({ habit, streak, todayLog, onLog, onEdit, onAr
           </button>
           <button
             onClick={() => onEdit(habit.id!)}
-            className="px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+            className="px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors flex items-center justify-center"
             title="Edit habit"
           >
-            ⚙️
+            <Settings className="w-5 h-5" />
           </button>
         </div>
       </div>

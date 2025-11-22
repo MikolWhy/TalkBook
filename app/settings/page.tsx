@@ -7,6 +7,7 @@ import { getBlacklist, addToBlacklist, removeFromBlacklist } from "../../src/lib
 import { rebuildAllMetadata } from "../../src/lib/cache/rebuildCache";
 import { resetXP } from "../../src/lib/gamification/xp";
 import { BACKGROUND_COLORS, type BackgroundColorKey } from "../components/BackgroundColorProvider";
+import { User, RefreshCw, AlertTriangle, CheckCircle2, X } from "lucide-react";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -299,7 +300,7 @@ export default function SettingsPage() {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <span className="text-3xl">👤</span>
+                  <User className="w-10 h-10 text-gray-400" />
                 )}
               </div>
               <div className="flex gap-2">
@@ -351,7 +352,10 @@ export default function SettingsPage() {
           </button>
 
           {profileSuccess && (
-            <p className="text-green-600 text-sm mt-2">✓ {profileSuccess}</p>
+            <p className="text-green-600 text-sm mt-2 flex items-center gap-1">
+              <CheckCircle2 className="w-4 h-4" />
+              {profileSuccess}
+            </p>
           )}
         </div>
 
@@ -391,7 +395,7 @@ export default function SettingsPage() {
                   </span>
                   {backgroundColor === key && (
                     <div className="absolute top-1 right-1">
-                      <span className="text-blue-600 text-lg">✓</span>
+                      <CheckCircle2 className="w-5 h-5 text-blue-600" />
                     </div>
                   )}
                 </button>
@@ -400,7 +404,10 @@ export default function SettingsPage() {
           </div>
 
           {backgroundColorSuccess && (
-            <p className="text-green-600 text-sm mt-2">✓ {backgroundColorSuccess}</p>
+            <p className="text-green-600 text-sm mt-2 flex items-center gap-1">
+              <CheckCircle2 className="w-4 h-4" />
+              {backgroundColorSuccess}
+            </p>
           )}
         </div>
 
@@ -410,7 +417,10 @@ export default function SettingsPage() {
           
           {hasPassword ? (
             <div>
-              <p className="text-green-600 mb-4">✓ Password is currently set</p>
+              <p className="text-green-600 mb-4 flex items-center gap-1">
+                <CheckCircle2 className="w-4 h-4" />
+                Password is currently set
+              </p>
               <p className="text-gray-600 mb-4">
                 Your app is password protected. Use the Lock button in the sidebar to lock the app.
               </p>
@@ -430,7 +440,10 @@ export default function SettingsPage() {
               </div>
 
               {removePasswordError && (
-                <p className="text-red-600 text-sm mb-4">✕ {removePasswordError}</p>
+                <p className="text-red-600 text-sm mb-4 flex items-center gap-1">
+                  <X className="w-4 h-4" />
+                  {removePasswordError}
+                </p>
               )}
 
               <button
@@ -475,7 +488,10 @@ export default function SettingsPage() {
               </div>
 
               {passwordError && (
-                <p className="text-red-600 text-sm mb-4">✕ {passwordError}</p>
+                <p className="text-red-600 text-sm mb-4 flex items-center gap-1">
+                  <X className="w-4 h-4" />
+                  {passwordError}
+                </p>
               )}
 
               <button
@@ -488,7 +504,10 @@ export default function SettingsPage() {
           )}
 
           {passwordSuccess && (
-            <p className="text-green-600 text-sm mt-4">✓ {passwordSuccess}</p>
+            <p className="text-green-600 text-sm mt-4 flex items-center gap-1">
+              <CheckCircle2 className="w-4 h-4" />
+              {passwordSuccess}
+            </p>
           )}
         </div>
 
@@ -546,7 +565,7 @@ export default function SettingsPage() {
                       className="text-red-600 hover:text-red-700 font-bold text-sm"
                       title="Remove from blacklist"
                     >
-                      ✕
+                      <X className="w-4 h-4" />
                     </button>
                   </div>
                 ))}
@@ -557,19 +576,26 @@ export default function SettingsPage() {
           )}
 
           {blacklistSuccess && (
-            <p className="text-green-600 text-sm mt-3">✓ {blacklistSuccess}</p>
+            <p className="text-green-600 text-sm mt-3 flex items-center gap-1">
+              <CheckCircle2 className="w-4 h-4" />
+              {blacklistSuccess}
+            </p>
           )}
         </div>
 
         {/* Rebuild Cache */}
         <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-6 shadow-sm">
-          <h2 className="text-xl font-bold text-blue-900 mb-4">🔄 Rebuild Metadata Cache</h2>
+          <h2 className="text-xl font-bold text-blue-900 mb-4 flex items-center gap-2">
+            <RefreshCw className="w-5 h-5" />
+            Rebuild Metadata Cache
+          </h2>
           <p className="text-sm text-blue-700 mb-4">
             <strong>Safe operation</strong> - Only refreshes extracted metadata (names, topics) from your existing entries. 
             Does NOT delete any data. Use this if you see incorrect words in prompts or after updates.
           </p>
-          <p className="text-xs text-blue-600 mb-4 italic">
-            ✓ Keeps all entries, journals, habits, and XP intact
+          <p className="text-xs text-blue-600 mb-4 italic flex items-center gap-1">
+            <CheckCircle2 className="w-3 h-3" />
+            Keeps all entries, journals, habits, and XP intact
           </p>
           
           <button
@@ -593,9 +619,16 @@ export default function SettingsPage() {
 
         {/* Reset Data */}
         <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-6 shadow-sm">
-          <h2 className="text-xl font-bold text-red-900 mb-4">⚠️ Delete All Data</h2>
-          <p className="text-sm text-red-700 mb-2">
-            <strong>⚠️ DANGER ZONE:</strong> This will permanently delete EVERYTHING:
+          <h2 className="text-xl font-bold text-red-900 mb-4 flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5" />
+            Delete All Data
+          </h2>
+          <p className="text-sm text-red-700 mb-2 flex items-center gap-1">
+            <strong className="flex items-center gap-1">
+              <AlertTriangle className="w-4 h-4" />
+              DANGER ZONE:
+            </strong>
+            This will permanently delete EVERYTHING:
           </p>
           <ul className="text-sm text-red-700 mb-4 ml-6 list-disc space-y-1">
             <li>All journal entries and drafts</li>
@@ -605,8 +638,9 @@ export default function SettingsPage() {
             <li>All extracted metadata and cache</li>
             <li>All prompts and blacklist</li>
           </ul>
-          <p className="text-xs text-red-600 mb-4 font-semibold">
-            ✓ Profile settings (name, picture) and password will be preserved
+          <p className="text-xs text-red-600 mb-4 font-semibold flex items-center gap-1">
+            <CheckCircle2 className="w-3 h-3" />
+            Profile settings (name, picture) and password will be preserved
           </p>
           
           {!showResetConfirm ? (
