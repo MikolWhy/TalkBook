@@ -21,8 +21,22 @@
 
 import { useState, useEffect, useMemo } from "react";
 import DashboardLayout from "./components/DashboardLayout";
-import XPProgressBar from "./components/XPProgressBar";
 import { getEntries } from "../src/lib/cache/entriesCache";
+import { 
+  FileText, 
+  Flame, 
+  Calendar, 
+  PenTool, 
+  Sparkles, 
+  Star, 
+  BarChart, 
+  CheckCircle2, 
+  Dumbbell, 
+  Plus, 
+  RefreshCw, 
+  ArrowRight,
+  Quote
+} from "lucide-react";
 // useState = React hook for storing data that can change
 // - Syntax: const [value, setValue] = useState(initialValue)
 // - value = current value
@@ -130,11 +144,44 @@ const habitCards: HabitCard[] = [
 // - Add functions: Define them inside the component
 // - Change layout: Modify the JSX inside return()
 
+interface Quote {
+  quoteText: string;
+  quoteAuthor: string;
+}
+
 export default function HomePage() {
   const [entries, setEntries] = useState<any[]>([]);
   const [habits, setHabits] = useState<any[]>([]);
   const [userName, setUserName] = useState<string>("Your Name");
   const [todayHabitLogs, setTodayHabitLogs] = useState<Record<number, any>>({});
+  const [quote, setQuote] = useState<Quote | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState<boolean>(true);
+
+  const fetchQuote = async () => {
+    try {
+      setQuoteLoading(true);
+      const response = await fetch('/api/quote');
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch quote');
+      }
+      
+      const data = await response.json();
+      setQuote({
+        quoteText: data.quoteText || '',
+        quoteAuthor: data.quoteAuthor || 'Unknown'
+      });
+    } catch (error) {
+      console.error('Error fetching quote:', error);
+      // Fallback quote if API fails
+      setQuote({
+        quoteText: "The journey of a thousand miles begins with one step.",
+        quoteAuthor: "Lao Tzu"
+      });
+    } finally {
+      setQuoteLoading(false);
+    }
+  };
 
   useEffect(() => {
     const loadedEntries = getEntries().filter((e: any) => !e.draft);
@@ -148,6 +195,9 @@ export default function HomePage() {
     
     // Load habits data
     loadHabitsData();
+    
+    // Fetch inspirational quote
+    fetchQuote();
   }, []);
 
   const loadHabitsData = async () => {
@@ -252,148 +302,142 @@ export default function HomePage() {
   
   return (
     <DashboardLayout>
-        {/* XP Progress Bar - Full Width */}
-        <div className="mb-8">
-          <XPProgressBar />
-        </div>
-
-        {/* Quick Stats - 3 Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 mb-8">
-          <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-6 shadow-md border-2 border-blue-100">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-blue-600 font-semibold text-sm uppercase tracking-wide mb-1">Entries</p>
-                <p className="text-4xl font-bold text-gray-900">{stats.totalEntries}</p>
-              </div>
-              <div className="bg-blue-500 p-3 rounded-xl">
-                <span className="text-3xl">📝</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-xl p-6 shadow-md border-2 border-orange-100">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-orange-600 font-semibold text-sm uppercase tracking-wide mb-1">Streak</p>
-                <p className="text-4xl font-bold text-gray-900">{stats.currentStreak} 🔥</p>
-              </div>
-              <div className="bg-orange-500 p-3 rounded-xl">
-                <span className="text-3xl">📅</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 shadow-md border-2 border-green-100">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-green-600 font-semibold text-sm uppercase tracking-wide mb-1">Words</p>
-                <p className="text-4xl font-bold text-gray-900">{stats.totalWords.toLocaleString()}</p>
-              </div>
-              <div className="bg-green-500 p-3 rounded-xl">
-                <span className="text-3xl">✍️</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* ====================================================================
-            PROMOTIONAL BANNER + QUICK ACTION
+            WELCOME CARD - Main Focus (Header)
             ====================================================================
         */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          
-          {/* ================================================================
-              PROMOTIONAL BANNER CARD (Left)
-              ================================================================
+        <div className="mb-8">
+          <div className="bg-gradient-to-br from-purple-50 via-pink-50 to-indigo-50 rounded-2xl p-8 md:p-12 relative overflow-hidden border-2 border-purple-200 shadow-xl">
+            <div className="relative z-10">
+              <div className="mb-6">
+                <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-3">
+                  {userName === "Your Name" ? "Welcome!" : `Welcome back, ${userName}!`}
+                </h1>
+                <p className="text-xl text-gray-700 font-medium">
+                  1 Page 1 Habit 1 Step at a time. Consistency is key !
+                </p>
+              </div>
               
-              Card Design:
-              - bg-pink-50 = light pink background
-              - rounded-xl = extra rounded corners
-              - p-6 = padding inside card
-              - relative = allows absolute positioning of illustration
-              - overflow-hidden = clips content that overflows
-              
-              Flexbox for Content:
-              - flex flex-col = vertical stack
-              - gap-4 = space between elements
-          */}
-          <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 relative overflow-hidden border-2 border-purple-100 shadow-md">
-            <div className="flex flex-col gap-3 relative z-10">
-              <h2 className="text-3xl font-bold text-gray-900">
-                {userName === "Your Name" ? "Welcome!" : `Welcome back, ${userName}!`}
-              </h2>
-              <p className="text-gray-700 text-lg font-medium">
-                1 Page 1 Habit 1 Step at a time. Consistency is key !
-              </p>
-              
-              <div className="flex gap-3 mt-2">
-                <a 
-                  href="/journal/new"
-                  className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition inline-block shadow-md"
-                >
-                  ✍️ New Entry
-                </a>
-                <a 
-                  href="/habits/new"
-                  className="bg-white text-purple-600 border-2 border-purple-600 px-6 py-3 rounded-lg font-semibold hover:bg-purple-50 transition inline-block"
-                >
-                  ➕ Create New Habit
-                </a>
+              {/* Inspirational Quote Section */}
+              <div className="mt-6 pt-6 border-t border-purple-200">
+                {quoteLoading ? (
+                  <div className="flex items-center justify-center py-4">
+                    <div className="animate-pulse text-gray-400">Loading inspiration...</div>
+                  </div>
+                ) : quote ? (
+                  <div 
+                    onClick={fetchQuote}
+                    className="cursor-pointer hover:opacity-80 transition-opacity"
+                    title="Click for a new quote"
+                  >
+                    <div className="flex items-start gap-3 mb-3">
+                      <Quote className="w-6 h-6 text-purple-500 mt-1 flex-shrink-0" />
+                      <p className="text-lg md:text-xl text-gray-700 italic leading-relaxed">
+                        {quote.quoteText}
+                      </p>
+                    </div>
+                    {quote.quoteAuthor && quote.quoteAuthor !== 'Unknown' && (
+                      <p className="text-base text-gray-600 font-semibold text-right">
+                        — {quote.quoteAuthor}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center text-gray-500 py-4">
+                    Unable to load quote
+                  </div>
+                )}
               </div>
             </div>
             
             {/* Decorative Elements */}
-            <div className="absolute right-4 top-4 text-6xl opacity-20">
-              ✨
+            <div className="absolute right-8 top-8 opacity-20">
+              <Sparkles className="w-12 h-12 text-purple-400" />
             </div>
-            <div className="absolute right-16 bottom-4 text-5xl opacity-20">
-              🌟
+            <div className="absolute right-20 bottom-8 opacity-20">
+              <Star className="w-10 h-10 text-pink-400" />
+            </div>
+            <div className="absolute left-8 bottom-8 opacity-10">
+              <Star className="w-16 h-16 text-indigo-400" />
             </div>
           </div>
+        </div>
 
-          {/* ================================================================
-              STATISTICS CARD (Right)
-              ================================================================
-              
-              Dark Card:
-              - bg-gray-900 = dark background
-              - text-white = white text
-              
-              Circular Progress:
-              - We'll create a simple circular progress indicator
-              - Using SVG or CSS for the circle
-          */}
-          <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl p-6 text-white shadow-xl border border-gray-700">
-            <div className="flex justify-between items-center mb-6">
+          {/* ====================================================================
+            QUICK ACTIONS SECTION
+            ====================================================================
+        */}
+        <div className="mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <a
+              href="/habits/new"
+              className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 shadow-md border-2 border-purple-100 hover:border-purple-300 transition-all group"
+            >
+              <div className="flex items-center gap-4">
+                <div className="bg-gradient-to-br from-purple-500 to-pink-500 p-4 rounded-xl shadow-lg group-hover:scale-110 transition-transform">
+                  <Plus className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-1">Add New Habit</h3>
+                  <p className="text-sm text-gray-600">Start tracking a new habit today</p>
+                </div>
+              </div>
+            </a>
+
+            <a
+              href="/journal/new"
+              className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-6 shadow-md border-2 border-blue-100 hover:border-blue-300 transition-all group"
+            >
+              <div className="flex items-center gap-4">
+                <div className="bg-gradient-to-br from-blue-500 to-cyan-500 p-4 rounded-xl shadow-lg group-hover:scale-110 transition-transform">
+                  <FileText className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-1">New Journal Entry</h3>
+                  <p className="text-sm text-gray-600">Write about your day</p>
+                </div>
+              </div>
+            </a>
+          </div>
+        </div>
+
+        {/* ====================================================================
+            STATS SECTION - Today's Progress + Current Habits
+            ====================================================================
+        */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-8">
+          {/* Today's Progress Card - Larger Graph */}
+          <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl p-6 text-white shadow-xl border border-gray-700 flex flex-col">
+            <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold">Today's Progress</h2>
               <a href="/stats" className="text-gray-400 hover:text-white transition">
-                📊
+                <BarChart className="w-5 h-5" />
               </a>
             </div>
             
-            {/* Circular Progress - Habit Completion Rate */}
-            <div className="flex flex-col items-center mb-6">
-              <div className="relative w-36 h-36 mb-4">
-                <svg className="transform -rotate-90 w-36 h-36">
+            {/* Circular Progress - Habit Completion Rate - Larger */}
+            <div className="flex flex-col items-center mb-6 flex-1 justify-center">
+              <div className="relative w-32 h-32 mb-3">
+                <svg className="transform -rotate-90 w-32 h-32">
                   {/* Background circle */}
                   <circle
-                    cx="72"
-                    cy="72"
-                    r="64"
+                    cx="64"
+                    cy="64"
+                    r="56"
                     stroke="rgba(255,255,255,0.1)"
                     strokeWidth="10"
                     fill="none"
                   />
                   {/* Progress circle */}
                   <circle
-                    cx="72"
-                    cy="72"
-                    r="64"
+                    cx="64"
+                    cy="64"
+                    r="56"
                     stroke="#10B981"
                     strokeWidth="10"
                     fill="none"
-                    strokeDasharray={`${2 * Math.PI * 64}`}
-                    strokeDashoffset={`${2 * Math.PI * 64 * (1 - habitStats.completionRate / 100)}`}
+                    strokeDasharray={`${2 * Math.PI * 56}`}
+                    strokeDashoffset={`${2 * Math.PI * 56 * (1 - habitStats.completionRate / 100)}`}
                     strokeLinecap="round"
                     className="transition-all duration-700"
                   />
@@ -401,8 +445,8 @@ export default function HomePage() {
                 {/* Percentage Text */}
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="text-center">
-                    <div className="text-4xl font-black text-green-400">{habitStats.completionRate}%</div>
-                    <div className="text-xs text-gray-400 font-medium">Habits Done</div>
+                    <div className="text-3xl font-black text-green-400">{habitStats.completionRate}%</div>
+                    <div className="text-xs text-gray-400 font-medium">Habits</div>
                   </div>
                 </div>
               </div>
@@ -411,122 +455,103 @@ export default function HomePage() {
               </p>
             </div>
             
-            {/* Quick Stats */}
-            <div className="grid grid-cols-3 gap-3 pt-4 border-t border-gray-700">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-orange-400">{stats.currentStreak}</div>
-                <div className="text-xs text-gray-400 mt-1">Entry Streak</div>
+            {/* Vertical Stats - Moved to Bottom */}
+            <div className="flex flex-col gap-3 pt-4 border-t border-gray-700 mt-auto">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Flame className="w-4 h-4 text-orange-400" />
+                  <span className="text-xs text-gray-400">Entry Streak</span>
+                </div>
+                <div className="text-base font-bold text-orange-400">{stats.currentStreak}</div>
               </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-blue-400">{stats.totalEntries}</div>
-                <div className="text-xs text-gray-400 mt-1">Total Entries</div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-blue-400" />
+                  <span className="text-xs text-gray-400">Total Entries</span>
+                </div>
+                <div className="text-base font-bold text-blue-400">{stats.totalEntries}</div>
               </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-purple-400">{habitStats.totalHabits}</div>
-                <div className="text-xs text-gray-400 mt-1">Active Habits</div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Dumbbell className="w-4 h-4 text-purple-400" />
+                  <span className="text-xs text-gray-400">Active Habits</span>
+                </div>
+                <div className="text-base font-bold text-purple-400">{habitStats.totalHabits}</div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* ====================================================================
-            HABIT CARDS SECTION
-            ====================================================================
-        */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold text-gray-900">Your Habits</h2>
-            <a
-              href="/habits"
-              className="text-purple-600 hover:text-purple-700 font-semibold text-sm"
-            >
-              View All →
-            </a>
-          </div>
-          
-          <div className="overflow-x-auto pb-2">
-              <div className="flex gap-4 min-w-max">
-                {habits.length === 0 ? (
-                  // Empty state
-                  <div className="flex items-center justify-center w-full py-12 px-6">
-                    <div className="text-center">
-                      <p className="text-6xl mb-4">💪</p>
-                      <p className="text-gray-900 font-semibold text-lg mb-2">No habits yet</p>
-                      <p className="text-gray-600 mb-4">Start building better habits today!</p>
-                      <a
-                        href="/habits/new"
-                        className="inline-block bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-700 transition"
-                      >
-                        Create Your First Habit
-                      </a>
-                    </div>
-                  </div>
-                ) : (
-                  // Real habit cards
-                  habits.slice(0, 6).map((habit) => {
-                    const todayLog = todayHabitLogs[habit.id!];
-                    const isCompleted = todayLog?.value > 0;
-                    const progressValue = habit.type === 'numeric' && habit.target 
-                      ? Math.min(100, (todayLog?.value || 0) / habit.target * 100)
-                      : isCompleted ? 100 : 0;
+          {/* Current Habits */}
+          <div className="bg-white rounded-xl p-6 shadow-md border-2 border-gray-100">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Current Habits</h2>
+            <div className="space-y-3 max-h-[400px] overflow-y-auto">
+              {habits.length === 0 ? (
+                <div className="text-center py-8">
+                  <Dumbbell className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-500 text-sm">No habits yet</p>
+                </div>
+              ) : (
+                habits.slice(0, 5).map((habit) => {
+                  const todayLog = todayHabitLogs[habit.id!];
+                  const isCompleted = todayLog?.value > 0;
+                  const progressValue = habit.type === 'numeric' && habit.target 
+                    ? Math.min(100, (todayLog?.value || 0) / habit.target * 100)
+                    : isCompleted ? 100 : 0;
 
-                    return (
-                      <a
-                        key={habit.id}
-                        href="/habits"
-                        className="block min-w-[220px] rounded-xl p-6 transition-all hover:scale-105 hover:shadow-xl cursor-pointer"
-                        style={{
-                          backgroundColor: habit.color + '20',
-                          borderLeft: `4px solid ${habit.color}`,
-                        }}
-                      >
-                        <div className="flex items-start justify-between mb-3">
-                          <h3 className="font-bold text-gray-900 text-lg">{habit.name}</h3>
-                          {isCompleted && (
-                            <span className="text-2xl">✅</span>
-                          )}
-                        </div>
-                        
-                        {habit.type === 'numeric' ? (
-                          <div>
-                            <p className="text-sm text-gray-600 mb-2">
-                              {todayLog?.value || 0} / {habit.target || '∞'} {habit.unit || 'units'}
-                            </p>
-                            <div className="w-full bg-gray-200 rounded-full h-2">
-                              <div
-                                className="h-2 rounded-full transition-all duration-500"
-                                style={{
-                                  width: `${progressValue}%`,
-                                  backgroundColor: habit.color,
-                                }}
-                              />
-                            </div>
-                          </div>
-                        ) : (
-                          <p className="text-sm text-gray-600">
-                            {isCompleted ? '✓ Completed today' : 'Not done yet'}
-                          </p>
+                  return (
+                    <a
+                      key={habit.id}
+                      href="/habits"
+                      className="block rounded-lg p-3 transition-all hover:bg-gray-50 cursor-pointer border border-gray-100"
+                      style={{
+                        borderLeft: `3px solid ${habit.color}`,
+                      }}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="font-semibold text-gray-900 text-sm">{habit.name}</h3>
+                        {isCompleted && (
+                          <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
                         )}
-                      </a>
-                    );
-                  })
-                )}
-                
-                {/* Add new habit card */}
-                {habits.length > 0 && habits.length < 6 && (
-                  <a
-                    href="/habits/new"
-                    className="min-w-[220px] rounded-xl p-6 border-2 border-dashed border-gray-300 hover:border-purple-500 transition-all flex items-center justify-center cursor-pointer hover:bg-purple-50"
-                  >
-                    <div className="text-center">
-                      <p className="text-4xl mb-2">➕</p>
-                      <p className="text-gray-600 font-semibold">Add Habit</p>
-                    </div>
-                  </a>
-                )}
-              </div>
+                      </div>
+                      
+                      {habit.type === 'numeric' ? (
+                        <div>
+                          <p className="text-xs text-gray-600 mb-1">
+                            {todayLog?.value || 0} / {habit.target || '∞'} {habit.unit || 'units'}
+                          </p>
+                          <div className="w-full bg-gray-200 rounded-full h-1.5">
+                            <div
+                              className="h-1.5 rounded-full transition-all duration-500"
+                              style={{
+                                width: `${progressValue}%`,
+                                backgroundColor: habit.color,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-600">
+                          {isCompleted ? '✓ Completed today' : 'Not done yet'}
+                        </p>
+                      )}
+                    </a>
+                  );
+                })
+              )}
             </div>
+            {habits.length > 5 && (
+              <a
+                href="/habits"
+                className="block text-center mt-4 text-sm text-purple-600 hover:text-purple-700 font-semibold"
+              >
+                View All Habits <ArrowRight className="w-4 h-4 inline ml-1" />
+              </a>
+            )}
+          </div>
         </div>
+
+
     </DashboardLayout>
   );
 }
+
