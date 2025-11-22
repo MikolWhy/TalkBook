@@ -307,21 +307,34 @@ export async function calculateGlobalStreak(profileId: number): Promise<number> 
     
     if (habits.length === 0) return 0;
 
+    // Filter out one-time goals - they don't contribute to daily streaks
+    // Global streak is for days where all recurring habits are completed
+    const recurringHabits = habits.filter(habit => habit.frequency !== 'one-time');
+    
+    // If no recurring habits, return 0 (can't have a daily streak without daily habits)
+    if (recurringHabits.length === 0) return 0;
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     let currentDate = new Date(today);
     let streak = 0;
+    
+    // Safety: limit to checking last 365 days to prevent infinite loops
+    const maxDaysToCheck = 365;
+    let daysChecked = 0;
 
     // Go backwards day by day
-    while (true) {
+    while (daysChecked < maxDaysToCheck) {
       const dateString = currentDate.toISOString().split('T')[0];
+      daysChecked++;
       
-      // Check if all habits have logs for this date
+      // Check if all recurring habits have logs for this date and are completed
       let allCompleted = true;
       
-      for (const habit of habits) {
+      for (const habit of recurringHabits) {
         if (!habit.id) continue;
         
+        // Check if completed on this specific date
         const log = await db.habitLogs
           .where('[habitId+date]')
           .equals([habit.id, dateString])
@@ -364,9 +377,6 @@ export async function calculateGlobalStreak(profileId: number): Promise<number> 
         // Gap in streak, stop counting
         break;
       }
-      
-      // Safety limit to prevent infinite loops
-      if (streak > 10000) break;
     }
 
     return streak;

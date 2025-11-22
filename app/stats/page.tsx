@@ -87,7 +87,7 @@ export default function StatsPage() {
       for (const habit of habitsData) {
         if (habit.id) {
           const logs = await getHabitLogs(habit.id);
-          allLogs.push(...logs.map(log => ({ ...log, habitName: habit.name, habitColor: habit.color })));
+          allLogs.push(...logs.map(log => ({ ...log, habitId: habit.id, habitName: habit.name, habitColor: habit.color })));
         }
       }
       setHabitLogs(allLogs);
@@ -180,7 +180,26 @@ export default function StatsPage() {
 
   // Calculate habit statistics
   const habitStats = useMemo(() => {
-    const totalHabits = habits.length;
+    // Check which one-time habits have been completed (have any log with value > 0)
+    const completedOneTimeHabitIds = new Set<number>();
+    habitLogs.forEach((log: any) => {
+      if (log.value > 0 && log.habitId) {
+        const habit = habits.find(h => h.id === log.habitId);
+        if (habit && habit.frequency === 'one-time') {
+          completedOneTimeHabitIds.add(log.habitId);
+        }
+      }
+    });
+    
+    // Count active habits (excluding completed one-time habits)
+    const activeHabits = habits.filter(habit => {
+      if (habit.frequency === 'one-time' && habit.id && completedOneTimeHabitIds.has(habit.id)) {
+        return false; // Exclude completed one-time habits
+      }
+      return true;
+    });
+    
+    const totalHabits = activeHabits.length;
     const totalCompletions = filteredHabitLogs.filter((log: any) => log.value > 0).length;
     
     // Calculate habit completion rate per day
@@ -194,10 +213,51 @@ export default function StatsPage() {
     const daysWithCompletions = Object.keys(dateGroups).length;
     const avgCompletionsPerDay = daysWithCompletions > 0 ? totalCompletions / daysWithCompletions : 0;
 
+    // Calculate habit streak (at least 1 habit completed per day)
+    let habitStreak = 0;
+    if (Object.keys(dateGroups).length > 0) {
+      // Create a Set of dates with completions for quick lookup
+      const completionDatesSet = new Set(
+        Object.keys(dateGroups).map(date => {
+          const d = new Date(date + 'T00:00:00');
+          d.setHours(0, 0, 0, 0);
+          return d.getTime();
+        })
+      );
+      
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      // Find the most recent completion date
+      const completionDates = Array.from(completionDatesSet)
+        .map(time => new Date(time))
+        .sort((a, b) => b.getTime() - a.getTime());
+      
+      const mostRecentDate = completionDates[0];
+      if (mostRecentDate) {
+        const daysSinceLastCompletion = Math.floor((today.getTime() - mostRecentDate.getTime()) / (1000 * 60 * 60 * 24));
+        
+        // Streak continues if last completion was today or yesterday
+        if (daysSinceLastCompletion <= 1) {
+          // Start checking from the most recent completion date
+          let checkDate = new Date(mostRecentDate);
+          
+          // Count consecutive days backwards
+          while (completionDatesSet.has(checkDate.getTime())) {
+            habitStreak++;
+            // Move to previous day
+            checkDate.setDate(checkDate.getDate() - 1);
+            checkDate.setHours(0, 0, 0, 0);
+          }
+        }
+      }
+    }
+
     return {
       totalHabits,
       totalCompletions,
       avgCompletionsPerDay: Math.round(avgCompletionsPerDay * 10) / 10,
+      habitStreak,
     };
   }, [habits, filteredHabitLogs]);
 
@@ -324,7 +384,7 @@ export default function StatsPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8">
         <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl p-4 md:p-6 text-white shadow-lg">
           <p className="text-indigo-100 text-xs md:text-sm font-medium mb-1">Level</p>
           <p className="text-3xl md:text-4xl font-bold">{xpStats?.level || 1}</p>
@@ -346,8 +406,12 @@ export default function StatsPage() {
           <p className="text-3xl md:text-4xl font-bold">{habitStats.totalHabits}</p>
         </div>
         <div className="bg-gradient-to-br from-pink-500 to-pink-600 rounded-xl p-4 md:p-6 text-white shadow-lg">
-          <p className="text-pink-100 text-xs md:text-sm font-medium mb-1">Completions</p>
+          <p className="text-pink-100 text-xs md:text-sm font-medium mb-1">Habit Completions</p>
           <p className="text-3xl md:text-4xl font-bold">{habitStats.totalCompletions}</p>
+        </div>
+        <div className="bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl p-4 md:p-6 text-white shadow-lg">
+          <p className="text-teal-100 text-xs md:text-sm font-medium mb-1">Habit Streak</p>
+          <p className="text-3xl md:text-4xl font-bold">{habitStats.habitStreak} ⚡</p>
         </div>
       </div>
 
