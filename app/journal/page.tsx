@@ -3,7 +3,7 @@
 //
 // WHAT WE'RE CREATING:
 // - A page that lists all journal entries in reverse chronological order (newest first)
-// - Each entry shows: date, mood emoji, weather, truncated content preview
+// - Each entry shows: date, mood emoji, truncated content preview
 // - Actions: click to view/edit, delete entry
 // - Empty state when no entries exist
 //
@@ -17,7 +17,7 @@
 // CONTEXT FOR AI ASSISTANTS:
 // - This page shows all journal entries in a list
 // - Entries are displayed in reverse chronological order (newest first)
-// - Each entry shows: date, mood, weather, truncated content preview
+// - Each entry shows: date, mood, truncated content preview
 // - Actions: view, edit, delete
 // - Supports filtering and search (future enhancement)
 //
@@ -34,14 +34,14 @@
 // FUNCTIONALITY:
 // - Load entries from database
 // - Display entries in reverse chronological order
-// - Show entry preview (date, mood emoji, weather, truncated content)
+// - Show entry preview (date, mood emoji, truncated content)
 // - Link to edit page
 // - Delete entry with confirmation
 // - Empty state message
 //
 // UI:
 // - List of entry cards
-// - Each card: date, mood, weather, content preview, actions
+// - Each card: date, mood, content preview, actions
 // - Hover effects on cards
 // - Responsive grid/list layout
 //

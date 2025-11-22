@@ -366,7 +366,6 @@ export default function EditEntryPage() {
         // Keep existing metadata if content hasn't changed
         extractedPeople: [],
         extractedTopics: [],
-        extractedDates: [],
       });
 
       if (!success) {
@@ -382,7 +381,6 @@ export default function EditEntryPage() {
           updateEntry(entryId as string, {
             extractedPeople: cachedMetadata?.people || [],
             extractedTopics: cachedMetadata?.topics || [],
-            extractedDates: cachedMetadata?.dates || [],
           });
         }).catch((error) => {
           console.error("Error extracting metadata in background:", error);
