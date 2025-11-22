@@ -4,6 +4,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { ArrowLeft, FileText, Check } from "lucide-react";
 import DashboardLayout from "../../components/DashboardLayout";
 import RichTextEditor, { RichTextEditorRef } from "../../../src/components/RichTextEditor";
 import PromptSuggestions from "../../../src/components/PromptSuggestions";
@@ -622,27 +623,29 @@ export default function NewEntryPage() {
       {/* Header Section with Title and Back Button */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">New Entry</h1>
-        <div className="space-x-2">
-
+        <div className="flex items-center gap-2">
           {/* Back/Exit Button */}
           <button
             onClick={handleBack}
-            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium flex items-center gap-2"
           >
-            ← Back to Journal
+            <ArrowLeft className="w-4 h-4" />
+            Back to Journal
           </button>
           <button
             onClick={handleSaveDraft}
             disabled={isSaving}
-            className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
+            <FileText className="w-4 h-4" />
             {isSaving ? "Saving..." : "Save as Draft"}
           </button>
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
+            <Check className="w-4 h-4" />
             {isSaving ? "Saving..." : "Save Entry"}
           </button>
         </div>

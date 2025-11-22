@@ -1,5 +1,6 @@
 "use client";
 
+import { Brain } from "lucide-react";
 import { TopicSuggestion } from "../lib/nlp/prompts";
 
 interface TopicSuggestionsProps {
@@ -10,8 +11,9 @@ export default function TopicSuggestions({ suggestions }: TopicSuggestionsProps)
   // Always show the section, even if empty (will show default topics from prompts.ts)
   return (
     <div className="bg-white border-2 border-gray-100 rounded-2xl p-6 mb-6 shadow-sm" style={{ backgroundColor: "var(--background, #ffffff)" }}>
-      <h3 className="text-lg font-bold text-gray-900 mb-3">
-        💭 Maybe you want to talk about
+      <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+        <Brain className="w-5 h-5 text-purple-500" />
+        Maybe you want to talk about
       </h3>
       {suggestions.length > 0 ? (
         <>
