@@ -31,7 +31,6 @@ async function testExtraction() {
   console.log("✅ Extraction Results:");
   console.log("People:", result.people);
   console.log("Topics:", result.topics);
-  console.log("Dates:", result.dates);
   
   return result;
 }
