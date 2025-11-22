@@ -37,6 +37,7 @@ import {
   ArrowRight,
   Quote
 } from "lucide-react";
+// 
 // useState = React hook for storing data that can change
 // - Syntax: const [value, setValue] = useState(initialValue)
 // - value = current value
