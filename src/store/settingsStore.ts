@@ -3,7 +3,7 @@
 //
 // WHAT WE'RE CREATING:
 // - A Zustand store that remembers all user settings
-// - Appearance settings: page color, lined paper, weather auto-fill
+// - Appearance settings: page color, lined paper
 // - AI settings: AI toggle, prompt count, tone, blacklist
 // - Settings are persisted to IndexedDB (loaded on app start)
 // - When settings change, all components using them update automatically
@@ -39,7 +39,6 @@
 // Appearance settings (Aadil):
 // - pageColor: string - journal page background color (hex code)
 // - linedPaper: boolean - whether to show lined paper background
-// - weatherAutoFill: boolean - whether to auto-fill weather in entries
 //
 // AI settings (Michael adds these on separate branch after Aadil creates store):
 // - aiEnabled: boolean - whether AI prompts are enabled

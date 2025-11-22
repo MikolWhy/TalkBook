@@ -1,137 +1,57 @@
-// nlp extraction - extracts entities from journal entry text
-// uses compromise for people/topics, chrono-node for dates
-//
-// WHAT WE'RE CREATING:
-// - A function that reads journal entry text and extracts meaningful information
-// - Extracts: people (names), topics (nouns), dates mentioned
-// - This extracted data is used for: prompt generation, statistics, insights
-// - All processing happens client-side (privacy-first, no data sent to servers)
-//
-// OWNERSHIP:
-// - Michael implements this completely
-//
-// COORDINATION NOTES:
-// - Uses Entry interface from schema.ts (Aadil creates this)
-// - Saves extracted entities using repo.ts entity functions (Michael adds these)
-// - Called after entry is saved (from app/journal/new/page.tsx)
-//
-// CONTEXT FOR AI ASSISTANTS:
-// - This file processes journal entry text to extract meaningful information
-// - Extracted data is used for: prompt generation, statistics, insights
-// - All processing happens client-side (privacy-first, no data sent to servers)
-// - The extracted entities are stored in the database for later use
-//
-// LIBRARIES USED:
-// - compromise: extracts people (names) and topics (nouns) from text
-// - chrono-node: extracts dates mentioned in text (e.g., "yesterday", "next week")
-//
-// DEVELOPMENT NOTES:
-// - Process plain text (strip HTML from rich text editor before processing)
-// - Handle edge cases: empty text, very long text, special characters
-// - Normalize extracted data (lowercase names, remove duplicates)
-// - Sentiment score: positive = positive emotion, negative = negative emotion, 0 = neutral
-// - People extraction: look for capitalized words that might be names
-// - Topics extraction: extract important nouns (skip common words like "the", "a")
-//
-// TODO: implement extractMetadata function
-// - Input: plain text string from journal entry
-// - Output: object with { people: string[], topics: string[], dates: Date[] }
-// - Use compromise to extract people and topics
-// - Use chrono-node to extract dates
-// - Return normalized, deduplicated results
-//
-// SYNTAX: 
-// export async function extractMetadata(text: string): Promise<{
-//   people: string[];
-//   topics: string[];
-//   dates: Date[];
-//   sentiment: number;
-// }> {
-//   // implementation
-// }
+// extracts people names and topics from journal entry text using compromise nlp
+// used by prompt generation and stats - all processing happens client-side
 
-// Import NLP libraries
 import nlp from "compromise";
-import * as chrono from "chrono-node";
 import { isBlacklisted } from "../blacklist/manager";
 
-// Helper function to strip HTML tags from rich text editor content
-// Converts HTML to plain text for NLP processing
+// strips html tags from rich text editor content to get plain text for nlp
 function stripHTML(html: string): string {
-  // Remove HTML tags using regex
-  // This is safe because we're only processing user's own journal entries
   return html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 }
 
-// Extract metadata from journal entry text
-// Input: HTML string from rich text editor
-// Output: Object with extracted people, topics, and dates
+// extracts people names and topics from journal entry text
+// takes html string from editor, returns people and topics arrays
 export async function extractMetadata(
   text: string
 ): Promise<{
   people: string[];
   topics: string[];
-  dates: Date[];
 }> {
-  // Handle empty text
   if (!text || text.trim().length === 0) {
-    return {
-      people: [],
-      topics: [],
-      dates: [],
-    };
+    return { people: [], topics: [] };
   }
 
-  // Convert HTML to plain text
   const plainText = stripHTML(text);
+  const result = { people: [] as string[], topics: [] as string[] };
 
-  // Initialize result object
-  const result = {
-    people: [] as string[],
-    topics: [] as string[],
-    dates: [] as Date[],
-  };
-
-  // MINIMAL BLACKLIST: Only grammatical words that are structurally NEVER names
-  // We keep this minimal and rely on NLP analysis for everything else
-  // This list contains only function words (prepositions, conjunctions, pronouns, determiners)
+  // minimal blacklist of grammatical words that are never names
+  // mostly relies on nlp analysis, this is just for function words
   const grammaticalWords = new Set([
-    // Prepositions (function words)
     "on", "in", "at", "to", "from", "with", "about", "after", "before", "during", "until", "for",
     "by", "under", "over", "through", "between", "among", "into", "onto", "upon",
-    // Conjunctions (function words)
     "and", "or", "but", "so", "yet", "nor", "for", "because", "although", "though", "since", "if", "unless", "while",
-    // Determiners (function words)
     "the", "a", "an", "this", "that", "these", "those", "some", "any", "each", "every", "either", "neither", "both", "all",
-    // Pronouns (function words)
-    "i", "me", "my", "mine", "myself",
-    "you", "your", "yours", "yourself",
-    "he", "him", "his", "himself",
-    "she", "her", "hers", "herself",
-    "it", "its", "itself",
-    "we", "us", "our", "ours", "ourselves",
-    "they", "them", "their", "theirs", "themselves",
-    // Adverbs (common function words only)
+    "i", "me", "my", "mine", "myself", "you", "your", "yours", "yourself",
+    "he", "him", "his", "himself", "she", "her", "hers", "herself", "it", "its", "itself",
+    "we", "us", "our", "ours", "ourselves", "they", "them", "their", "theirs", "themselves",
     "not", "very", "too", "so", "just", "only", "also", "even", "still", "already", "yet"
   ]);
 
-  // Helper function: Smart validation to check if a word is truly a person name
-  // Uses compromise's linguistic analysis instead of hardcoded word lists
+  // checks if a word is actually a person name using compromise's linguistic analysis
+  // tests the word in multiple sentence contexts to get accurate tags
   const isValidPersonName = (word: string, originalContext: string): boolean => {
     const cleanWord = word.replace(/[.,!?;:'"]/g, "").trim();
     const cleanWordLower = cleanWord.toLowerCase();
     
-    // Filter 1: Reject grammatical function words (minimal hardcoded list)
     if (grammaticalWords.has(cleanWordLower)) {
       return false;
     }
     
-    // Filter 2: Use compromise to analyze the word in multiple sentence contexts
-    // Test in 3 different sentence patterns to get accurate linguistic tags
+    // test word in different sentence patterns to see how compromise tags it
     const testSentences = [
-      `I met ${cleanWord} yesterday.`,           // Pattern 1: "met X" - name context
-      `${cleanWord} is a person.`,               // Pattern 2: "X is" - subject context
-      `I was talking with ${cleanWord}.`         // Pattern 3: "with X" - object context
+      `I met ${cleanWord} yesterday.`,
+      `${cleanWord} is a person.`,
+      `I was talking with ${cleanWord}.`
     ];
     
     let nameCount = 0;
@@ -141,16 +61,13 @@ export async function extractMetadata(
     
     for (const sentence of testSentences) {
       const testDoc = nlp(sentence);
-      
-      // Check if compromise detects this word as a person in this sentence
       const detectedPeople = testDoc.people().out("array") as string[];
       const isPerson = detectedPeople.some(p => p.toLowerCase().trim() === cleanWordLower);
       
       if (isPerson) {
-        nameCount += 2; // Strong signal - compromise detected it as a person
+        nameCount += 2;
       }
       
-      // Also check for ProperNoun tags using match
       const properNounMatch = testDoc.match(`#ProperNoun`);
       if (properNounMatch.found) {
         const properNouns = properNounMatch.out("array") as string[];
@@ -159,7 +76,6 @@ export async function extractMetadata(
         }
       }
       
-      // Check for common noun (but not proper noun)
       const commonNounMatch = testDoc.match(`#Noun`).not("#ProperNoun");
       if (commonNounMatch.found) {
         const commonNouns = commonNounMatch.out("array") as string[];
@@ -168,7 +84,6 @@ export async function extractMetadata(
         }
       }
       
-      // Check for verb
       const verbMatch = testDoc.match(`#Verb`);
       if (verbMatch.found) {
         const verbs = verbMatch.out("array") as string[];
@@ -177,7 +92,6 @@ export async function extractMetadata(
         }
       }
       
-      // Check for other grammatical types
       const adjMatch = testDoc.match(`#Adjective`);
       const advMatch = testDoc.match(`#Adverb`);
       if (adjMatch.found) {
@@ -194,25 +108,22 @@ export async function extractMetadata(
       }
     }
     
-    // Decision logic: Use voting system across contexts
-    // If compromise consistently tags it as a name/proper noun → it's a name
-    // If it's tagged as a verb or other grammatical word → NOT a name
-    // If it's a common noun but never tagged as a name → NOT a name
+    // voting system: if compromise consistently tags it as name → it's a name
+    // if tagged as verb/grammatical word → not a name
     
     if (verbCount > 0 || otherGrammaticalCount > 0) {
-      return false; // Verbs and grammatical words are never names
+      return false;
     }
     
     if (nameCount >= 2) {
-      return true; // Compromise thinks it's a name in multiple contexts → trust it
+      return true;
     }
     
     if (nameCount > 0 && nounCount === 0) {
-      return true; // Tagged as name but never as common noun → likely a name
+      return true;
     }
     
-    // Check original context: if it appears after a strong name indicator AND
-    // compromise never tagged it as a verb/grammatical word, it might be a name
+    // check if word appears after name indicators like "met", "with", "called"
     const nameIndicators = ["met", "with", "called", "texted", "saw", "spoke to", "talked to", "talking with"];
     const contextLower = originalContext.toLowerCase();
     const hasNameIndicator = nameIndicators.some(indicator => {
@@ -221,59 +132,40 @@ export async function extractMetadata(
     });
     
     if (hasNameIndicator && nameCount > 0 && verbCount === 0 && otherGrammaticalCount === 0) {
-      return true; // Appears after name indicator + compromise tagged it as name at least once
+      return true;
     }
     
-    return false; // Default: not confident it's a name
+    return false;
   };
 
-  // 1. Extract people (names) using compromise
+  // extract people names using compromise
   try {
     const doc = nlp(plainText);
-    
-    // HOW COMPROMISE WORKS:
-    // compromise analyzes text and identifies named entities (people, places, organizations)
-    // .people() = uses built-in knowledge base to find common names
-    // This catches names like "John", "Sarah", "Michael", etc.
     const people = doc.people().out("array") as string[];
-    
-    // Get all terms with their grammatical tags
     const allTerms = doc.terms().out("array") as any[];
     
-    // Name indicators - words that often precede names in natural language
-    // These are linguistic patterns, not hardcoded word lists
-    // Added more indicators to catch common patterns like "talking to X", "went with X", "jumped on X", etc.
+    // words that often come before names in natural language
     const nameIndicators = [
-      // Prepositions that commonly precede names
       "with", "to", "from", "about", "and", "or", "on", "at",
-      // Action verbs that commonly precede names
       "met", "talked", "talking", "saw", "called", "texted", "emailed", "visited",
       "went", "came", "spoke", "speaking", "hang", "hanging", "meet", "meeting",
       "jumped", "jump", "ran", "run", "walked", "walk", "sat", "sit", "stood", "stand",
       "played", "play", "worked", "work", "studied", "study"
     ];
     
-    // Find potential names using compromise's linguistic analysis
     const potentialNames: string[] = [];
     
     allTerms.forEach((term, index) => {
       const text = term.text || term;
       const tags = term.tags || [];
       const cleanText = text.replace(/[.,!?;:]/g, "");
-      const cleanTextLower = cleanText.toLowerCase(); // Define this early!
+      const cleanTextLower = cleanText.toLowerCase();
       
-      // Skip very short words
       if (cleanText.length <= 1) return;
       
-      // Use compromise's tags - check if it's a ProperNoun
-      // ProperNoun = capitalized word that compromise identifies as a proper noun
       const isProperNoun = tags.some((tag: string) => tag.includes("ProperNoun") || tag.includes("Person"));
-      
-      // Check if it's capitalized (potential name)
       const isCapitalized = text[0] === text[0].toUpperCase() && text[0] !== text[0].toLowerCase();
       
-      // Skip if compromise tags it as a common noun, verb, adjective, etc.
-      // This prevents "work" from "from work" being detected
       const isCommonNoun = tags.some((tag: string) => 
         tag.includes("Noun") && !tag.includes("ProperNoun")
       );
@@ -283,19 +175,15 @@ export async function extractMetadata(
       const isPronoun = tags.some((tag: string) => tag.includes("Pronoun"));
       const isDeterminer = tags.some((tag: string) => tag.includes("Determiner"));
       
-      // Skip grammatical words that are clearly not names
-      // Skip pronouns, determiners, common prepositions, common conjunctions
       if (isPronoun || isDeterminer) {
         return;
       }
       
       if (grammaticalWords.has(cleanTextLower)) {
-        return; // Skip grammatical function words
+        return;
       }
       
-      // Additional check: analyze the word in a sentence context using compromise
-      // This helps catch words that compromise might not tag correctly in isolation
-      // Create a test sentence to see how compromise analyzes it
+      // test word in sentence context to see how compromise tags it
       const testSentence = `I met ${cleanText} yesterday.`;
       const testDoc = nlp(testSentence);
       const testTerms = testDoc.terms().out("array") as any[];
@@ -399,60 +287,45 @@ export async function extractMetadata(
       // We now use isValidPersonName() for ALL potential names to avoid false positives
       // This prevents words like "Today", "Osmows" from being detected as names
       
-      // Quick pre-filter: Only process if it looks name-like
       const looksLikeName = cleanText.length >= 2 && cleanText.length <= 20 && /^[A-Za-z-]+$/.test(cleanText);
       if (!looksLikeName) return;
       
-      // Skip if it's clearly not a name based on basic checks
       if (isVerb || isCommonNoun || isAdjective || isAdverb) return;
-          
-      // Now apply the STRICT validation function
-      // This checks if compromise consistently tags it as a name across multiple contexts
+      
       if (isValidPersonName(cleanText, plainText)) {
         potentialNames.push(cleanText);
       }
     });
     
-    // CRITICAL FIX: Filter compromise's people() results using smart NLP validation
-    // Don't blindly trust compromise - validate each word using linguistic analysis
+    // validate compromise results using linguistic analysis
     const filteredPeople = people.filter((person) => {
       return isValidPersonName(person, plainText);
     });
     
-    // Combine filtered compromise results with our carefully detected names
     const allPeople = [...filteredPeople, ...potentialNames];
     
-    // Normalize: capitalize first letter of each word, remove duplicates (case-insensitive)
-    // IMPORTANT: Preserve multi-word names (e.g., "Mary Jane" stays as "Mary Jane", not "Maryjane")
+    // normalize names: capitalize first letter, preserve multi-word names, remove duplicates
     const normalizedNames = allPeople
           .map((name) => {
-        // Remove punctuation but preserve spaces (for multi-word names)
-        // Also remove apostrophes and quotes that might create malformed names like "Guyhenrywhat's"
         const clean = name.replace(/[.,!?;:'"]/g, "").trim();
-        if (clean.length <= 1) return null; // Filter out single characters
+        if (clean.length <= 1) return null;
         
-        // Filter out names that are suspiciously long (likely concatenated words)
-        // Most names are 2-20 characters per word, so a single "name" over 25 chars is suspicious
+        // skip suspiciously long names (likely concatenated)
         if (clean.length > 25 && !clean.includes(" ")) {
-          return null; // Likely a concatenated phrase, not a real name
+          return null;
         }
         
-        // Normalize: capitalize first letter of each word, lowercase rest
-        // Split by spaces to handle multi-word names properly
         const words = clean.split(/\s+/).filter(word => word.length > 0);
         if (words.length === 0) return null;
         
-        // Filter out words that contain non-letter characters (except hyphens for names like "Mary-Jane")
         const validWords = words.filter(word => /^[a-zA-Z-]+$/.test(word));
         if (validWords.length === 0) return null;
         
-        // Capitalize first letter of each word, lowercase the rest
-        // Also deduplicate repeated words (e.g. "Michael Michael" -> "Michael")
         const uniqueWords = new Set<string>();
         const normalizedWords: string[] = [];
         
         validWords.forEach(word => {
-          // Handle hyphenated names (e.g., "Mary-Jane")
+          // handle hyphenated names like "Mary-Jane"
           const normalizedWord = word.split("-")
             .map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
             .join("-");
@@ -465,12 +338,11 @@ export async function extractMetadata(
         });
         
         const normalized = normalizedWords.join(" ");
-        
         return normalized;
       })
-      .filter((name): name is string => name !== null && name.length > 1); // Remove nulls and single chars
+      .filter((name): name is string => name !== null && name.length > 1);
     
-    // Use case-insensitive deduplication
+    // case-insensitive deduplication
     const seen = new Set<string>();
     result.people = normalizedNames.filter((name) => {
       const lower = name.toLowerCase().trim();
@@ -484,60 +356,40 @@ export async function extractMetadata(
     console.error("Error extracting people:", error);
   }
 
-  // 2. Extract topics (nouns) using compromise
+  // extract topics (nouns) using compromise
   try {
     const doc = nlp(plainText);
     
-    // HOW COMPROMISE WORKS:
-    // compromise analyzes text and tags each word with parts of speech
-    // .nouns() = gets all nouns
-    // .not("#Pronoun") = excludes pronouns (our, your, my, etc.)
-    // .not("#Determiner") = excludes determiners (the, a, an, this, that)
-    // .not("#Preposition") = excludes prepositions (in, on, at, with)
-    // .not("#Conjunction") = excludes conjunctions (and, or, but)
-    // .not("#Adjective") = excludes adjectives (great, good, bad, etc.)
-    // .not("#Adverb") = excludes adverbs (very, really, today, etc.)
-    // .not("#Value") = excludes numbers
-    //
-    // This is MUCH smarter than hardcoding word lists - it uses linguistic analysis!
-    // CRITICAL: Exclude proper nouns (names) and people - these should only appear in people extraction, not topics
+    // compromise tags words by part of speech, we filter out grammatical words and names
     const nouns = doc
       .nouns()
-      .not("#Pronoun")           // Filters out pronouns: our, your, my, his, her, their, etc.
-      .not("#Determiner")        // Filters out determiners: the, a, an, this, that, these, those
-      .not("#Preposition")       // Filters out prepositions: in, on, at, with, for, of, to
-      .not("#Conjunction")       // Filters out conjunctions: and, or, but, so
-      .not("#Adjective")         // Filters out adjectives: great, good, bad, nice, etc.
-      .not("#Adverb")            // Filters out adverbs: very, really, today, tomorrow, etc.
-      .not("#Value")             // Filters out numbers
-      .not("#ProperNoun")        // CRITICAL: Exclude proper nouns (names) - compromise's built-in filter
-      .not("#Person")            // CRITICAL: Exclude people/names - compromise's built-in filter
+      .not("#Pronoun")
+      .not("#Determiner")
+      .not("#Preposition")
+      .not("#Conjunction")
+      .not("#Adjective")
+      .not("#Adverb")
+      .not("#Value")
+      .not("#ProperNoun")
+      .not("#Person")
       .out("array") as string[];
     
-    // Minimal stop words list - only for words compromise might miss
-    // Most filtering is done by compromise's .not() filters above
+    // extra stop words for things compromise might miss
     const stopWords = new Set([
-      "is", "are", "was", "were", "be", "been", "being", // Verbs that might slip through
-      "have", "has", "had", "do", "does", "did"          // Common verbs
+      "is", "are", "was", "were", "be", "been", "being",
+      "have", "has", "had", "do", "does", "did"
     ]);
     
-    // CRITICAL: Filter out pronouns that compromise might miss
-    // These are common pronouns that slip through as nouns (like "it", "her", "him", "they", "guy")
+    // filter out pronouns that might slip through
     const commonPronouns = new Set([
-      // Personal pronouns
       "it", "its", "he", "him", "she", "her", "they", "them", "we", "us",
-      // Possessive pronouns
       "his", "hers", "theirs", "ours", "yours", "mine",
-      // Demonstrative pronouns
       "this", "that", "these", "those",
-      // Interrogative pronouns
       "what", "which", "who", "whom", "whose", "where", "when", "why", "how",
-      // Common words that are often pronouns
       "guy", "guys", "person", "people", "thing", "things", "stuff",
     ]);
     
-    // Additional filter: exclude adjectives and adverbs that compromise might classify as nouns
-    // These words don't work well as topics in prompts
+    // exclude adjectives/adverbs that don't work as topics
     const invalidTopicWords = new Set([
       "great", "good", "bad", "nice", "fine", "okay", "ok", "well", "better", "best", "worst",
       "big", "small", "large", "little", "huge", "tiny", "long", "short", "high", "low",
@@ -547,16 +399,13 @@ export async function extractMetadata(
       "very", "really", "quite", "too", "so", "much", "many", "more", "most", "less", "least",
     ]);
     
-    // Extract single words from noun phrases and filter
-    // CRITICAL: Also filter out proper nouns (names) that might have slipped through
+    // split noun phrases into words and filter
     const singleWordTopics = nouns
       .flatMap((noun) => {
-        // Split phrases into individual words
         return noun.split(/\s+/).filter((word) => word.length > 2);
       })
       .filter((word) => {
         const lower = word.toLowerCase().replace(/[.,!?;:]/g, "");
-        // Filter out stop words, pronouns, invalid topic words, and very short words
         if (
           stopWords.has(lower) ||
           commonPronouns.has(lower) ||
@@ -566,8 +415,7 @@ export async function extractMetadata(
           return false;
         }
         
-        // CRITICAL: Check if this word is a proper noun (name) using compromise
-        // This catches names that compromise's .not() filters might have missed
+        // check if word is a proper noun (name) that slipped through
         try {
           const testDoc = nlp(word);
           const terms = testDoc.terms().out("array") as any[];
@@ -578,36 +426,27 @@ export async function extractMetadata(
           
           if (wordTerm) {
             const tags = wordTerm.tags || [];
-            // If compromise tags it as a proper noun or person, exclude it
             const isProperNoun = tags.some((tag: string) => 
               tag.includes("ProperNoun") || tag.includes("Person")
             );
             if (isProperNoun) {
-              return false; // This is a name, exclude it
+              return false;
             }
           }
         } catch (error) {
-          // If compromise fails, allow it (better to include than exclude incorrectly)
+          // if compromise fails, allow it
         }
         
         return true;
       })
       .map((word) => word.toLowerCase().replace(/[.,!?;:]/g, ""));
     
-    result.topics = [...new Set(singleWordTopics)].slice(0, 10); // Limit to top 10 topics
+    result.topics = [...new Set(singleWordTopics)].slice(0, 10);
   } catch (error) {
     console.error("Error extracting topics:", error);
   }
 
-  // 3. Extract dates using chrono-node
-  try {
-    const dateResults = chrono.parse(plainText);
-    result.dates = dateResults.map((result) => result.start.date());
-  } catch (error) {
-    console.error("Error extracting dates:", error);
-  }
-
-  // Filter out blacklisted words from people and topics
+  // remove blacklisted words
   result.people = result.people.filter(person => !isBlacklisted(person));
   result.topics = result.topics.filter(topic => !isBlacklisted(topic));
 
