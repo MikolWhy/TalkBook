@@ -204,12 +204,12 @@ export default function HabitCard({ habit, streak, todayLog, onLog, onEdit, onAr
 
           {/* Stats Row */}
           <div className="flex items-center gap-4 text-sm text-gray-500 mb-3">
-            {showStreak && (
+            {/* {showStreak && (
               <span className="flex items-center gap-1">
                 <Flame className="w-4 h-4 text-orange-500" />
                 <span className="font-medium text-gray-700">{streak}</span> day streak
               </span>
-            )}
+            )} */}
             {habit.type === "numeric" && habit.target && (
               <span className="flex items-center gap-1">
                 <Target className="w-4 h-4 text-blue-500" />
