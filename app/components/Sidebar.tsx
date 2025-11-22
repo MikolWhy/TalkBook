@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "./SidebarProvider";
 import { useState, useEffect } from "react";
-import { BookHeart, Home, Dumbbell, BarChart, ArrowLeftFromLine, SettingsIcon, HelpCircleIcon } from "lucide-react";
+import { BookHeart, Home, Dumbbell, BarChart, ArrowLeftFromLine, SettingsIcon, HelpCircleIcon, Zap } from "lucide-react";
 // Navigation items - shared across all pages
 const navItems = [
   { label: "home", href: "/", icon: Home },
@@ -62,6 +62,62 @@ function ProfileSection() {
             {userName}
           </p>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// Compact XP Progress component for sidebar
+function CompactXPProgress() {
+  const [stats, setStats] = useState({
+    totalXP: 0,
+    level: 1,
+    currentLevelXP: 0,
+    nextLevelXP: 500,
+    progress: 0,
+  });
+
+  useEffect(() => {
+    const loadStats = () => {
+      const { getUserStats } = require("../../src/lib/gamification/xp");
+      const userStats = getUserStats();
+      setStats(userStats);
+    };
+
+    loadStats();
+
+    const handleXPUpdate = () => {
+      loadStats();
+    };
+
+    window.addEventListener("xp-updated", handleXPUpdate);
+
+    return () => {
+      window.removeEventListener("xp-updated", handleXPUpdate);
+    };
+  }, []);
+
+  return (
+    <div className="px-6 py-4 border-b border-gray-200">
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Zap className="w-4 h-4 text-indigo-600" />
+            <span className="text-sm font-semibold text-gray-900">Level {stats.level}</span>
+          </div>
+          <span className="text-xs text-gray-600">{stats.totalXP.toLocaleString()} XP</span>
+        </div>
+        <div className="relative">
+          <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-700"
+              style={{ width: `${Math.min(stats.progress, 100)}%` }}
+            />
+          </div>
+        </div>
+        <p className="text-xs text-gray-500">
+          {stats.currentLevelXP.toLocaleString()} / {stats.nextLevelXP.toLocaleString()} XP
+        </p>
       </div>
     </div>
   );
@@ -157,6 +213,9 @@ export default function Sidebar() {
 
         {/* User Profile Section */}
         <ProfileSection />
+
+        {/* XP Progress Section */}
+        <CompactXPProgress />
 
         {/* Navigation Menu */}
         <nav className="flex-1 px-4 py-4 overflow-y-auto">
