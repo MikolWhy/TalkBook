@@ -348,104 +348,35 @@ export default function StatsPage() {
       .slice(0, 10);
   }, [filteredHabitLogs]);
 
-  // Mood distribution (pie chart)
-  const moodDistribution = useMemo(() => {
-    const counts: Record<string, number> = {};
-    filteredEntries.forEach((e: any) => {
-      if (e.mood) {
-        counts[e.mood] = (counts[e.mood] || 0) + 1;
-      }
-    });
-    return Object.entries(counts)
-      .map(([mood, count]) => ({ mood: moodMap[mood] || mood, count, fullMood: mood }))
-      .sort((a, b) => b.count - a.count);
-  }, [filteredEntries]);
 
-  // Mood pattern over time (line chart showing mood trends)
-  const moodPatternOverTime = useMemo(() => {
-    // Create a map of dates to moods (use most common mood per day if multiple entries)
-    const dateMoodMap: Record<string, Record<string, number>> = {};
+  // Mood pattern (pie chart showing counts of each mood emoji)
+  // Includes default emoji (😐) for entries with no mood selected
+  const moodPatternData = useMemo(() => {
+    const counts: Record<string, number> = {};
     
+    // Count all moods including default (null mood = 😐)
     filteredEntries.forEach((e: any) => {
-      if (e.mood) {
-        const entryDate = new Date(e.createdAt);
-        entryDate.setHours(0, 0, 0, 0);
-        const dateKey = entryDate.toISOString().split('T')[0];
-        
-        if (!dateMoodMap[dateKey]) {
-          dateMoodMap[dateKey] = {};
-        }
-        dateMoodMap[dateKey][e.mood] = (dateMoodMap[dateKey][e.mood] || 0) + 1;
-      }
+      const moodKey = e.mood || "neutral"; // Default to "neutral" for null mood
+      counts[moodKey] = (counts[moodKey] || 0) + 1;
     });
     
-    // Generate all dates in the range
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - timeRange);
-    cutoffDate.setHours(0, 0, 0, 0);
+    // Convert to array format for pie chart
+    // Include all possible moods even if count is 0, so chart structure is consistent
+    const allMoods = [
+      "very-happy", "happy", "excited", "grateful", "calm", 
+      "neutral", "anxious", "sad", "angry", "very-sad"
+    ];
     
-    const result: Array<{ date: string; mood: string | null; moodEmoji: string; moodValue: number }> = [];
-    const currentDate = new Date(cutoffDate);
-    
-    // Mood value mapping for trend visualization (higher = more positive)
-    const moodValues: Record<string, number> = {
-      "very-happy": 5,
-      "happy": 4,
-      "excited": 4.5,
-      "grateful": 4,
-      "calm": 3.5,
-      "neutral": 3,
-      "anxious": 2,
-      "sad": 1.5,
-      "angry": 1,
-      "very-sad": 0.5,
-    };
-    
-    while (currentDate <= today) {
-      const dateKey = currentDate.toISOString().split('T')[0];
-      const moodsForDay = dateMoodMap[dateKey];
-      
-      let dominantMood: string | null = null;
-      let dominantMoodEmoji = "";
-      let moodValue = 0;
-      
-      if (moodsForDay) {
-        // Find the most common mood for this day
-        let maxCount = 0;
-        for (const [mood, count] of Object.entries(moodsForDay)) {
-          if (count > maxCount) {
-            maxCount = count;
-            dominantMood = mood;
-            dominantMoodEmoji = moodMap[mood] || "";
-            moodValue = moodValues[mood] || 3;
-          }
-        }
-      }
-      
-      // Format date for display
-      let dateLabel: string;
-      if (timeRange <= 7) {
-        dateLabel = currentDate.toLocaleDateString("en-US", { weekday: "short", day: "numeric" });
-      } else if (timeRange <= 30) {
-        dateLabel = currentDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-      } else {
-        dateLabel = currentDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-      }
-      
-      result.push({
-        date: dateLabel,
-        mood: dominantMood,
-        moodEmoji: dominantMoodEmoji,
-        moodValue: moodValue,
-      });
-      
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
-    
-    return result;
-  }, [filteredEntries, timeRange]);
+    return allMoods
+      .map((mood) => ({
+        mood: mood,
+        moodEmoji: moodMap[mood] || "😐",
+        count: counts[mood] || 0,
+        fullMood: mood,
+      }))
+      .filter((item) => item.count > 0) // Only show moods that have entries
+      .sort((a, b) => b.count - a.count); // Sort by count descending
+  }, [filteredEntries]);
 
   // Writing time distribution
   const timeDistribution = useMemo(() => {
@@ -627,44 +558,33 @@ export default function StatsPage() {
           </div>
         )}
 
-        {/* Mood Pattern Over Time */}
-        {moodPatternOverTime.some(d => d.mood !== null) && (
-          <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-6 md:p-8 shadow-xl border-2 border-amber-100 lg:col-span-2">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="bg-amber-500 p-3 rounded-xl">
-                <span className="text-2xl md:text-3xl">📈</span>
-              </div>
-              <h2 className="text-xl md:text-2xl font-bold text-gray-900">Mood Pattern Over Time</h2>
+        {/* Mood Pattern (Pie Chart) */}
+        <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-6 md:p-8 shadow-xl border-2 border-amber-100">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="bg-amber-500 p-3 rounded-xl">
+              <span className="text-2xl md:text-3xl">😊</span>
             </div>
+            <h2 className="text-xl md:text-2xl font-bold text-gray-900">Mood Pattern</h2>
+          </div>
+          {moodPatternData.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={moodPatternOverTime}>
-                <defs>
-                  <linearGradient id="colorMood" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#F59E0B" stopOpacity={0.1}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis 
-                  dataKey="date" 
-                  stroke="#6b7280" 
-                  style={{ fontSize: timeRange > 30 ? "10px" : "11px", fontWeight: "500" }}
-                  angle={timeRange > 30 ? -45 : 0}
-                  textAnchor={timeRange > 30 ? "end" : "middle"}
-                  height={timeRange > 30 ? 60 : 30}
-                />
-                <YAxis 
-                  stroke="#6b7280" 
-                  style={{ fontSize: "12px", fontWeight: "500" }}
-                  domain={[0, 5]}
-                  ticks={[0, 1, 2, 3, 4, 5]}
-                  tickFormatter={(value) => {
-                    const moodLabels: Record<number, string> = {
-                      0.5: "😭", 1: "😠", 1.5: "😢", 2: "😰", 3: "😐", 3.5: "😌", 4: "😊", 4.5: "🤩", 5: "😄"
-                    };
-                    return moodLabels[value] || "";
-                  }}
-                />
+              <PieChart>
+                <Pie
+                  data={moodPatternData}
+                  dataKey="count"
+                  nameKey="moodEmoji"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={90}
+                  label={(entry: any) => `${entry.moodEmoji} ${entry.count}`}
+                  labelLine={false}
+                  strokeWidth={3}
+                  stroke="#fff"
+                >
+                  {moodPatternData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={MOOD_COLORS[entry.fullMood] || COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
                 <Tooltip 
                   contentStyle={{ 
                     backgroundColor: "#fff", 
@@ -673,82 +593,18 @@ export default function StatsPage() {
                     boxShadow: "0 4px 6px rgba(0,0,0,0.1)"
                   }}
                   formatter={(value: any, name: string, props: any) => {
-                    if (props.payload.moodEmoji && props.payload.mood) {
-                      return [`${props.payload.moodEmoji} ${props.payload.mood}`, "Mood"];
-                    }
-                    return [value, name];
-                  }}
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="moodValue" 
-                  stroke="#F59E0B" 
-                  strokeWidth={3}
-                  fill="url(#colorMood)"
-                  name="Mood"
-                  connectNulls={false}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="moodValue" 
-                  stroke="#F59E0B" 
-                  strokeWidth={3}
-                  dot={(props: any) => {
-                    if (props.payload.moodValue > 0) {
-                      return <circle cx={props.cx} cy={props.cy} r={4} fill="#F59E0B" />;
-                    }
-                    return null;
-                  }}
-                  activeDot={{ r: 6 }}
-                  connectNulls={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-
-        {/* Mood Distribution */}
-        {moodDistribution.length > 0 && (
-          <div className="bg-gradient-to-br from-rose-50 to-pink-50 rounded-2xl p-6 md:p-8 shadow-xl border-2 border-rose-100">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="bg-rose-500 p-3 rounded-xl">
-                <span className="text-2xl md:text-3xl">😊</span>
-              </div>
-              <h2 className="text-xl md:text-2xl font-bold text-gray-900">Mood Breakdown</h2>
-            </div>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={moodDistribution}
-                  dataKey="count"
-                  nameKey="mood"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={90}
-                  label={(entry: any) => `${entry.mood} ${entry.count}`}
-                  labelLine={false}
-                  strokeWidth={3}
-                  stroke="#fff"
-                >
-                  {moodDistribution.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={MOOD_COLORS[entry.fullMood] || COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: "#fff", 
-                    border: "2px solid #F43F5E", 
-                    borderRadius: "12px",
-                    boxShadow: "0 4px 6px rgba(0,0,0,0.1)"
-                  }}
-                  formatter={(value: any, name: string, props: any) => {
-                    return [`${value} entries`, props.payload.fullMood];
+                    return [`${value} entries`, `${props.payload.moodEmoji} ${props.payload.fullMood}`];
                   }}
                 />
               </PieChart>
             </ResponsiveContainer>
-          </div>
-        )}
+          ) : (
+            <div className="h-[300px] flex items-center justify-center text-gray-400">
+              <p className="text-center">No mood data yet. Start writing entries to see your mood pattern!</p>
+            </div>
+          )}
+        </div>
+
 
         {/* Writing Time Distribution */}
         {timeDistribution.length > 0 && (
