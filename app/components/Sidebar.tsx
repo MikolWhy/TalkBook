@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "./SidebarProvider";
 import { useState, useEffect } from "react";
-import { BookHeart, Home, Dumbbell, BarChart, ArrowLeftFromLine, SettingsIcon, HelpCircleIcon, Zap } from "lucide-react";
+import { BookHeart, Home, Dumbbell, BarChart, ArrowLeftFromLine, SettingsIcon, HelpCircleIcon, Zap, Lock as LockIcon } from "lucide-react";
 // Navigation items - shared across all pages
 const navItems = [
   { label: "home", href: "/", icon: Home },
@@ -126,6 +126,7 @@ function CompactXPProgress() {
 // Lock button component to handle localStorage
 function LockButton() {
   const [hasPassword, setHasPassword] = useState(false);
+  const [, forceUpdate] = useState({});
 
   useEffect(() => {
     setHasPassword(!!localStorage.getItem("appPassword"));
@@ -134,8 +135,18 @@ function LockButton() {
       setHasPassword(!!localStorage.getItem("appPassword"));
     };
 
+    const handleBackgroundColorChange = () => {
+      // Force re-render to update background color
+      forceUpdate({});
+    };
+
     window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
+    window.addEventListener("background-color-changed", handleBackgroundColorChange);
+    
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("background-color-changed", handleBackgroundColorChange);
+    };
   }, []);
 
   const handleLock = () => {
@@ -153,11 +164,12 @@ function LockButton() {
         className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition ${
           hasPassword
             ? "text-gray-600 hover:bg-gray-100"
-            : "text-gray-400 bg-gray-50 cursor-not-allowed"
+            : "text-gray-400 cursor-not-allowed"
         }`}
+        style={{ backgroundColor: "var(--background, #ffffff)" }}
         title={!hasPassword ? "Set a password in Settings first" : "Lock app"}
       >
-        <span>🔒</span>
+        <LockIcon className="w-4 h-4" />
         <span>lock app</span>
       </button>
     </div>

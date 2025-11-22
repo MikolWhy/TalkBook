@@ -74,6 +74,7 @@ import {
   type Journal
 } from "../../src/lib/journals/manager";
 import { getEntries, saveEntries, deleteEntry as deleteCachedEntry } from "../../src/lib/cache/entriesCache";
+import { Settings, PenTool, FileText as FileTextIcon } from "lucide-react";
 
 // Mood ID to emoji mapping
 const moodMap: Record<string, string> = {
@@ -475,9 +476,10 @@ export default function JournalPage() {
                       setIsManageDialogOpen(true);
                       setIsJournalDropdownOpen(false);
                     }}
-                    className="w-full px-4 py-3 text-left text-blue-600 hover:bg-blue-50 font-medium transition-colors"
+                    className="w-full px-4 py-3 text-left text-blue-600 hover:bg-blue-50 font-medium transition-colors flex items-center gap-2"
                   >
-                    ⚙️ Manage Journals
+                    <Settings className="w-4 h-4" />
+                    Manage Journals
                   </button>
                 </div>
               </div>
@@ -487,9 +489,10 @@ export default function JournalPage() {
           {/* New Entry Button */}
           <Link
             href="/journal/new"
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center gap-2"
           >
-            ✍️ new entry
+            <PenTool className="w-4 h-4" />
+            new entry
           </Link>
         </div>
 
@@ -812,7 +815,7 @@ export default function JournalPage() {
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-center">
-                  <div className="text-6xl mb-4 opacity-20">📝</div>
+                  <FileTextIcon className="w-16 h-16 mb-4 opacity-20 text-gray-400" />
                   <p className="text-gray-400 text-lg font-medium">Select an entry to view</p>
                   <p className="text-gray-300 text-sm mt-2">Choose from the list on the left</p>
                 </div>

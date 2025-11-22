@@ -81,6 +81,7 @@ import {
   archiveHabit
 } from "@/lib/db/repo";
 import { Habit } from "@/lib/db/schema";
+import { Target, PartyPopper, CheckCircle2 } from "lucide-react";
 
 export default function HabitsPage() {
   const router = useRouter();
@@ -155,39 +156,48 @@ export default function HabitsPage() {
         await logHabit(habitId, today, value);
       }
       
-      // Award XP only if habit is being completed (not un-logged)
+      // Award XP only if habit is being completed (not un-logged) AND XP hasn't been awarded for this habit today
       if (isNowCompleted && !wasCompleted) {
-        // Count how many habits are completed today (before reload, so add 1 for this one)
-        const completedBeforeThis = Object.values(todayLogs).filter((log: any) => log?.value > 0).length;
-        const completedToday = completedBeforeThis + 1;
+        // Check if XP was already awarded for this habit today
+        const xpAwardedKey = `talkbook-habit-xp-${habitId}-${today}`;
+        const xpAlreadyAwarded = localStorage.getItem(xpAwardedKey) === 'true';
         
-        // Calculate global habit streak
-        const habitStreak = await calculateGlobalHabitStreak();
-        
-        // Award regular habit XP
-        const xpResult = awardHabitXP(
-          habit.type,
-          habit.type === 'numeric' ? value : 1,
-          habitStreak,
-          completedToday
-        );
-        
-        console.log("🎉 Habit XP Awarded:", xpResult);
-        
-        let totalXP = xpResult.xp;
-        let leveledUp = xpResult.leveledUp;
-        let oldLevel = xpResult.oldLevel;
-        let newLevel = xpResult.newLevel;
-        
-        // Show XP notification for regular habit XP first
-        setXpEarned(totalXP);
-        setLeveledUp(leveledUp);
-        setOldLevel(oldLevel);
-        setNewLevel(newLevel);
-        setShowXPNotification(true);
-        
-        // Dispatch event for XP bar to update
-        window.dispatchEvent(new Event("xp-updated"));
+        if (!xpAlreadyAwarded) {
+          // Count how many habits are completed today (before reload, so add 1 for this one)
+          const completedBeforeThis = Object.values(todayLogs).filter((log: any) => log?.value > 0).length;
+          const completedToday = completedBeforeThis + 1;
+          
+          // Calculate global habit streak
+          const habitStreak = await calculateGlobalHabitStreak();
+          
+          // Award regular habit XP
+          const xpResult = awardHabitXP(
+            habit.type,
+            habit.type === 'numeric' ? value : 1,
+            habitStreak,
+            completedToday
+          );
+          
+          console.log("🎉 Habit XP Awarded:", xpResult);
+          
+          // Mark XP as awarded for this habit today
+          localStorage.setItem(xpAwardedKey, 'true');
+          
+          let totalXP = xpResult.xp;
+          let leveledUp = xpResult.leveledUp;
+          let oldLevel = xpResult.oldLevel;
+          let newLevel = xpResult.newLevel;
+          
+          // Show XP notification for regular habit XP first
+          setXpEarned(totalXP);
+          setLeveledUp(leveledUp);
+          setOldLevel(oldLevel);
+          setNewLevel(newLevel);
+          setShowXPNotification(true);
+          
+          // Dispatch event for XP bar to update
+          window.dispatchEvent(new Event("xp-updated"));
+        }
       }
       
       // Reload habits to update streaks and logs
@@ -466,7 +476,9 @@ export default function HabitsPage() {
       {/* Empty State */}
       {habits.length === 0 ? (
         <div className="text-center py-12 rounded-lg shadow" style={{ backgroundColor: "var(--background, #ffffff)" }}>
-          <div className="text-6xl mb-4">🎯</div>
+          <div className="flex justify-center mb-4">
+            <Target className="w-16 h-16 text-gray-400" />
+          </div>
           <h2 className="text-xl font-semibold text-gray-900 mb-2">No habits yet</h2>
           <p className="text-gray-600 mb-6">Start building better habits today!</p>
           <Link
@@ -569,12 +581,14 @@ export default function HabitsPage() {
           <div className="mt-6 bg-blue-50 rounded-lg p-4 border border-blue-200">
             <h3 className="font-medium text-blue-900 mb-2">Today's Progress</h3>
             <div className="flex items-center gap-4 text-sm text-blue-700">
-              <span>
-                ✓ {completedCount} / {habits.length} completed
+              <span className="flex items-center gap-1">
+                <CheckCircle2 className="w-4 h-4" />
+                {completedCount} / {habits.length} completed
               </span>
               {completedCount === habits.length && habits.length > 0 && (
-                <span className="text-green-700 font-semibold">
-                  🎉 All habits completed! (+50 bonus XP)
+                <span className="text-green-700 font-semibold flex items-center gap-1">
+                  <PartyPopper className="w-4 h-4" />
+                  All habits completed! (+50 bonus XP)
                 </span>
               )}
             </div>
