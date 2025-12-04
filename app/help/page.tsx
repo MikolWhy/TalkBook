@@ -1,6 +1,7 @@
 "use client";
 
 import DashboardLayout from "../components/DashboardLayout";
+import { Rocket, FileText, Bot, CheckCircle2, BarChart, Settings, Lock, Lightbulb } from "lucide-react";
 
 export default function HelpPage() {
   return (
@@ -10,7 +11,10 @@ export default function HelpPage() {
 
         {/* Getting Started */}
         <div className="border border-gray-200 rounded-lg p-6 mb-6" style={{ backgroundColor: "var(--background, #ffffff)" }}>
-          <h2 className="text-2xl font-semibold text-gray-900 mb-4">🚀 Getting Started</h2>
+          <h2 className="text-2xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <Rocket className="w-6 h-6" />
+            Getting Started
+          </h2>
           <div className="space-y-4 text-gray-700">
             <p>
               Welcome to TalkBook! Your personal journal with smart prompts.
@@ -24,7 +28,10 @@ export default function HelpPage() {
 
         {/* Journal */}
         <div className="border border-gray-200 rounded-lg p-6 mb-6" style={{ backgroundColor: "var(--background, #ffffff)" }}>
-          <h2 className="text-2xl font-semibold text-gray-900 mb-4">📝 Journal</h2>
+          <h2 className="text-2xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <FileText className="w-6 h-6" />
+            Journal
+          </h2>
           <div className="space-y-4 text-gray-700">
             <div>
               <h3 className="font-semibold text-lg mb-2">Writing Prompts</h3>
@@ -45,7 +52,10 @@ export default function HelpPage() {
 
         {/* Name Extraction */}
         <div className="border border-gray-200 rounded-lg p-6 mb-6" style={{ backgroundColor: "var(--background, #ffffff)" }}>
-          <h2 className="text-2xl font-semibold text-gray-900 mb-4">🤖 Smart Extraction</h2>
+          <h2 className="text-2xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <Bot className="w-6 h-6" />
+            Smart Extraction
+          </h2>
           <div className="space-y-4 text-gray-700">
             <div>
               <h3 className="font-semibold text-lg mb-2">How It Works</h3>
@@ -70,7 +80,10 @@ export default function HelpPage() {
 
         {/* Habits */}
         <div className="border border-gray-200 rounded-lg p-6 mb-6" style={{ backgroundColor: "var(--background, #ffffff)" }}>
-          <h2 className="text-2xl font-semibold text-gray-900 mb-4">✅ Habits</h2>
+          <h2 className="text-2xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <CheckCircle2 className="w-6 h-6" />
+            Habits
+          </h2>
           <div className="space-y-4 text-gray-700">
             <p>
               Track daily habits and build streaks. Check off habits each day to maintain your momentum.
@@ -80,7 +93,10 @@ export default function HelpPage() {
 
         {/* Stats */}
         <div className="border border-gray-200 rounded-lg p-6 mb-6" style={{ backgroundColor: "var(--background, #ffffff)" }}>
-          <h2 className="text-2xl font-semibold text-gray-900 mb-4">📊 Stats</h2>
+          <h2 className="text-2xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <BarChart className="w-6 h-6" />
+            Stats
+          </h2>
           <div className="space-y-4 text-gray-700">
             <p>
               View your journaling statistics, including entry count, streaks, mood trends, and more.
@@ -90,7 +106,10 @@ export default function HelpPage() {
 
         {/* Settings */}
         <div className="border border-gray-200 rounded-lg p-6 mb-6" style={{ backgroundColor: "var(--background, #ffffff)" }}>
-          <h2 className="text-2xl font-semibold text-gray-900 mb-4">⚙️ Settings</h2>
+          <h2 className="text-2xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <Settings className="w-6 h-6" />
+            Settings
+          </h2>
           <div className="space-y-4 text-gray-700">
             <div>
               <h3 className="font-semibold text-lg mb-2">Profile Settings</h3>
@@ -114,7 +133,10 @@ export default function HelpPage() {
 
         {/* Privacy */}
         <div className="border border-gray-200 rounded-lg p-6 mb-6" style={{ backgroundColor: "var(--background, #ffffff)" }}>
-          <h2 className="text-2xl font-semibold text-gray-900 mb-4">🔒 Privacy & Data</h2>
+          <h2 className="text-2xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <Lock className="w-6 h-6" />
+            Privacy & Data
+          </h2>
           <div className="space-y-4 text-gray-700">
             <p>
               <strong>Your data stays on your device.</strong> All journal entries, extraction, and processing
@@ -128,7 +150,10 @@ export default function HelpPage() {
 
         {/* Tips */}
         <div className="border border-gray-200 rounded-lg p-6" style={{ backgroundColor: "var(--background, #ffffff)" }}>
-          <h2 className="text-2xl font-semibold text-gray-900 mb-4">💡 Tips & Tricks</h2>
+          <h2 className="text-2xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <Lightbulb className="w-6 h-6" />
+            Tips & Tricks
+          </h2>
           <div className="space-y-4 text-gray-700">
             <ul className="list-disc list-inside space-y-2">
               <li>Mention people by name to get personalized prompts in future entries</li>

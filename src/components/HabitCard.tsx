@@ -78,6 +78,8 @@
 
 import { useState, useEffect } from "react";
 import { Habit } from "@/lib/db/schema";
+import { Flame, Target, Settings, Lock, Unlock, Trophy } from "lucide-react";
+import { getHabitPR } from "@/lib/gamification/pr";
 
 interface HabitCardProps {
   habit: Habit;
@@ -86,9 +88,10 @@ interface HabitCardProps {
   onLog: (habitId: number, value: number) => void;
   onEdit: (habitId: number) => void;
   onArchive?: (habitId: number) => void;
+  onToggleLock?: (habitId: number) => void;
 }
 
-export default function HabitCard({ habit, streak, todayLog, onLog, onEdit, onArchive }: HabitCardProps) {
+export default function HabitCard({ habit, streak, todayLog, onLog, onEdit, onArchive, onToggleLock }: HabitCardProps) {
   const currentValue = todayLog?.value || 0;
   // For numeric habits, "done" means value > 0 (or >= target if target exists)
   // For boolean habits, "done" means value > 0
@@ -100,6 +103,9 @@ export default function HabitCard({ habit, streak, todayLog, onLog, onEdit, onAr
   
   const [quickValue, setQuickValue] = useState<string>(currentValue.toString());
   const [isEditing, setIsEditing] = useState(false);
+  
+  // Get PR for this habit
+  const pr = habit.type === "numeric" ? getHabitPR(habit.name) : null;
 
   const handleLog = () => {
     if (habit.type === "boolean") {
@@ -203,14 +209,16 @@ export default function HabitCard({ habit, streak, todayLog, onLog, onEdit, onAr
 
           {/* Stats Row */}
           <div className="flex items-center gap-4 text-sm text-gray-500 mb-3">
-            {showStreak && (
+            {/* {showStreak && (
               <span className="flex items-center gap-1">
-                🔥 <span className="font-medium text-gray-700">{streak}</span> day streak
+                <Flame className="w-4 h-4 text-orange-500" />
+                <span className="font-medium text-gray-700">{streak}</span> day streak
               </span>
-            )}
+            )} */}
             {habit.type === "numeric" && habit.target && (
               <span className="flex items-center gap-1">
-                🎯 Count: <span className="font-medium text-gray-700">{habit.target}</span> {habit.unit}
+                <Target className="w-4 h-4 text-blue-500" />
+                Count: <span className="font-medium text-gray-700">{habit.target}</span> {habit.unit}
               </span>
             )}
             <span className="text-xs text-gray-400 capitalize">
@@ -259,25 +267,47 @@ export default function HabitCard({ habit, streak, todayLog, onLog, onEdit, onAr
           </button>
           <button
             onClick={() => onEdit(habit.id!)}
-            className="px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+            className="px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors flex items-center justify-center"
             title="Edit habit"
           >
-            ⚙️
+            <Settings className="w-5 h-5" />
           </button>
         </div>
       </div>
 
-      {/* Trash Bin - Bottom Left */}
-      {onArchive && (
-        <div className="absolute bottom-2 left-2">
+      {/* Lock and Trash Bin - Bottom Left */}
+      <div className="absolute bottom-2 left-2 flex items-center gap-2">
+        {onToggleLock && (
+          <button
+            onClick={() => onToggleLock(habit.id!)}
+            className={`p-2 rounded-md transition-colors ${
+              habit.locked 
+                ? "text-orange-500 hover:text-orange-600 hover:bg-orange-50" 
+                : "text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+            }`}
+            title={habit.locked ? "Unlock habit" : "Lock habit"}
+          >
+            {habit.locked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
+          </button>
+        )}
+        {onArchive && (
           <button
             onClick={() => {
+              if (habit.locked) {
+                alert("Please unlock the habit before deleting it.");
+                return;
+              }
               if (confirm(`Are you sure you want to archive "${habit.name}"?`)) {
                 onArchive(habit.id!);
               }
             }}
-            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
-            title="Archive habit"
+            disabled={habit.locked}
+            className={`p-2 rounded-md transition-colors ${
+              habit.locked
+                ? "text-gray-300 cursor-not-allowed"
+                : "text-gray-400 hover:text-red-500 hover:bg-red-50"
+            }`}
+            title={habit.locked ? "Unlock to delete" : "Archive habit"}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M3 6h18"></path>
@@ -285,48 +315,59 @@ export default function HabitCard({ habit, streak, todayLog, onLog, onEdit, onAr
               <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
             </svg>
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Quick Update Controls for Numeric Habits - Bottom Right */}
       {habit.type === "numeric" && (
-        <div className="mt-auto flex items-center justify-end gap-2 pt-3 border-t border-gray-100">
-          <button
-            onClick={handleQuickDecrement}
-            disabled={currentValue <= 0}
-            className="w-8 h-8 flex items-center justify-center bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md transition-colors font-bold disabled:opacity-50 disabled:cursor-not-allowed"
-            title={currentValue <= 0 ? "Cannot go below 0" : "Decrease by 1"}
-          >
-            −
-          </button>
-          {isEditing ? (
-            <input
-              type="number"
-              value={quickValue}
-              onChange={handleQuickValueChange}
-              onBlur={handleQuickValueSubmit}
-              onKeyDown={handleQuickValueKeyDown}
-              className="w-16 px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 text-center"
-              autoFocus
-              min="0"
-              max={habit.target || undefined}
-            />
-          ) : (
-            <button
-              onClick={() => setIsEditing(true)}
-              className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors min-w-[64px]"
-            >
-              {currentValue} {habit.unit}
-            </button>
+        <div className="mt-auto pt-3 border-t border-gray-100">
+          {/* PR Display - Center */}
+          {pr !== null && (
+            <div className="flex items-center justify-center gap-1 mb-2 text-xs text-gray-400">
+              <Trophy className="w-3 h-3" />
+              <span>PR: {pr} {habit.unit}</span>
+            </div>
           )}
-          <button
-            onClick={handleQuickIncrement}
-            disabled={habit.target !== undefined && currentValue >= habit.target}
-            className="w-8 h-8 flex items-center justify-center bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md transition-colors font-bold disabled:opacity-50 disabled:cursor-not-allowed"
-            title={habit.target !== undefined && currentValue >= habit.target ? "Maximum reached" : "Increase by 1"}
-          >
-            +
-          </button>
+          
+          {/* Quick Update Controls */}
+          <div className="flex items-center justify-end gap-2">
+            <button
+              onClick={handleQuickDecrement}
+              disabled={currentValue <= 0}
+              className="w-8 h-8 flex items-center justify-center bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md transition-colors font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+              title={currentValue <= 0 ? "Cannot go below 0" : "Decrease by 1"}
+            >
+              −
+            </button>
+            {isEditing ? (
+              <input
+                type="number"
+                value={quickValue}
+                onChange={handleQuickValueChange}
+                onBlur={handleQuickValueSubmit}
+                onKeyDown={handleQuickValueKeyDown}
+                className="w-16 px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 text-center"
+                autoFocus
+                min="0"
+                max={habit.target || undefined}
+              />
+            ) : (
+              <button
+                onClick={() => setIsEditing(true)}
+                className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors min-w-[64px]"
+              >
+                {currentValue} {habit.unit}
+              </button>
+            )}
+            <button
+              onClick={handleQuickIncrement}
+              disabled={habit.target !== undefined && currentValue >= habit.target}
+              className="w-8 h-8 flex items-center justify-center bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md transition-colors font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+              title={habit.target !== undefined && currentValue >= habit.target ? "Maximum reached" : "Increase by 1"}
+            >
+              +
+            </button>
+          </div>
         </div>
       )}
     </div>

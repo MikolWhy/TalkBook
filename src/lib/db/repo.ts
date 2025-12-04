@@ -146,6 +146,18 @@ export async function updateHabitOrder(habitIds: number[]): Promise<void> {
   }
 }
 
+export async function toggleHabitLock(habitId: number): Promise<void> {
+  try {
+    const habit = await db.habits.get(habitId);
+    if (habit) {
+      await db.habits.update(habitId, { locked: !habit.locked });
+    }
+  } catch (error) {
+    console.error('Failed to toggle habit lock:', error);
+    throw error;
+  }
+}
+
 export async function getHabitById(id: number): Promise<Habit | undefined> {
   try {
     return await db.habits.get(id);

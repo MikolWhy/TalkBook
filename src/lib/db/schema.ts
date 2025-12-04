@@ -18,6 +18,7 @@ export interface Habit {
     weekDays?: number[]; // [0-6] for weekly, 0=Sunday
     description?: string;
     archived: boolean;
+    locked: boolean; // prevent accidental deletion
     createdAt: string;
     order?: number; // for drag and drop ordering
   }

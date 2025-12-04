@@ -4,6 +4,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { ArrowLeft, FileText, Check } from "lucide-react";
 import DashboardLayout from "../../components/DashboardLayout";
 import RichTextEditor, { RichTextEditorRef } from "../../../src/components/RichTextEditor";
 import PromptSuggestions from "../../../src/components/PromptSuggestions";
@@ -43,12 +44,12 @@ export default function NewEntryPage() {
     const activeJournal = getActiveJournalId();
     setSelectedJournalId(activeJournal || (allJournals.length > 0 ? allJournals[0].id : ""));
   }, []);
-  
+
   // State for prompts (SIMPLIFIED: Only people prompts are clickable)
   const [allPrompts, setAllPrompts] = useState<Prompt[]>([]); // All available prompts (people only)
   const [topicSuggestions, setTopicSuggestions] = useState<TopicSuggestion[]>([]); // Topic suggestions (non-clickable)
   const [insertedPromptIds, setInsertedPromptIds] = useState<Set<string>>(new Set()); // Prompts currently in editor (temporarily used)
-  
+
   // XP Notification State
   const [showXPNotification, setShowXPNotification] = useState(false);
   const [xpEarned, setXpEarned] = useState(0);
@@ -56,7 +57,7 @@ export default function NewEntryPage() {
   const [oldLevel, setOldLevel] = useState<number | undefined>(undefined);
   const [newLevel, setNewLevel] = useState<number | undefined>(undefined);
   const [isSaving, setIsSaving] = useState(false); // Prevent duplicate saves
-  
+
   // Filter prompts: show only those NOT currently inserted in editor
   const availablePrompts = allPrompts.filter(p => !insertedPromptIds.has(p.id));
 
@@ -70,27 +71,27 @@ export default function NewEntryPage() {
         // SIMPLIFIED: Separate logic for people prompts vs topic suggestions
         // People prompts: Use last 7 days (for variety)
         // Topic suggestions: Use last 3 entries only (as requested)
-        
+
         // OPTIMIZATION: Use cached entries instead of parsing localStorage
         const storedEntries = getEntries();
-        
+
         // FILTER BY ACTIVE JOURNAL FIRST
         const activeJournalId = getActiveJournalId();
-        const journalEntries = storedEntries.filter((entry: any) => 
+        const journalEntries = storedEntries.filter((entry: any) =>
           (entry.journalId || "journal-1") === activeJournalId
         );
-        
+
         // Filter entries from last 7 days for people prompts
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        
+
         const recentEntriesForPeople = journalEntries.filter((entry: any) => {
           const entryDate = new Date(entry.createdAt);
           const isRecent = entryDate >= sevenDaysAgo;
           const isNotDraft = entry.draft !== true;
           return isRecent && isNotDraft;
         });
-        
+
         // Filter last 3 entries for topic suggestions (sorted by date, newest first)
         const sortedEntries = [...journalEntries].sort(
           (a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -98,11 +99,11 @@ export default function NewEntryPage() {
         const lastThreeEntries = sortedEntries
           .filter((entry: any) => entry.draft !== true)
           .slice(0, 3);
-        
+
         // use cached metadata if available, otherwise extract from content
         const allPeople = new Set<string>();
         let needsExtractionForPeople = false;
-        
+
         for (const entry of recentEntriesForPeople) {
           if (entry.extractedPeople && Array.isArray(entry.extractedPeople)) {
             entry.extractedPeople.forEach((person: string) => allPeople.add(person));
@@ -111,17 +112,17 @@ export default function NewEntryPage() {
             break;
           }
         }
-        
+
         let peopleResult = null;
         let peopleOriginalText = undefined;
-        
+
         if (needsExtractionForPeople) {
           console.log("⚠️ [Optimization] Some entries lack cached metadata, running extraction...");
           const combinedTextForPeople = recentEntriesForPeople
             .map((entry: any) => entry.content || "")
             .filter((content: string) => content.trim().length > 0)
             .join(" ");
-          
+
           if (combinedTextForPeople.trim().length > 0) {
             peopleResult = await extractMetadata(combinedTextForPeople);
             peopleOriginalText = combinedTextForPeople;
@@ -131,18 +132,17 @@ export default function NewEntryPage() {
           peopleResult = {
             people: Array.from(allPeople),
             topics: [],
-            dates: []
           };
         }
-        
+
         // Aggregate cached topics from last 3 entries
         const allTopics = new Set<string>();
         const allTopicsPeople = new Set<string>();
         let needsExtractionForTopics = false;
-        
+
         for (const entry of lastThreeEntries) {
           if (entry.extractedTopics && Array.isArray(entry.extractedTopics) &&
-              entry.extractedPeople && Array.isArray(entry.extractedPeople)) {
+            entry.extractedPeople && Array.isArray(entry.extractedPeople)) {
             // Use cached data
             entry.extractedTopics.forEach((topic: string) => allTopics.add(topic));
             entry.extractedPeople.forEach((person: string) => allTopicsPeople.add(person));
@@ -152,17 +152,17 @@ export default function NewEntryPage() {
             break;
           }
         }
-        
+
         let topicsResult = null;
         let topicsPeopleResult = null;
-        
+
         if (needsExtractionForTopics) {
           console.log("⚠️ [Optimization] Some entries lack cached metadata for topics, running extraction...");
           const combinedTextForTopics = lastThreeEntries
             .map((entry: any) => entry.content || "")
             .filter((content: string) => content.trim().length > 0)
             .join(" ");
-          
+
           if (combinedTextForTopics.trim().length > 0) {
             topicsResult = await extractMetadata(combinedTextForTopics);
             // OPTIMIZATION FIX #3: Remove duplicate extraction call
@@ -174,34 +174,32 @@ export default function NewEntryPage() {
           topicsResult = {
             people: Array.from(allTopicsPeople),
             topics: Array.from(allTopics),
-            dates: []
           };
           topicsPeopleResult = topicsResult;
         }
-        
-        setExtractedData(peopleResult);
-        
+
+
         // Generate people prompts (clickable) - up to 10, with non-defaults taking priority
         const generatedPrompts = await generatePrompts(peopleResult, "cozy", 10, peopleOriginalText);
-        
+
         // Filter out used prompts
-        const unusedPrompts = peopleResult 
+        const unusedPrompts = peopleResult
           ? filterUsedPrompts(generatedPrompts)
           : generatedPrompts; // Don't filter defaults
-        
+
         // Filter out expired prompts
         const expiryDays = 7;
         const validPrompts = filterExpiredPrompts(unusedPrompts, expiryDays);
-        
+
         // Fallback to defaults if no prompts available
         let finalPrompts = validPrompts;
         if (validPrompts.length === 0 && peopleResult) {
           const defaultPromptsRaw = await generatePrompts(null, "cozy", 10);
           finalPrompts = defaultPromptsRaw;
         }
-        
+
         setAllPrompts(finalPrompts);
-        
+
         // Generate topic suggestions (non-clickable, from last 3 entries)
         // Exclude names - only show non-name topics
         // Always call getTopicSuggestions - it will return defaults if no topics found
@@ -213,7 +211,7 @@ export default function NewEntryPage() {
           allNames.add(name.toLowerCase().trim());
         });
         const namesToExclude = Array.from(allNames);
-        
+
         // Always get topic suggestions (will return defaults if no extracted topics)
         const suggestions = getTopicSuggestions(topicsResult || null, 8, namesToExclude); // Cap at 8 topics, exclude names
         setTopicSuggestions(suggestions);
@@ -221,7 +219,7 @@ export default function NewEntryPage() {
         console.error("Error extracting metadata or generating prompts:", error);
       }
     };
-    
+
     runExtractionAndPrompts();
   }, []); // Empty dependency array = run once on mount
 
@@ -362,11 +360,11 @@ export default function NewEntryPage() {
   // CONNECTION: Used in both handleSaveDraft() and handleSave() when title is empty.
   const formatDateAsTitle = (date: Date): string => {
     const day = date.getDate(); // Get day of month (1-31)
-    const daySuffix = 
+    const daySuffix =
       day === 1 || day === 21 || day === 31 ? "st" : // 1st, 21st, 31st
-      day === 2 || day === 22 ? "nd" : // 2nd, 22nd
-      day === 3 || day === 23 ? "rd" : "th"; // 3rd, 23rd, else "th"
-    
+        day === 2 || day === 22 ? "nd" : // 2nd, 22nd
+          day === 3 || day === 23 ? "rd" : "th"; // 3rd, 23rd, else "th"
+
     return date.toLocaleDateString("en-US", {
       month: "long", // Full month name
       day: "numeric", // Day as number
@@ -429,14 +427,14 @@ export default function NewEntryPage() {
     }
 
     setIsSaving(true);
-    
+
     // Re-enable button after 5 seconds
     setTimeout(() => {
       setIsSaving(false);
     }, 5000);
 
     const entryTitle = title.trim() || formatDateAsTitle(new Date()); // Use date if title empty
-    
+
     const entry = {
       id: Date.now().toString(), // Timestamp as string ID
       title: entryTitle,
@@ -481,7 +479,7 @@ export default function NewEntryPage() {
     }
 
     setIsSaving(true);
-    
+
     // Re-enable button after 5 seconds
     setTimeout(() => {
       setIsSaving(false);
@@ -489,7 +487,7 @@ export default function NewEntryPage() {
 
     const entryTitle = title.trim() || formatDateAsTitle(new Date());
     const entryId = Date.now().toString();
-    
+
     // OPTIMIZATION: Save entry immediately, extract metadata in background
     // This gives instant feedback to the user
     const entry = {
@@ -508,7 +506,7 @@ export default function NewEntryPage() {
       extractedPeople: [],
       extractedTopics: [],
     };
-    
+
     console.log("💾 [Save Entry] Saving entry immediately:", {
       title: entry.title,
       contentLength: content.length,
@@ -517,7 +515,7 @@ export default function NewEntryPage() {
 
     // OPTIMIZATION: Save immediately for instant feedback
     addEntry(entry);
-    
+
     // Extract metadata in background and update entry
     extractMetadata(content).then((cachedMetadata) => {
       console.log("✅ [Optimization] Extracted metadata in background:", cachedMetadata);
@@ -541,13 +539,13 @@ export default function NewEntryPage() {
 
     // Award XP for entry
     const wordCount = content.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().split(/\s+/).filter((w: string) => w.length > 0).length;
-    
+
     // OPTIMIZATION: Calculate streak more efficiently - only check last 60 entries (max streak is 60 days)
     const allEntries = getEntries().filter((e: any) => !e.draft);
     const sortedEntries = allEntries
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, 60); // Only check last 60 entries for streak calculation
-    
+
     let journalStreak = 0;
     if (sortedEntries.length > 0) {
       const today = new Date();
@@ -555,7 +553,7 @@ export default function NewEntryPage() {
       const lastEntry = new Date(sortedEntries[0].createdAt);
       lastEntry.setHours(0, 0, 0, 0);
       const daysSinceLastEntry = Math.floor((today.getTime() - lastEntry.getTime()) / (1000 * 60 * 60 * 24));
-      
+
       if (daysSinceLastEntry <= 1) {
         let streakDate = new Date(lastEntry);
         for (let i = 0; i < sortedEntries.length; i++) {
@@ -573,17 +571,17 @@ export default function NewEntryPage() {
         }
       }
     }
-    
+
     const xpResult = awardEntryXP(wordCount, journalStreak);
     console.log("🎉 XP Awarded:", xpResult);
-    
+
     // Show XP notification
     setXpEarned(xpResult.xp);
     setLeveledUp(xpResult.leveledUp);
     setOldLevel(xpResult.oldLevel);
     setNewLevel(xpResult.newLevel);
     setShowXPNotification(true);
-    
+
     // Dispatch event for XP bar to update
     window.dispatchEvent(new Event("xp-updated"));
 
@@ -625,201 +623,204 @@ export default function NewEntryPage() {
       {/* Header Section with Title and Back Button */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">New Entry</h1>
-
-        {/* Back/Exit Button */}
-        <button
-          onClick={handleBack}
-          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
-        >
-          ← Back to Journal
-        </button>
-      </div>
-      
-      {/* ============================================================================ */}
-      {/* SIMPLIFIED: Clickable Name Prompts */}
-      {/* ============================================================================ */}
-      {availablePrompts.length > 0 && (
-        <PromptSuggestions
-          prompts={availablePrompts}
-          editorRef={editorRef}
-          onPromptInserted={handlePromptInserted}
-        />
-      )}
-      
-      {/* ============================================================================ */}
-      {/* SIMPLIFIED: Non-Clickable Topic Suggestions */}
-      {/* ============================================================================ */}
-      {topicSuggestions.length > 0 && (
-        <TopicSuggestions suggestions={topicSuggestions} />
-      )}
-
-      {/* ============================================================================ */}
-      {/* TEAMMATE'S CODE (AADIL) - Entry Form - KEPT EXACTLY AS IS */}
-      {/* ============================================================================ */}
-      <div className="space-y-6 text-gray-900">
-        <div>
-          <div className="mb-2">
-            <h2 className="text-lg font-bold text-gray-900">Title</h2>
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-400"
-              placeholder="Enter a title for your journal entry..."
-            />
-          </div>
-        </div>
-        
-        {/* Journal Selector */}
-        {journals.length > 0 && (
-          <div>
-            <div className="mb-2">
-              <h2 className="text-lg font-bold text-gray-900">Journal</h2>
-            </div>
-            <div className="flex items-center gap-2">
-              <select
-                value={selectedJournalId}
-                onChange={(e) => setSelectedJournalId(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                style={{ backgroundColor: "var(--background, #ffffff)" }}
-              >
-                {journals.map((journal) => (
-                  <option key={journal.id} value={journal.id}>
-                    {journal.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        )}
-        
-        <div className="">
-          <div className="mb-2">
-            <h2 className="text-lg font-bold text-gray-900">Entry Content</h2>
-          </div>
-          {/* MODIFIED: Added ref={editorRef} - NECESSARY for NLP prompt integration */}
-          {/* Original teammate code: No ref prop */}
-          <RichTextEditor
-            ref={editorRef}
-            value={content}
-            onChange={(newContent: string) => setContent(newContent)}
-            placeholder="Start writing your journal entry..."
-          />
-        </div>
-
-        {/* Card Color Selector */}
-        <div>
-          <div className="mb-2">
-            <h2 className="text-lg font-bold text-gray-900">Card Color</h2>
-            <p className="text-sm text-gray-600">Choose a color for your journal card (optional)</p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            {cardColorOptions.map((colorOption) => (
-              <button
-                key={colorOption.id}
-                onClick={() => setCardColor(colorOption.id)}
-                className={`px-4 py-3 rounded-lg border-2 transition-all ${
-                  colorOption.bgClass
-                } ${
-                  colorOption.borderClass
-                } ${
-                  cardColor === colorOption.id
-                    ? "ring-2 ring-blue-500 ring-offset-2 scale-105"
-                    : "hover:scale-105"
-                }`}
-              >
-                <div className="text-sm font-medium text-gray-700">{colorOption.name}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <div className="mb-2">
-            <h2 className="text-lg font-bold text-gray-900">Mood</h2>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            {moodOptions.map((moodOption) => (
-              <button
-                key={moodOption.id}
-                onClick={() => setMood(mood === moodOption.id ? null : moodOption.id)}
-                className={`flex flex-col items-center justify-center w-16 h-16 rounded-lg border-2 transition-all hover:scale-105 ${
-                  mood === moodOption.id
-                    ? "border-blue-500 bg-blue-50 shadow-md"
-                    : "border-gray-300 hover:border-gray-400"
-                }`}
-                style={mood !== moodOption.id ? { backgroundColor: "var(--background, #ffffff)" } : undefined}
-                title={moodOption.label}
-              >
-                <span className="text-2xl">{moodOption.emoji}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-        <div>
-          <div className="mb-2">
-            <h2 className="text-lg font-bold text-gray-900">Tags</h2>
-          </div>
-          <div className="flex flex-wrap gap-2 mb-3">
-            {tags.map((tag, index) => (
-              <span
-                key={tag}
-                className={`px-3 py-1 rounded-full text-sm font-medium border ${getTagColor(
-                  index
-                )} flex items-center gap-2`}
-              >
-                {tag}
-                <button
-                  onClick={() => handleRemoveTag(tag)}
-                  className="hover:bg-red-100 hover:text-red-700 rounded-full p-0.5 transition-colors text-gray-600 font-bold"
-                  aria-label={`Remove ${tag} tag`}
-                  title={`Remove ${tag} tag`}
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={tagInput}
-              onChange={(e) => setTagInput(e.target.value)}
-              onKeyPress={handleTagInputKeyPress}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-400"
-              placeholder="Add a tag and press Enter..."
-            />
-            <button
-              onClick={handleAddTag}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
-            >
-              Add Tag
-            </button>
-          </div>
-        </div>
-        <div className="flex justify-end gap-3 pt-4">
+        <div className="flex items-center gap-2">
+          {/* Back/Exit Button */}
           <button
             onClick={handleBack}
-            className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium flex items-center gap-2"
           >
-            Cancel
+            <ArrowLeft className="w-4 h-4" />
+            Back to Journal
           </button>
           <button
             onClick={handleSaveDraft}
             disabled={isSaving}
-            className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
+            <FileText className="w-4 h-4" />
             {isSaving ? "Saving..." : "Save as Draft"}
           </button>
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
+            <Check className="w-4 h-4" />
             {isSaving ? "Saving..." : "Save Entry"}
           </button>
+        </div>
+      </div>
+
+      {/* Two Column Layout: 2/3 left, 1/3 right */}
+      <div className="flex gap-6">
+        {/* Left Column (2/3) - Writing Section */}
+        <div className="flex-[2] space-y-6 text-gray-900">
+          {/* ============================================================================ */}
+          {/* SIMPLIFIED: Clickable Name Prompts */}
+          {/* ============================================================================ */}
+          {availablePrompts.length > 0 && (
+            <PromptSuggestions
+              prompts={availablePrompts}
+              editorRef={editorRef}
+              onPromptInserted={handlePromptInserted}
+            />
+          )}
+
+          <div className="flex items-start gap-4">
+            {/* Title - 2/3 width */}
+            <div className="flex-[2]">
+              <div className="mb-2">
+                <h2 className="text-lg font-bold text-gray-900">Title</h2>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-400"
+                  placeholder="Enter a title for your journal entry..."
+                />
+              </div>
+            </div>
+
+            {/* Journal Selector - 1/3 width */}
+            {journals.length > 0 && (
+              <div className="flex-1">
+                <div className="mb-2">
+                  <h2 className="text-lg font-bold text-gray-900">Journal</h2>
+                </div>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={selectedJournalId}
+                    onChange={(e) => setSelectedJournalId(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                    style={{ backgroundColor: "var(--background, #ffffff)" }}
+                  >
+                    {journals.map((journal) => (
+                      <option key={journal.id} value={journal.id}>
+                        {journal.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Entry Content */}
+          <div className="">
+            <div className="mb-2">
+              <h2 className="text-lg font-bold text-gray-900">Entry Content</h2>
+            </div>
+            {/* MODIFIED: Added ref={editorRef} - NECESSARY for NLP prompt integration */}
+            {/* Original teammate code: No ref prop */}
+            <RichTextEditor
+              ref={editorRef}
+              value={content}
+              onChange={(newContent: string) => setContent(newContent)}
+              placeholder="Start writing your journal entry..."
+            />
+          </div>
+        </div>
+
+        {/* Right Column (1/3) - Settings and Suggestions */}
+        <div className="flex-1 space-y-6 text-gray-900">
+          {/* ============================================================================ */}
+          {/* SIMPLIFIED: Non-Clickable Topic Suggestions */}
+          {/* ============================================================================ */}
+          {topicSuggestions.length > 0 && (
+            <TopicSuggestions suggestions={topicSuggestions} />
+          )}
+
+          {/* Card Color Selector */}
+          <div>
+            <div className="mb-2">
+              <h2 className="text-lg font-bold text-gray-900">Card Color</h2>
+              <p className="text-sm text-gray-600">Choose a color for your journal card (optional)</p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              {cardColorOptions.map((colorOption) => (
+                <button
+                  key={colorOption.id}
+                  onClick={() => setCardColor(colorOption.id)}
+                  className={`px-4 py-3 rounded-lg border-2 transition-all ${colorOption.bgClass
+                    } ${colorOption.borderClass
+                    } ${cardColor === colorOption.id
+                      ? "ring-2 ring-blue-500 ring-offset-2 scale-105"
+                      : "hover:scale-105"
+                    }`}
+                >
+                  <div className="text-sm font-medium text-gray-700">{colorOption.name}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Mood */}
+          <div>
+            <div className="mb-2">
+              <h2 className="text-lg font-bold text-gray-900">Mood</h2>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              {moodOptions.map((moodOption) => (
+                <button
+                  key={moodOption.id}
+                  onClick={() => setMood(mood === moodOption.id ? null : moodOption.id)}
+                  className={`flex flex-col items-center justify-center w-16 h-16 rounded-lg border-2 transition-all hover:scale-105 ${mood === moodOption.id
+                    ? "border-blue-500 bg-blue-50 shadow-md"
+                    : "border-gray-300 hover:border-gray-400"
+                    }`}
+                  style={mood !== moodOption.id ? { backgroundColor: "var(--background, #ffffff)" } : undefined}
+                  title={moodOption.label}
+                >
+                  <span className="text-2xl">{moodOption.emoji}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Tags */}
+          <div>
+            <div className="mb-2">
+              <h2 className="text-lg font-bold text-gray-900">Tags</h2>
+            </div>
+            <div className="flex flex-wrap gap-2 mb-3">
+              {tags.map((tag, index) => (
+                <span
+                  key={tag}
+                  className={`px-3 py-1 rounded-full text-sm font-medium border ${getTagColor(
+                    index
+                  )} flex items-center gap-2`}
+                >
+                  {tag}
+                  <button
+                    onClick={() => handleRemoveTag(tag)}
+                    className="hover:bg-red-100 hover:text-red-700 rounded-full p-0.5 transition-colors text-gray-600 font-bold"
+                    aria-label={`Remove ${tag} tag`}
+                    title={`Remove ${tag} tag`}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyPress={handleTagInputKeyPress}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-400"
+                placeholder="Add a tag and press Enter..."
+              />
+              <button
+                onClick={handleAddTag}
+                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
+              >
+                Add Tag
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 

@@ -27,6 +27,7 @@ import {
   PolarRadiusAxis,
   Radar,
 } from "recharts";
+import { BarChart as BarChartIcon, Flame, Zap, Smile, Clock, PenTool, TrendingUp, BookOpen, Sunrise, Sun, Sunset, Moon } from "lucide-react";
 
 // Mood mapping
 const moodMap: Record<string, string> = {
@@ -333,22 +334,6 @@ export default function StatsPage() {
     return result;
   }, [filteredEntries, filteredHabitLogs, timeRange]);
 
-  // Habit completion by habit
-  const habitCompletionData = useMemo(() => {
-    const counts: Record<string, number> = {};
-    filteredHabitLogs.forEach((log: any) => {
-      if (log.value > 0) {
-        counts[log.habitName] = (counts[log.habitName] || 0) + 1;
-      }
-    });
-    
-    return Object.entries(counts)
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10);
-  }, [filteredHabitLogs]);
-
-
   // Mood pattern (pie chart showing counts of each mood emoji)
   // Includes default emoji (😐) for entries with no mood selected
   const moodPatternData = useMemo(() => {
@@ -387,23 +372,27 @@ export default function StatsPage() {
     });
     
     const periods = {
-      "🌅 Morning": 0,
-      "☀️ Afternoon": 0,
-      "🌆 Evening": 0,
-      "🌙 Night": 0,
+      "Morning": 0,
+      "Afternoon": 0,
+      "Evening": 0,
+      "Night": 0,
     };
     
     Object.entries(hours).forEach(([hour, count]) => {
       const h = parseInt(hour);
-      if (h >= 6 && h < 12) periods["🌅 Morning"] += count;
-      else if (h >= 12 && h < 18) periods["☀️ Afternoon"] += count;
-      else if (h >= 18 && h < 22) periods["🌆 Evening"] += count;
-      else periods["🌙 Night"] += count;
+      if (h >= 6 && h < 12) periods["Morning"] += count;
+      else if (h >= 12 && h < 18) periods["Afternoon"] += count;
+      else if (h >= 18 && h < 22) periods["Evening"] += count;
+      else periods["Night"] += count;
     });
     
-    return Object.entries(periods)
-      .map(([period, count]) => ({ period, count }))
-      .filter(d => d.count > 0);
+    // Always return all periods, even if count is 0
+    return [
+      { period: "Morning", count: periods["Morning"] },
+      { period: "Afternoon", count: periods["Afternoon"] },
+      { period: "Evening", count: periods["Evening"] },
+      { period: "Night", count: periods["Night"] },
+    ];
   }, [filteredEntries]);
 
   return (
@@ -465,7 +454,9 @@ export default function StatsPage() {
         </div>
         <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-4 md:p-6 text-white shadow-lg">
           <p className="text-orange-100 text-xs md:text-sm font-medium mb-1">Entry Streak</p>
-          <p className="text-3xl md:text-4xl font-bold">{journalStats.currentStreak} 🔥</p>
+          <p className="text-3xl md:text-4xl font-bold flex items-center gap-2">
+            {journalStats.currentStreak} <Flame className="w-8 h-8 md:w-10 md:h-10" />
+          </p>
         </div>
         <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-4 md:p-6 text-white shadow-lg">
           <p className="text-purple-100 text-xs md:text-sm font-medium mb-1">Habits</p>
@@ -477,7 +468,9 @@ export default function StatsPage() {
         </div>
         <div className="bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl p-4 md:p-6 text-white shadow-lg">
           <p className="text-teal-100 text-xs md:text-sm font-medium mb-1">Habit Streak</p>
-          <p className="text-3xl md:text-4xl font-bold">{habitStats.habitStreak} ⚡</p>
+          <p className="text-3xl md:text-4xl font-bold flex items-center gap-2">
+            {habitStats.habitStreak} <Zap className="w-8 h-8 md:w-10 md:h-10" />
+          </p>
         </div>
       </div>
 
@@ -488,7 +481,7 @@ export default function StatsPage() {
           <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 md:p-8 shadow-xl border-2 border-blue-100 lg:col-span-2">
             <div className="flex items-center gap-3 mb-6">
               <div className="bg-blue-500 p-3 rounded-xl">
-                <span className="text-2xl md:text-3xl">📊</span>
+                <BarChartIcon className="w-6 h-6 md:w-8 md:h-8 text-white" />
               </div>
               <h2 className="text-xl md:text-2xl font-bold text-gray-900">Your Activity</h2>
             </div>
@@ -530,39 +523,11 @@ export default function StatsPage() {
           </div>
         )}
 
-        {/* Habit Completions by Habit */}
-        {habitCompletionData.length > 0 && (
-          <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-6 md:p-8 shadow-xl border-2 border-purple-100">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="bg-purple-500 p-3 rounded-xl">
-                <span className="text-2xl md:text-3xl">✅</span>
-              </div>
-              <h2 className="text-xl md:text-2xl font-bold text-gray-900">Top Habits</h2>
-            </div>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={habitCompletionData} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis type="number" stroke="#6b7280" style={{ fontSize: "12px", fontWeight: "500" }} />
-                <YAxis dataKey="name" type="category" width={100} stroke="#6b7280" style={{ fontSize: "11px", fontWeight: "500" }} />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: "#fff", 
-                    border: "2px solid #8B5CF6", 
-                    borderRadius: "12px",
-                    boxShadow: "0 4px 6px rgba(0,0,0,0.1)"
-                  }} 
-                />
-                <Bar dataKey="count" fill="#8B5CF6" radius={[0, 12, 12, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-
         {/* Mood Pattern (Pie Chart) */}
         <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-6 md:p-8 shadow-xl border-2 border-amber-100">
           <div className="flex items-center gap-3 mb-6">
             <div className="bg-amber-500 p-3 rounded-xl">
-              <span className="text-2xl md:text-3xl">😊</span>
+              <Smile className="w-6 h-6 md:w-8 md:h-8 text-white" />
             </div>
             <h2 className="text-xl md:text-2xl font-bold text-gray-900">Mood Pattern</h2>
           </div>
@@ -607,33 +572,64 @@ export default function StatsPage() {
 
 
         {/* Writing Time Distribution */}
-        {timeDistribution.length > 0 && (
-          <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-2xl p-6 md:p-8 shadow-xl border-2 border-cyan-100">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="bg-cyan-500 p-3 rounded-xl">
-                <span className="text-2xl md:text-3xl">⏰</span>
-              </div>
-              <h2 className="text-xl md:text-2xl font-bold text-gray-900">When You Write</h2>
+        <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-2xl p-6 md:p-8 shadow-xl border-2 border-cyan-100">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="bg-cyan-500 p-3 rounded-xl">
+              <Clock className="w-6 h-6 md:w-8 md:h-8 text-white" />
             </div>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={timeDistribution}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="period" stroke="#6b7280" style={{ fontSize: "12px", fontWeight: "500" }} />
-                <YAxis stroke="#6b7280" style={{ fontSize: "12px", fontWeight: "500" }} />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: "#fff", 
-                    border: "2px solid #06B6D4", 
-                    borderRadius: "12px",
-                    boxShadow: "0 4px 6px rgba(0,0,0,0.1)"
-                  }}
-                  formatter={(value: any) => [`${value} entries`, ""]}
-                />
-                <Bar dataKey="count" fill="#06B6D4" radius={[12, 12, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <h2 className="text-xl md:text-2xl font-bold text-gray-900">When You Write</h2>
           </div>
-        )}
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={timeDistribution}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <XAxis 
+                dataKey="period" 
+                stroke="#6b7280" 
+                style={{ fontSize: "12px", fontWeight: "500" }}
+                height={50}
+                tick={(props: any) => {
+                  const { x, y, payload } = props;
+                  const IconComponent = 
+                    payload.value === "Morning" ? Sunrise :
+                    payload.value === "Afternoon" ? Sun :
+                    payload.value === "Evening" ? Sunset :
+                    payload.value === "Night" ? Moon : null;
+                  
+                  return (
+                    <g transform={`translate(${x},${y})`}>
+                      {IconComponent && (
+                        <foreignObject x={-10} y={-6} width={20} height={20} className="overflow-visible">
+                          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', height: '100%' }}>
+                            <IconComponent size={16} style={{ color: '#6b7280' }} />
+                          </div>
+                        </foreignObject>
+                      )}
+                      <text x={0} y={0} dy={28} textAnchor="middle" fill="#6b7280" style={{ fontSize: "12px", fontWeight: "500" }}>
+                        {payload.value}
+                      </text>
+                    </g>
+                  );
+                }}
+              />
+              <YAxis 
+                stroke="#6b7280" 
+                style={{ fontSize: "12px", fontWeight: "500" }}
+                allowDecimals={false}
+                domain={[0, 'dataMax']}
+              />
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: "#fff", 
+                  border: "2px solid #06B6D4", 
+                  borderRadius: "12px",
+                  boxShadow: "0 4px 6px rgba(0,0,0,0.1)"
+                }}
+                formatter={(value: any) => [`${value} entries`, ""]}
+              />
+              <Bar dataKey="count" fill="#06B6D4" radius={[12, 12, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
       {/* Additional Stats */}
@@ -645,7 +641,7 @@ export default function StatsPage() {
               <p className="text-4xl md:text-5xl font-bold text-gray-900">{journalStats.totalWords.toLocaleString()}</p>
             </div>
             <div className="bg-rose-500 p-4 rounded-2xl">
-              <span className="text-4xl md:text-5xl">✍️</span>
+              <PenTool className="w-10 h-10 md:w-12 md:h-12 text-white" />
             </div>
           </div>
         </div>
@@ -657,7 +653,7 @@ export default function StatsPage() {
               <p className="text-4xl md:text-5xl font-bold text-gray-900">{habitStats.avgCompletionsPerDay}</p>
             </div>
             <div className="bg-violet-500 p-4 rounded-2xl">
-              <span className="text-4xl md:text-5xl">📈</span>
+              <TrendingUp className="w-10 h-10 md:w-12 md:h-12 text-white" />
             </div>
           </div>
         </div>
@@ -669,7 +665,7 @@ export default function StatsPage() {
               <p className="text-4xl md:text-5xl font-bold text-gray-900">{journals.length}</p>
             </div>
             <div className="bg-emerald-500 p-4 rounded-2xl">
-              <span className="text-4xl md:text-5xl">📚</span>
+              <BookOpen className="w-10 h-10 md:w-12 md:h-12 text-white" />
             </div>
           </div>
         </div>

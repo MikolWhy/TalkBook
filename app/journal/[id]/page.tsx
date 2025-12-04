@@ -12,11 +12,13 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { ArrowLeft, FileText, Check, Trash2 } from "lucide-react";
 import DashboardLayout from "../../components/DashboardLayout";
 import RichTextEditor, { RichTextEditorRef } from "../../../src/components/RichTextEditor";
 import PromptSuggestions from "../../../src/components/PromptSuggestions";
+import TopicSuggestions from "../../../src/components/TopicSuggestions";
 import { extractMetadata } from "../../../src/lib/nlp/extract";
-import { generatePrompts, filterUsedPrompts, filterExpiredPrompts, Prompt, markPromptAsUsed } from "../../../src/lib/nlp/prompts";
+import { generatePrompts, filterUsedPrompts, filterExpiredPrompts, Prompt, markPromptAsUsed, getTopicSuggestions, TopicSuggestion } from "../../../src/lib/nlp/prompts";
 import { getEntries, getEntryById, updateEntry, saveEntries } from "../../../src/lib/cache/entriesCache";
 import { awardEntryXP } from "../../../src/lib/gamification/xp";
 import XPNotification from "../../components/XPNotification";
@@ -102,6 +104,7 @@ export default function EditEntryPage() {
 
   // NLP Prompt System State
   const [allPrompts, setAllPrompts] = useState<Prompt[]>([]);
+  const [topicSuggestions, setTopicSuggestions] = useState<TopicSuggestion[]>([]);
   const [insertedPromptIds, setInsertedPromptIds] = useState<Set<string>>(new Set());
   const [originalPromptIds, setOriginalPromptIds] = useState<string[]>([]); // Prompts that were in entry when loaded
 
@@ -227,6 +230,17 @@ export default function EditEntryPage() {
         }
 
         setAllPrompts(finalPrompts);
+
+        // Generate topic suggestions from entry content
+        if (extractedData && extractedData.topics.length > 0) {
+          const namesToExclude = (extractedData.people || []).map(name => name.toLowerCase().trim());
+          const suggestions = getTopicSuggestions(extractedData, 8, namesToExclude);
+          setTopicSuggestions(suggestions);
+        } else {
+          // Show defaults if no topics
+          const suggestions = getTopicSuggestions(null, 8, []);
+          setTopicSuggestions(suggestions);
+        }
       } catch (error) {
         console.error("Error generating prompts for entry:", error);
       }
@@ -533,194 +547,195 @@ export default function EditEntryPage() {
       {/* Header Section */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Edit Entry</h1>
-        <button
-          onClick={handleBack}
-          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
-        >
-          ← Back to Journal
-        </button>
-      </div>
-
-      {/* Original Prompts Display (if any) */}
-      {originalPromptIds.length > 0 && (
-        <div className="mb-6 p-4 border border-gray-200 rounded-lg" style={{ backgroundColor: "var(--background, #ffffff)", opacity: 0.95 }}>
-          <h3 className="text-sm font-semibold text-gray-700 mb-2">
-            Original Prompts (from when entry was created)
-          </h3>
-          <p className="text-xs text-gray-500">
-            These prompts were used when this entry was originally saved. 
-            They remain marked as used even if you remove them from the entry.
-          </p>
-        </div>
-      )}
-
-      {/* Prompt Suggestions - prioritized by keywords from this entry */}
-      {availablePrompts.length > 0 && (
-        <PromptSuggestions
-          prompts={availablePrompts}
-          editorRef={editorRef}
-          onPromptInserted={handlePromptInserted}
-        />
-      )}
-
-      {/* Entry Form */}
-      <div className="space-y-6 text-gray-900">
-        <div>
-          <div className="mb-2">
-            <h2 className="text-lg font-bold text-gray-900">Title</h2>
-          </div>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-400"
-            placeholder="Enter a title for your journal entry..."
-          />
-        </div>
-
-        <div>
-          <div className="mb-2">
-            <h2 className="text-lg font-bold text-gray-900">Entry Content</h2>
-          </div>
-          <RichTextEditor
-            ref={editorRef}
-            value={content}
-            onChange={(newContent: string) => setContent(newContent)}
-            placeholder="Start writing your journal entry..."
-          />
-        </div>
-
-        {/* Card Color Selector */}
-        <div>
-          <div className="mb-2">
-            <h2 className="text-lg font-bold text-gray-900">Card Color</h2>
-            <p className="text-sm text-gray-600">Choose a color for your journal card (optional)</p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            {cardColorOptions.map((colorOption) => (
-              <button
-                key={colorOption.id}
-                onClick={() => setCardColor(colorOption.id)}
-                className={`px-4 py-3 rounded-lg border-2 transition-all ${
-                  colorOption.bgClass
-                } ${
-                  colorOption.borderClass
-                } ${
-                  cardColor === colorOption.id
-                    ? "ring-2 ring-blue-500 ring-offset-2 scale-105"
-                    : "hover:scale-105"
-                }`}
-              >
-                <div className="text-sm font-medium text-gray-700">{colorOption.name}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <div className="mb-2">
-            <h2 className="text-lg font-bold text-gray-900">Mood</h2>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            {moodOptions.map((moodOption) => (
-              <button
-                key={moodOption.id}
-                onClick={() => setMood(mood === moodOption.id ? null : moodOption.id)}
-                className={`flex flex-col items-center justify-center w-16 h-16 rounded-lg border-2 transition-all hover:scale-105 ${
-                  mood === moodOption.id
-                    ? "border-blue-500 bg-blue-50 shadow-md"
-                    : "border-gray-300 hover:border-gray-400"
-                }`}
-                style={mood !== moodOption.id ? { backgroundColor: "var(--background, #ffffff)" } : undefined}
-                title={moodOption.label}
-              >
-                <span className="text-2xl">{moodOption.emoji}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <div className="mb-2">
-            <h2 className="text-lg font-bold text-gray-900">Tags</h2>
-          </div>
-          <div className="flex flex-wrap gap-2 mb-3">
-            {tags.map((tag, index) => (
-              <span
-                key={tag}
-                className={`px-3 py-1 rounded-full text-sm font-medium border ${getTagColor(
-                  index
-                )} flex items-center gap-2`}
-              >
-                {tag}
-                <button
-                  onClick={() => handleRemoveTag(tag)}
-                  className="hover:bg-red-100 hover:text-red-700 rounded-full p-0.5 transition-colors text-gray-600 font-bold"
-                  aria-label={`Remove ${tag} tag`}
-                  title={`Remove ${tag} tag`}
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={tagInput}
-              onChange={(e) => setTagInput(e.target.value)}
-              onKeyPress={handleTagInputKeyPress}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-400"
-              placeholder="Add a tag and press Enter..."
-            />
-            <button
-              onClick={handleAddTag}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
-            >
-              Add Tag
-            </button>
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex justify-between gap-3 pt-4">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleBack}
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium flex items-center gap-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Journal
+          </button>
           <button
             onClick={handleDelete}
-            className="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium"
+            className="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium flex items-center gap-2"
           >
+            <Trash2 className="w-4 h-4" />
             Delete Entry
           </button>
-          <div className="flex gap-3">
+          {isDraft && (
             <button
-              onClick={handleBack}
-              className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
-            >
-              Cancel
-            </button>
-            {/* #20: Conditional "Save as Draft" Button - Only Show for Drafts */}
-            {/* WHY: User requested that "Save as Draft" button only appear when editing a draft, */}
-            {/*      not when editing a regular entry. This makes sense - regular entries are already saved. */}
-            {/* HOW: Conditional rendering based on isDraft state - only show if isDraft is true. */}
-            {/*      Button text changes: "Save Entry" for drafts (converts to regular), "Save Changes" for regular. */}
-            {/* APPROACH: Simple conditional rendering - conventional React pattern. */}
-            {/*           Not over-engineered - just if/else logic. */}
-            {/* CONNECTION: Works with #11 (handleSaveDraft) and #12 (handleSave) - different behaviors for drafts. */}
-            {isDraft && (
-              <button
-                onClick={handleSaveDraft}
-                disabled={isSaving}
-                className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSaving ? "Saving..." : "Save as Draft"}
-              </button>
-            )}
-            <button
-              onClick={handleSave}
+              onClick={handleSaveDraft}
               disabled={isSaving}
-              className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
-              {isSaving ? "Saving..." : (isDraft ? "Save Entry" : "Save Changes")}
+              <FileText className="w-4 h-4" />
+              {isSaving ? "Saving..." : "Save as Draft"}
             </button>
+          )}
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            <Check className="w-4 h-4" />
+            {isSaving ? "Saving..." : (isDraft ? "Save Entry" : "Save Changes")}
+          </button>
+        </div>
+      </div>
+
+      {/* Two Column Layout: 2/3 left, 1/3 right */}
+      <div className="flex gap-6">
+        {/* Left Column (2/3) - Writing Section */}
+        <div className="flex-[2] space-y-6 text-gray-900">
+          {/* Original Prompts Display (if any) */}
+          {originalPromptIds.length > 0 && (
+            <div className="p-4 border border-gray-200 rounded-lg" style={{ backgroundColor: "var(--background, #ffffff)", opacity: 0.95 }}>
+              <h3 className="text-sm font-semibold text-gray-700 mb-2">
+                Original Prompts (from when entry was created)
+              </h3>
+              <p className="text-xs text-gray-500">
+                These prompts were used when this entry was originally saved. 
+                They remain marked as used even if you remove them from the entry.
+              </p>
+            </div>
+          )}
+
+          {/* Prompt Suggestions - prioritized by keywords from this entry */}
+          {availablePrompts.length > 0 && (
+            <PromptSuggestions
+              prompts={availablePrompts}
+              editorRef={editorRef}
+              onPromptInserted={handlePromptInserted}
+            />
+          )}
+
+          {/* Title */}
+          <div>
+            <div className="mb-2">
+              <h2 className="text-lg font-bold text-gray-900">Title</h2>
+            </div>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-400"
+              placeholder="Enter a title for your journal entry..."
+            />
+          </div>
+
+          {/* Entry Content */}
+          <div>
+            <div className="mb-2">
+              <h2 className="text-lg font-bold text-gray-900">Entry Content</h2>
+            </div>
+            <RichTextEditor
+              ref={editorRef}
+              value={content}
+              onChange={(newContent: string) => setContent(newContent)}
+              placeholder="Start writing your journal entry..."
+            />
+          </div>
+        </div>
+
+        {/* Right Column (1/3) - Settings and Suggestions */}
+        <div className="flex-1 space-y-6 text-gray-900">
+          {/* Topic Suggestions */}
+          {topicSuggestions.length > 0 && (
+            <TopicSuggestions suggestions={topicSuggestions} />
+          )}
+
+          {/* Card Color Selector */}
+          <div>
+            <div className="mb-2">
+              <h2 className="text-lg font-bold text-gray-900">Card Color</h2>
+              <p className="text-sm text-gray-600">Choose a color for your journal card (optional)</p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              {cardColorOptions.map((colorOption) => (
+                <button
+                  key={colorOption.id}
+                  onClick={() => setCardColor(colorOption.id)}
+                  className={`px-4 py-3 rounded-lg border-2 transition-all ${
+                    colorOption.bgClass
+                  } ${
+                    colorOption.borderClass
+                  } ${
+                    cardColor === colorOption.id
+                      ? "ring-2 ring-blue-500 ring-offset-2 scale-105"
+                      : "hover:scale-105"
+                  }`}
+                >
+                  <div className="text-sm font-medium text-gray-700">{colorOption.name}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Mood */}
+          <div>
+            <div className="mb-2">
+              <h2 className="text-lg font-bold text-gray-900">Mood</h2>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              {moodOptions.map((moodOption) => (
+                <button
+                  key={moodOption.id}
+                  onClick={() => setMood(mood === moodOption.id ? null : moodOption.id)}
+                  className={`flex flex-col items-center justify-center w-16 h-16 rounded-lg border-2 transition-all hover:scale-105 ${
+                    mood === moodOption.id
+                      ? "border-blue-500 bg-blue-50 shadow-md"
+                      : "border-gray-300 hover:border-gray-400"
+                  }`}
+                  style={mood !== moodOption.id ? { backgroundColor: "var(--background, #ffffff)" } : undefined}
+                  title={moodOption.label}
+                >
+                  <span className="text-2xl">{moodOption.emoji}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Tags */}
+          <div>
+            <div className="mb-2">
+              <h2 className="text-lg font-bold text-gray-900">Tags</h2>
+            </div>
+            <div className="flex flex-wrap gap-2 mb-3">
+              {tags.map((tag, index) => (
+                <span
+                  key={tag}
+                  className={`px-3 py-1 rounded-full text-sm font-medium border ${getTagColor(
+                    index
+                  )} flex items-center gap-2`}
+                >
+                  {tag}
+                  <button
+                    onClick={() => handleRemoveTag(tag)}
+                    className="hover:bg-red-100 hover:text-red-700 rounded-full p-0.5 transition-colors text-gray-600 font-bold"
+                    aria-label={`Remove ${tag} tag`}
+                    title={`Remove ${tag} tag`}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyPress={handleTagInputKeyPress}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-400"
+                placeholder="Add a tag and press Enter..."
+              />
+              <button
+                onClick={handleAddTag}
+                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
+              >
+                Add Tag
+              </button>
+            </div>
           </div>
         </div>
       </div>

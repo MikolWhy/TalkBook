@@ -72,15 +72,18 @@ import DashboardLayout from "../components/DashboardLayout";
 import HabitCard from "@/components/HabitCard";
 import XPNotification from "../components/XPNotification";
 import { awardHabitXP, calculateGlobalHabitStreak, awardAllHabitsCompletedBonus } from "../../src/lib/gamification/xp";
+import { updateHabitPR } from "../../src/lib/gamification/pr";
 import { 
   getActiveHabits, 
   logHabit, 
   calculateStreak,
   getHabitLogs,
   updateHabitOrder,
-  archiveHabit
+  archiveHabit,
+  toggleHabitLock
 } from "@/lib/db/repo";
 import { Habit } from "@/lib/db/schema";
+import { Target, PartyPopper, CheckCircle2 } from "lucide-react";
 
 export default function HabitsPage() {
   const router = useRouter();
@@ -145,8 +148,14 @@ export default function HabitsPage() {
       const habit = habits.find(h => h.id === habitId);
       if (!habit) return;
       
-      const wasCompleted = todayLogs[habitId]?.value > 0;
-      const isNowCompleted = value > 0;
+      // Check if habit was/is completed based on type and target
+      const previousValue = todayLogs[habitId]?.value || 0;
+      const wasCompleted = habit.type === 'numeric' 
+        ? (habit.target ? previousValue >= habit.target : previousValue > 0)
+        : previousValue > 0;
+      const isNowCompleted = habit.type === 'numeric'
+        ? (habit.target ? value >= habit.target : value > 0)
+        : value > 0;
       
       // Log the habit
       if (value === 0) {
@@ -155,39 +164,56 @@ export default function HabitsPage() {
         await logHabit(habitId, today, value);
       }
       
-      // Award XP only if habit is being completed (not un-logged)
+      // Award XP only if habit is being completed (not un-logged) AND XP hasn't been awarded for this habit today
       if (isNowCompleted && !wasCompleted) {
-        // Count how many habits are completed today (before reload, so add 1 for this one)
-        const completedBeforeThis = Object.values(todayLogs).filter((log: any) => log?.value > 0).length;
-        const completedToday = completedBeforeThis + 1;
+        // Update PR for numeric habits when completed
+        if (habit.type === 'numeric' && value > 0) {
+          const prResult = updateHabitPR(habit.name, value);
+          if (prResult.isNewPR) {
+            console.log(`🎉 New PR for ${habit.name}: ${value} ${habit.unit || ''}`);
+          }
+        }
+
+        // Check if XP was already awarded for this habit today
+        const xpAwardedKey = `talkbook-habit-xp-${habitId}-${today}`;
+        const xpAlreadyAwarded = localStorage.getItem(xpAwardedKey) === 'true';
         
-        // Calculate global habit streak
-        const habitStreak = await calculateGlobalHabitStreak();
-        
-        // Award regular habit XP
-        const xpResult = awardHabitXP(
-          habit.type,
-          habit.type === 'numeric' ? value : 1,
-          habitStreak,
-          completedToday
-        );
-        
-        console.log("🎉 Habit XP Awarded:", xpResult);
-        
-        let totalXP = xpResult.xp;
-        let leveledUp = xpResult.leveledUp;
-        let oldLevel = xpResult.oldLevel;
-        let newLevel = xpResult.newLevel;
-        
-        // Show XP notification for regular habit XP first
-        setXpEarned(totalXP);
-        setLeveledUp(leveledUp);
-        setOldLevel(oldLevel);
-        setNewLevel(newLevel);
-        setShowXPNotification(true);
-        
-        // Dispatch event for XP bar to update
-        window.dispatchEvent(new Event("xp-updated"));
+        if (!xpAlreadyAwarded) {
+          // Count how many habits are completed today (before reload, so add 1 for this one)
+          const completedBeforeThis = Object.values(todayLogs).filter((log: any) => log?.value > 0).length;
+          const completedToday = completedBeforeThis + 1;
+          
+          // Calculate global habit streak
+          const habitStreak = await calculateGlobalHabitStreak();
+          
+          // Award regular habit XP
+          const xpResult = awardHabitXP(
+            habit.type,
+            habit.type === 'numeric' ? value : 1,
+            habitStreak,
+            completedToday
+          );
+          
+          console.log("🎉 Habit XP Awarded:", xpResult);
+          
+          // Mark XP as awarded for this habit today
+          localStorage.setItem(xpAwardedKey, 'true');
+          
+          let totalXP = xpResult.xp;
+          let leveledUp = xpResult.leveledUp;
+          let oldLevel = xpResult.oldLevel;
+          let newLevel = xpResult.newLevel;
+          
+          // Show XP notification for regular habit XP first
+          setXpEarned(totalXP);
+          setLeveledUp(leveledUp);
+          setOldLevel(oldLevel);
+          setNewLevel(newLevel);
+          setShowXPNotification(true);
+          
+          // Dispatch event for XP bar to update
+          window.dispatchEvent(new Event("xp-updated"));
+        }
       }
       
       // Reload habits to update streaks and logs
@@ -256,6 +282,44 @@ export default function HabitsPage() {
     } catch (error) {
       console.error("Failed to archive habit:", error);
       alert("Failed to archive habit. Please try again.");
+    }
+  };
+
+  const handleToggleLock = async (habitId: number) => {
+    try {
+      await toggleHabitLock(habitId);
+      await loadHabits();
+    } catch (error) {
+      console.error("Failed to toggle habit lock:", error);
+      alert("Failed to toggle lock. Please try again.");
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    const unlockedHabits = habits.filter(h => !h.locked);
+    
+    if (unlockedHabits.length === 0) {
+      alert("All habits are locked. Unlock habits to delete them.");
+      return;
+    }
+
+    const lockedCount = habits.length - unlockedHabits.length;
+    const message = lockedCount > 0
+      ? `This will delete ${unlockedHabits.length} unlocked habit(s). ${lockedCount} locked habit(s) will be kept. Continue?`
+      : `This will delete all ${unlockedHabits.length} habit(s). Continue?`;
+
+    if (!confirm(message)) return;
+
+    try {
+      for (const habit of unlockedHabits) {
+        if (habit.id) {
+          await archiveHabit(habit.id);
+        }
+      }
+      await loadHabits();
+    } catch (error) {
+      console.error("Failed to delete habits:", error);
+      alert("Failed to delete habits. Please try again.");
     }
   };
 
@@ -387,10 +451,32 @@ export default function HabitsPage() {
   // Get unique colors from habits
   const availableColors = Array.from(new Set(habits.map(h => h.color)));
 
-  // Filter habits by color
-  const filteredHabits = selectedColor 
+  // Filter and sort habits: in-progress at top, done at bottom
+  let filteredHabits = selectedColor 
     ? habits.filter(h => h.color === selectedColor)
     : habits;
+
+  // Sort: in-progress habits first, done habits last
+  filteredHabits = [...filteredHabits].sort((a, b) => {
+    const aLog = todayLogs[a.id!];
+    const bLog = todayLogs[b.id!];
+    
+    // Check if habits are completed
+    const aCompleted = a.type === 'numeric'
+      ? (a.target ? (aLog?.value || 0) >= a.target : (aLog?.value || 0) > 0)
+      : (aLog?.value || 0) > 0;
+    const bCompleted = b.type === 'numeric'
+      ? (b.target ? (bLog?.value || 0) >= b.target : (bLog?.value || 0) > 0)
+      : (bLog?.value || 0) > 0;
+    
+    // In-progress (not completed) comes first
+    if (aCompleted !== bCompleted) {
+      return aCompleted ? 1 : -1;
+    }
+    
+    // If both have same completion status, maintain original order
+    return 0;
+  });
 
   if (loading) {
     return (
@@ -416,13 +502,28 @@ export default function HabitsPage() {
             {selectedColor && ` (filtered by color)`}
           </p>
         </div>
-        <Link
-          href="/habits/new"
-          className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors flex items-center gap-2 font-medium"
-        >
-          <span className="text-xl">+</span>
-          Add Habit
-        </Link>
+        <div className="flex items-center gap-3">
+          {habits.length > 0 && (
+            <button
+              onClick={handleDeleteAll}
+              className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 transition-colors flex items-center gap-2 font-medium"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 6h18"></path>
+                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+              </svg>
+              Delete All
+            </button>
+          )}
+          <Link
+            href="/habits/new"
+            className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors flex items-center gap-2 font-medium"
+          >
+            <span className="text-xl">+</span>
+            Add Habit
+          </Link>
+        </div>
       </div>
 
       {/* Color Filter */}
@@ -466,7 +567,9 @@ export default function HabitsPage() {
       {/* Empty State */}
       {habits.length === 0 ? (
         <div className="text-center py-12 rounded-lg shadow" style={{ backgroundColor: "var(--background, #ffffff)" }}>
-          <div className="text-6xl mb-4">🎯</div>
+          <div className="flex justify-center mb-4">
+            <Target className="w-16 h-16 text-gray-400" />
+          </div>
           <h2 className="text-xl font-semibold text-gray-900 mb-2">No habits yet</h2>
           <p className="text-gray-600 mb-6">Start building better habits today!</p>
           <Link
@@ -542,6 +645,7 @@ export default function HabitsPage() {
                     onLog={handleLog}
                     onEdit={handleEdit}
                     onArchive={handleArchive}
+                    onToggleLock={handleToggleLock}
                   />
                 </motion.div>
               );
@@ -569,12 +673,14 @@ export default function HabitsPage() {
           <div className="mt-6 bg-blue-50 rounded-lg p-4 border border-blue-200">
             <h3 className="font-medium text-blue-900 mb-2">Today's Progress</h3>
             <div className="flex items-center gap-4 text-sm text-blue-700">
-              <span>
-                ✓ {completedCount} / {habits.length} completed
+              <span className="flex items-center gap-1">
+                <CheckCircle2 className="w-4 h-4" />
+                {completedCount} / {habits.length} completed
               </span>
               {completedCount === habits.length && habits.length > 0 && (
-                <span className="text-green-700 font-semibold">
-                  🎉 All habits completed! (+50 bonus XP)
+                <span className="text-green-700 font-semibold flex items-center gap-1">
+                  <PartyPopper className="w-4 h-4" />
+                  All habits completed! (+50 bonus XP)
                 </span>
               )}
             </div>
