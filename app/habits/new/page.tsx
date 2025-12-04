@@ -135,6 +135,7 @@ export default function NewHabitPage() {
         weekDays: formData.weekDays.length > 0 ? formData.weekDays : undefined,
         description: formData.description.trim() || undefined,
         archived: false,
+        locked: false,
         createdAt: new Date().toISOString(),
       });
       
