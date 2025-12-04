@@ -136,7 +136,7 @@ export default function IOSList({
                   )}
                 </div>
                 {item.tags && (
-                  <div className="flex flex-wrap gap-1.5 mb-1">
+                  <div className="gap-1.5 mb-1">
                     {item.tags}
                   </div>
                 )}

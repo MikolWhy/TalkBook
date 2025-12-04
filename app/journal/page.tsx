@@ -74,7 +74,7 @@ import {
   type Journal
 } from "../../src/lib/journals/manager";
 import { getEntries, saveEntries, deleteEntry as deleteCachedEntry } from "../../src/lib/cache/entriesCache";
-import { Settings, PenTool, FileText as FileTextIcon } from "lucide-react";
+import { Settings, PenTool, FileText as FileTextIcon, Edit2, Trash2 } from "lucide-react";
 
 // Mood ID to emoji mapping
 const moodMap: Record<string, string> = {
@@ -367,13 +367,15 @@ export default function JournalPage() {
       bgColor: colorConfig.bgClass,
       borderColor: colorConfig.borderClass,
       tags: entry.tags && entry.tags.length > 0 ? (
-        <>
+        <div className="flex justify-between gap-2">
+          <div className="flex gap-2">
+
           {entry.tags.slice(0, 3).map((tag: string, index: number) => (
             <span
-              key={tag}
-              className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border shadow-sm ${getTagColor(
-                index
-              )}`}
+            key={tag}
+            className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border shadow-sm ${getTagColor(
+              index
+            )}`}
             >
               {tag}
             </span>
@@ -381,18 +383,43 @@ export default function JournalPage() {
           {entry.tags.length > 3 && (
             <span className="text-[11px] text-gray-500 font-medium">+{entry.tags.length - 3} more</span>
           )}
-        </>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                window.location.href = `/journal/${entry.id}`;
+              }}
+              className="p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md transition-colors"
+              title="Edit entry"
+            >
+              <Edit2 className="w-4 h-4" />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDeleteEntry(entry.id);
+              }}
+              className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
+              title="Delete entry"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
       ) : undefined,
       endContent: (
-        <div className="flex flex-col items-center gap-2">
-          <div className="text-4xl leading-none transition-transform hover:scale-110">
-            {moodEmoji}
+        <div className="flex items-center gap-3">
+          <div className="flex flex-col items-center gap-2">
+            <div className="text-4xl leading-none transition-transform hover:scale-110">
+              {moodEmoji}
+            </div>
+            {isDraft && (
+              <span className="px-2 py-1 bg-amber-100 text-amber-700 text-[10px] font-semibold rounded-full border border-amber-200 shadow-sm">
+                DRAFT
+              </span>
+            )}
           </div>
-          {isDraft && (
-            <span className="px-2 py-1 bg-amber-100 text-amber-700 text-[10px] font-semibold rounded-full border border-amber-200 shadow-sm">
-              DRAFT
-            </span>
-          )}
         </div>
       ),
       onClick: () => {
