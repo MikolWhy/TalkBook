@@ -146,8 +146,14 @@ export default function HabitsPage() {
       const habit = habits.find(h => h.id === habitId);
       if (!habit) return;
       
-      const wasCompleted = todayLogs[habitId]?.value > 0;
-      const isNowCompleted = value > 0;
+      // Check if habit was/is completed based on type and target
+      const previousValue = todayLogs[habitId]?.value || 0;
+      const wasCompleted = habit.type === 'numeric' 
+        ? (habit.target ? previousValue >= habit.target : previousValue > 0)
+        : previousValue > 0;
+      const isNowCompleted = habit.type === 'numeric'
+        ? (habit.target ? value >= habit.target : value > 0)
+        : value > 0;
       
       // Log the habit
       if (value === 0) {
