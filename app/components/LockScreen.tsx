@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Lock } from "lucide-react";
 
 export default function LockScreen() {
   const [isLocked, setIsLocked] = useState(false);
@@ -38,10 +39,12 @@ export default function LockScreen() {
   }
 
   return (
-    <div className="fixed inset-0 bg-gray-900 z-50 flex items-center justify-center">
-      <div className="rounded-lg shadow-xl p-8 max-w-md w-full mx-4" style={{ backgroundColor: "var(--background, #ffffff)" }}>
+    <div className="fixed inset-0 bg-gray-900/95 backdrop-blur-sm z-50 flex items-center justify-center">
+      <div className="rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 border border-gray-200" style={{ backgroundColor: "var(--background, #ffffff)" }}>
         <div className="text-center mb-6">
-          <div className="text-5xl mb-4">🔒</div>
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full mb-4">
+            <Lock className="w-8 h-8 text-white" />
+          </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">App Locked</h2>
           <p className="text-gray-600">Enter your password to unlock</p>
         </div>
