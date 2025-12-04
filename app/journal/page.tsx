@@ -756,70 +756,72 @@ export default function JournalPage() {
 
           {/* Right Section - 2/3 width: View Selected Page */}
           <div className="w-2/3 flex flex-col">
-            <div className="flex-1 border-2 border-gray-100 rounded-2xl p-8 shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-y-auto" style={{ backgroundColor: "var(--background, #ffffff)" }}>
-              {selectedEntry ? (
-                <div className="space-y-6">
-                  <div className="flex items-start justify-between pb-6 border-b-2 border-gray-100 sticky top-0 bg-white z-10">
-                    <div className="flex-1">
-                      <h2 className="text-3xl font-bold text-gray-900 tracking-tight leading-tight">
-                        {selectedEntry.title || "Untitled Entry"}
-                      </h2>
-                      <p className="text-sm text-gray-500 mt-2 font-medium">
-                        {formatDate(selectedEntry.createdAt)}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3 ml-4">
-                      <span className="text-5xl leading-none" title={selectedEntry.mood || "neutral"}>
-                        {selectedEntry.mood ? (moodMap[selectedEntry.mood] || "😐") : "😐"}
-                      </span>
-                    </div>
-                  </div>
-                  {selectedEntry.tags && selectedEntry.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {selectedEntry.tags.map((tag: string, index: number) => (
-                        <span
-                          key={tag}
-                          className={`px-4 py-2 rounded-full text-sm font-semibold border-2 shadow-sm transition-transform hover:scale-105 ${getTagColor(
-                            index
-                          )}`}
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  <div className="prose max-w-none entry-content">
-                    {selectedEntry.content ? (
-                      <div
-                        className="text-gray-700 text-[15px] leading-relaxed"
-                        dangerouslySetInnerHTML={{ __html: selectedEntry.content }}
-                      />
-                    ) : (
-                      <p className="text-gray-400 italic text-center py-8">No content</p>
+            <div
+              className="flex-1 border-2 border-gray-100 rounded-2xl pt-0 px-8 pb-8 shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-y-auto"
+              style={{ backgroundColor: "var(--background, #ffffff)" }}
+            >              {selectedEntry ? (
+              <div className="space-y-6">
+                <div className="flex items-start justify-between pb-6 pt-6 border-b-2 border-gray-100 sticky top-0 bg-white z-10">
+                  <div className="flex-1">
+                    <h2 className="text-3xl font-bold text-gray-900 tracking-tight leading-tight">
+                      {selectedEntry.title || "Untitled Entry"}
+                    </h2>
+                    <p className="text-sm text-gray-500 mt-2 font-medium">
+                      {formatDate(selectedEntry.createdAt)}
+                    </p>
+                    {selectedEntry.tags && selectedEntry.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-2  mt-2">
+                        {selectedEntry.tags.map((tag: string, index: number) => (
+                          <span
+                            key={tag}
+                            className={`px-2 py-1 rounded-full text-sm font-semibold border-2 shadow-sm transition-transform hover:scale-105 ${getTagColor(
+                              index
+                            )}`}
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
                     )}
                   </div>
-                  <div className="pt-6 border-t-2 border-gray-100 flex gap-3">
-                    <Link
-                      href={`/journal/${selectedEntry.id}`}
-                      className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 active:scale-95 transition-all font-semibold shadow-sm hover:shadow-md"
-                    >
-                      Edit Entry
-                    </Link>
-                    <button
-                      onClick={() => handleDeleteEntry(selectedEntry.id)}
-                      className="px-6 py-3 bg-red-500 text-white rounded-xl hover:bg-red-600 active:scale-95 transition-all font-semibold shadow-sm hover:shadow-md"
-                    >
-                      Delete Entry
-                    </button>
+                  <div className="flex items-center gap-3 ml-4">
+                    <span className="text-5xl leading-none" title={selectedEntry.mood || "neutral"}>
+                      {selectedEntry.mood ? (moodMap[selectedEntry.mood] || "😐") : "😐"}
+                    </span>
                   </div>
                 </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full text-center">
-                  <FileTextIcon className="w-16 h-16 mb-4 opacity-20 text-gray-400" />
-                  <p className="text-gray-400 text-lg font-medium">Select an entry to view</p>
-                  <p className="text-gray-300 text-sm mt-2">Choose from the list on the left</p>
+                <div className="prose max-w-none entry-content">
+                  {selectedEntry.content ? (
+                    <div
+                      className="text-gray-700 text-[15px] leading-relaxed"
+                      dangerouslySetInnerHTML={{ __html: selectedEntry.content }}
+                    />
+                  ) : (
+                    <p className="text-gray-400 italic text-center py-8">No content</p>
+                  )}
                 </div>
-              )}
+                <div className="pt-6 border-t-2 border-gray-100 flex gap-3">
+                  <Link
+                    href={`/journal/${selectedEntry.id}`}
+                    className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 active:scale-95 transition-all font-semibold shadow-sm hover:shadow-md"
+                  >
+                    Edit Entry
+                  </Link>
+                  <button
+                    onClick={() => handleDeleteEntry(selectedEntry.id)}
+                    className="px-6 py-3 bg-red-500 text-white rounded-xl hover:bg-red-600 active:scale-95 transition-all font-semibold shadow-sm hover:shadow-md"
+                  >
+                    Delete Entry
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-center">
+                <FileTextIcon className="w-16 h-16 mb-4 opacity-20 text-gray-400" />
+                <p className="text-gray-400 text-lg font-medium">Select an entry to view</p>
+                <p className="text-gray-300 text-sm mt-2">Choose from the list on the left</p>
+              </div>
+            )}
             </div>
           </div>
         </div>
