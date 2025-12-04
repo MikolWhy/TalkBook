@@ -17,6 +17,7 @@ import DashboardLayout from "../../components/DashboardLayout";
 import RichTextEditor, { RichTextEditorRef } from "../../../src/components/RichTextEditor";
 import PromptSuggestions from "../../../src/components/PromptSuggestions";
 import TopicSuggestions from "../../../src/components/TopicSuggestions";
+import ConfirmationModal from "../../components/ConfirmationModal";
 import { extractMetadata } from "../../../src/lib/nlp/extract";
 import { generatePrompts, filterUsedPrompts, filterExpiredPrompts, Prompt, markPromptAsUsed, getTopicSuggestions, TopicSuggestion } from "../../../src/lib/nlp/prompts";
 import { getEntries, getEntryById, updateEntry, saveEntries } from "../../../src/lib/cache/entriesCache";
@@ -115,6 +116,9 @@ export default function EditEntryPage() {
   const [newLevel, setNewLevel] = useState(1);
   const [showXPNotification, setShowXPNotification] = useState(false);
   const [isSaving, setIsSaving] = useState(false); // Prevent duplicate saves
+
+  // Confirmation modal state
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   // Filter prompts: show only those NOT currently inserted in editor
   const availablePrompts = allPrompts.filter(p => !insertedPromptIds.has(p.id));
@@ -475,10 +479,10 @@ export default function EditEntryPage() {
 
   // Delete function
   const handleDelete = () => {
-    if (!confirm("Are you sure you want to delete this entry? This action cannot be undone.")) {
-      return;
-    }
+    setIsDeleteModalOpen(true);
+  };
 
+  const confirmDelete = () => {
     try {
       const storedEntries = JSON.parse(
         localStorage.getItem("journalEntries") || "[]"
@@ -748,6 +752,17 @@ export default function EditEntryPage() {
         oldLevel={oldLevel}
         newLevel={newLevel}
         onComplete={() => setShowXPNotification(false)}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDelete}
+        title="Delete Entry?"
+        message="Are you sure you want to delete this entry? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
       />
     </DashboardLayout>
   );

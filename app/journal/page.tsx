@@ -62,6 +62,7 @@ import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import DashboardLayout from "../components/DashboardLayout";
 import IOSList, { IOSListItem } from "../components/IOSList";
+import ConfirmationModal from "../components/ConfirmationModal";
 import {
   initializeJournals,
   getJournals,
@@ -154,6 +155,12 @@ export default function JournalPage() {
   const [editingJournalId, setEditingJournalId] = useState<string | null>(null);
   const [editingJournalName, setEditingJournalName] = useState("");
   const journalDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Confirmation modal state
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [entryToDelete, setEntryToDelete] = useState<string | number | null>(null);
+  const [isDeleteJournalModalOpen, setIsDeleteJournalModalOpen] = useState(false);
+  const [journalToDelete, setJournalToDelete] = useState<{ id: string; name: string } | null>(null);
 
   // Load entries from localStorage
   // Initialize journals on mount
@@ -439,24 +446,40 @@ export default function JournalPage() {
   //           Simple and conventional - not over-engineered.
   // CONNECTION: Delete button shown in entry detail view (#17).
   const handleDeleteEntry = (entryId: string | number) => {
-    if (!confirm("Are you sure you want to delete this entry? This action cannot be undone.")) {
-      return;
-    }
+    setEntryToDelete(entryId);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDeleteEntry = () => {
+    if (!entryToDelete) return;
 
     try {
       // OPTIMIZATION: Use cache deletion
-      deleteCachedEntry(entryId as string);
+      deleteCachedEntry(entryToDelete as string);
 
       // Reload entries
       loadEntries();
 
       // Clear selection if deleted entry was selected
-      if (selectedEntryId === entryId) {
+      if (selectedEntryId === entryToDelete) {
         setSelectedEntryId(null);
       }
     } catch (error) {
       console.error("Error deleting entry:", error);
       alert("Failed to delete entry. Please try again.");
+    }
+  };
+
+  const confirmDeleteJournal = () => {
+    if (!journalToDelete) return;
+
+    try {
+      deleteJournal(journalToDelete.id);
+      setJournals(getJournals());
+      setActiveJournalIdState(getActiveJournalId());
+    } catch (error) {
+      console.error("Error deleting journal:", error);
+      alert("Failed to delete journal. Please try again.");
     }
   };
   return (
@@ -626,11 +649,8 @@ export default function JournalPage() {
                             <button
                               onClick={() => {
                                 if (journals.length > 1) {
-                                  if (confirm(`Delete "${journal.name}"? All entries in this journal will be permanently deleted. This cannot be undone.`)) {
-                                    deleteJournal(journal.id);
-                                    setJournals(getJournals());
-                                    setActiveJournalIdState(getActiveJournalId());
-                                  }
+                                  setJournalToDelete({ id: journal.id, name: journal.name });
+                                  setIsDeleteJournalModalOpen(true);
                                 } else {
                                   alert("Cannot delete the last journal");
                                 }
@@ -853,6 +873,28 @@ export default function JournalPage() {
           </div>
         </div>
       </div>
+
+      {/* Delete Entry Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDeleteEntry}
+        title="Delete Entry?"
+        message="Are you sure you want to delete this entry? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
+
+      {/* Delete Journal Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isDeleteJournalModalOpen}
+        onClose={() => setIsDeleteJournalModalOpen(false)}
+        onConfirm={confirmDeleteJournal}
+        title="Delete Journal?"
+        message={`Delete "${journalToDelete?.name}"? All entries in this journal will be permanently deleted. This cannot be undone.`}
+        confirmText="Delete Journal"
+        cancelText="Cancel"
+      />
     </DashboardLayout>
   );
 }

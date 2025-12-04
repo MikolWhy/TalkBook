@@ -71,6 +71,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import DashboardLayout from "../components/DashboardLayout";
 import HabitCard from "@/components/HabitCard";
 import XPNotification from "../components/XPNotification";
+import ConfirmationModal from "../components/ConfirmationModal";
 import { awardHabitXP, calculateGlobalHabitStreak, awardAllHabitsCompletedBonus } from "../../src/lib/gamification/xp";
 import { 
   getActiveHabits, 
@@ -78,7 +79,7 @@ import {
   calculateStreak,
   getHabitLogs,
   updateHabitOrder,
-  archiveHabit
+  deleteHabit
 } from "@/lib/db/repo";
 import { Habit } from "@/lib/db/schema";
 import { Target, PartyPopper, CheckCircle2 } from "lucide-react";
@@ -101,6 +102,10 @@ export default function HabitsPage() {
   const [leveledUp, setLeveledUp] = useState(false);
   const [oldLevel, setOldLevel] = useState<number | undefined>(undefined);
   const [newLevel, setNewLevel] = useState<number | undefined>(undefined);
+
+  // Confirmation modal state
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [habitToDelete, setHabitToDelete] = useState<{ id: number; name: string } | null>(null);
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -265,13 +270,23 @@ export default function HabitsPage() {
     router.push(`/habits/${habitId}`);
   };
 
-  const handleArchive = async (habitId: number) => {
+  const handleDelete = (habitId: number) => {
+    const habit = habits.find(h => h.id === habitId);
+    if (habit) {
+      setHabitToDelete({ id: habitId, name: habit.name });
+      setIsDeleteModalOpen(true);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!habitToDelete) return;
+
     try {
-      await archiveHabit(habitId);
+      await deleteHabit(habitToDelete.id);
       await loadHabits();
     } catch (error) {
-      console.error("Failed to archive habit:", error);
-      alert("Failed to archive habit. Please try again.");
+      console.error("Failed to delete habit:", error);
+      alert("Failed to delete habit. Please try again.");
     }
   };
 
@@ -559,7 +574,7 @@ export default function HabitsPage() {
                     todayLog={todayLogs[habit.id!]}
                     onLog={handleLog}
                     onEdit={handleEdit}
-                    onArchive={handleArchive}
+                    onDelete={handleDelete}
                   />
                 </motion.div>
               );
@@ -610,6 +625,17 @@ export default function HabitsPage() {
         leveledUp={leveledUp}
         oldLevel={oldLevel}
         newLevel={newLevel}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDelete}
+        title="Delete Habit?"
+        message={`Are you sure you want to delete "${habitToDelete?.name}"? This will permanently delete the habit and all its logs. This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
       />
     </DashboardLayout>
   );
