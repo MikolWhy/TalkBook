@@ -362,12 +362,12 @@ export default function SettingsPage() {
       await db.habitLogs.clear();
       
       const habits = [
-        { profileId: 1, name: "Morning Meditation", type: "boolean" as const, color: "#3B82F6", frequency: "daily" as const, archived: false, createdAt: "2025-10-15T08:00:00.000Z", order: 0 },
-        { profileId: 1, name: "Exercise", type: "boolean" as const, color: "#EF4444", frequency: "daily" as const, archived: false, createdAt: "2025-10-15T08:00:00.000Z", order: 1 },
-        { profileId: 1, name: "Read Pages", type: "numeric" as const, target: 20, unit: "pages", color: "#10B981", frequency: "daily" as const, archived: false, createdAt: "2025-10-16T09:00:00.000Z", order: 2 },
-        { profileId: 1, name: "Water Intake", type: "numeric" as const, target: 8, unit: "glasses", color: "#8B5CF6", frequency: "daily" as const, archived: false, createdAt: "2025-10-17T10:00:00.000Z", order: 3 },
-        { profileId: 1, name: "Journal Entry", type: "boolean" as const, color: "#F59E0B", frequency: "daily" as const, archived: false, createdAt: "2025-10-18T11:00:00.000Z", order: 4 },
-        { profileId: 1, name: "Gratitude Practice", type: "boolean" as const, color: "#EC4899", frequency: "daily" as const, archived: false, createdAt: "2025-10-19T12:00:00.000Z", order: 5 }
+        { profileId: 1, name: "Morning Meditation", type: "boolean" as const, color: "#3B82F6", frequency: "daily" as const, archived: false, locked: false, createdAt: "2025-10-15T08:00:00.000Z", order: 0 },
+        { profileId: 1, name: "Exercise", type: "boolean" as const, color: "#EF4444", frequency: "daily" as const, archived: false, locked: false, createdAt: "2025-10-15T08:00:00.000Z", order: 1 },
+        { profileId: 1, name: "Read Pages", type: "numeric" as const, target: 20, unit: "pages", color: "#10B981", frequency: "daily" as const, archived: false, locked: false, createdAt: "2025-10-16T09:00:00.000Z", order: 2 },
+        { profileId: 1, name: "Water Intake", type: "numeric" as const, target: 8, unit: "glasses", color: "#8B5CF6", frequency: "daily" as const, archived: false, locked: false, createdAt: "2025-10-17T10:00:00.000Z", order: 3 },
+        { profileId: 1, name: "Journal Entry", type: "boolean" as const, color: "#F59E0B", frequency: "daily" as const, archived: false, locked: false, createdAt: "2025-10-18T11:00:00.000Z", order: 4 },
+        { profileId: 1, name: "Gratitude Practice", type: "boolean" as const, color: "#EC4899", frequency: "daily" as const, archived: false, locked: false, createdAt: "2025-10-19T12:00:00.000Z", order: 5 }
       ];
       
       const habitIds = [];

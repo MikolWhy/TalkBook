@@ -72,13 +72,15 @@ import DashboardLayout from "../components/DashboardLayout";
 import HabitCard from "@/components/HabitCard";
 import XPNotification from "../components/XPNotification";
 import { awardHabitXP, calculateGlobalHabitStreak, awardAllHabitsCompletedBonus } from "../../src/lib/gamification/xp";
+import { updateHabitPR } from "../../src/lib/gamification/pr";
 import { 
   getActiveHabits, 
   logHabit, 
   calculateStreak,
   getHabitLogs,
   updateHabitOrder,
-  archiveHabit
+  archiveHabit,
+  toggleHabitLock
 } from "@/lib/db/repo";
 import { Habit } from "@/lib/db/schema";
 import { Target, PartyPopper, CheckCircle2 } from "lucide-react";
@@ -164,6 +166,14 @@ export default function HabitsPage() {
       
       // Award XP only if habit is being completed (not un-logged) AND XP hasn't been awarded for this habit today
       if (isNowCompleted && !wasCompleted) {
+        // Update PR for numeric habits when completed
+        if (habit.type === 'numeric' && value > 0) {
+          const prResult = updateHabitPR(habit.name, value);
+          if (prResult.isNewPR) {
+            console.log(`🎉 New PR for ${habit.name}: ${value} ${habit.unit || ''}`);
+          }
+        }
+
         // Check if XP was already awarded for this habit today
         const xpAwardedKey = `talkbook-habit-xp-${habitId}-${today}`;
         const xpAlreadyAwarded = localStorage.getItem(xpAwardedKey) === 'true';
@@ -272,6 +282,44 @@ export default function HabitsPage() {
     } catch (error) {
       console.error("Failed to archive habit:", error);
       alert("Failed to archive habit. Please try again.");
+    }
+  };
+
+  const handleToggleLock = async (habitId: number) => {
+    try {
+      await toggleHabitLock(habitId);
+      await loadHabits();
+    } catch (error) {
+      console.error("Failed to toggle habit lock:", error);
+      alert("Failed to toggle lock. Please try again.");
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    const unlockedHabits = habits.filter(h => !h.locked);
+    
+    if (unlockedHabits.length === 0) {
+      alert("All habits are locked. Unlock habits to delete them.");
+      return;
+    }
+
+    const lockedCount = habits.length - unlockedHabits.length;
+    const message = lockedCount > 0
+      ? `This will delete ${unlockedHabits.length} unlocked habit(s). ${lockedCount} locked habit(s) will be kept. Continue?`
+      : `This will delete all ${unlockedHabits.length} habit(s). Continue?`;
+
+    if (!confirm(message)) return;
+
+    try {
+      for (const habit of unlockedHabits) {
+        if (habit.id) {
+          await archiveHabit(habit.id);
+        }
+      }
+      await loadHabits();
+    } catch (error) {
+      console.error("Failed to delete habits:", error);
+      alert("Failed to delete habits. Please try again.");
     }
   };
 
@@ -403,10 +451,32 @@ export default function HabitsPage() {
   // Get unique colors from habits
   const availableColors = Array.from(new Set(habits.map(h => h.color)));
 
-  // Filter habits by color
-  const filteredHabits = selectedColor 
+  // Filter and sort habits: in-progress at top, done at bottom
+  let filteredHabits = selectedColor 
     ? habits.filter(h => h.color === selectedColor)
     : habits;
+
+  // Sort: in-progress habits first, done habits last
+  filteredHabits = [...filteredHabits].sort((a, b) => {
+    const aLog = todayLogs[a.id!];
+    const bLog = todayLogs[b.id!];
+    
+    // Check if habits are completed
+    const aCompleted = a.type === 'numeric'
+      ? (a.target ? (aLog?.value || 0) >= a.target : (aLog?.value || 0) > 0)
+      : (aLog?.value || 0) > 0;
+    const bCompleted = b.type === 'numeric'
+      ? (b.target ? (bLog?.value || 0) >= b.target : (bLog?.value || 0) > 0)
+      : (bLog?.value || 0) > 0;
+    
+    // In-progress (not completed) comes first
+    if (aCompleted !== bCompleted) {
+      return aCompleted ? 1 : -1;
+    }
+    
+    // If both have same completion status, maintain original order
+    return 0;
+  });
 
   if (loading) {
     return (
@@ -432,13 +502,28 @@ export default function HabitsPage() {
             {selectedColor && ` (filtered by color)`}
           </p>
         </div>
-        <Link
-          href="/habits/new"
-          className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors flex items-center gap-2 font-medium"
-        >
-          <span className="text-xl">+</span>
-          Add Habit
-        </Link>
+        <div className="flex items-center gap-3">
+          {habits.length > 0 && (
+            <button
+              onClick={handleDeleteAll}
+              className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 transition-colors flex items-center gap-2 font-medium"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 6h18"></path>
+                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+              </svg>
+              Delete All
+            </button>
+          )}
+          <Link
+            href="/habits/new"
+            className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition-colors flex items-center gap-2 font-medium"
+          >
+            <span className="text-xl">+</span>
+            Add Habit
+          </Link>
+        </div>
       </div>
 
       {/* Color Filter */}
@@ -560,6 +645,7 @@ export default function HabitsPage() {
                     onLog={handleLog}
                     onEdit={handleEdit}
                     onArchive={handleArchive}
+                    onToggleLock={handleToggleLock}
                   />
                 </motion.div>
               );
