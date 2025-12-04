@@ -409,16 +409,22 @@ export default function HomePage() {
             ====================================================================
         */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-8">
-          {/* Today's Progress Card - Larger Graph */}
-          <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl p-6 text-white shadow-xl border border-gray-700 flex flex-col">
+          {/* Today's Progress Card - Clean & Light */}
+          <div 
+            className="rounded-xl p-6 shadow-lg border-2 flex flex-col"
+            style={{ 
+              backgroundColor: "var(--background, #ffffff)",
+              borderColor: "rgba(0, 0, 0, 0.08)"
+            }}
+          >
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">Today's Progress</h2>
-              <a href="/stats" className="text-gray-400 hover:text-white transition">
+              <h2 className="text-xl font-bold text-gray-900">Today's Progress</h2>
+              <a href="/stats" className="text-gray-500 hover:text-gray-700 transition">
                 <BarChart className="w-5 h-5" />
               </a>
             </div>
             
-            {/* Circular Progress - Habit Completion Rate - Larger */}
+            {/* Circular Progress - Habit Completion Rate */}
             <div className="flex flex-col items-center mb-6 flex-1 justify-center">
               <div className="relative w-32 h-32 mb-3">
                 <svg className="transform -rotate-90 w-32 h-32">
@@ -427,7 +433,7 @@ export default function HomePage() {
                     cx="64"
                     cy="64"
                     r="56"
-                    stroke="rgba(255,255,255,0.1)"
+                    stroke="rgba(0,0,0,0.08)"
                     strokeWidth="10"
                     fill="none"
                   />
@@ -448,38 +454,38 @@ export default function HomePage() {
                 {/* Percentage Text */}
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="text-center">
-                    <div className="text-3xl font-black text-green-400">{habitStats.completionRate}%</div>
-                    <div className="text-xs text-gray-400 font-medium">Habits</div>
+                    <div className="text-3xl font-black text-green-600">{habitStats.completionRate}%</div>
+                    <div className="text-xs text-gray-500 font-medium">Habits</div>
                   </div>
                 </div>
               </div>
-              <p className="text-sm text-gray-300 text-center">
+              <p className="text-sm text-gray-600 text-center">
                 {habitStats.completedToday} of {habitStats.totalHabits} completed
               </p>
             </div>
             
-            {/* Vertical Stats - Moved to Bottom */}
-            <div className="flex flex-col gap-3 pt-4 border-t border-gray-700 mt-auto">
+            {/* Vertical Stats - Clean styling */}
+            <div className="flex flex-col gap-3 pt-4 border-t border-gray-200 mt-auto">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Flame className="w-4 h-4 text-orange-400" />
-                  <span className="text-xs text-gray-400">Entry Streak</span>
+                  <Flame className="w-4 h-4 text-orange-500" />
+                  <span className="text-xs text-gray-600">Entry Streak</span>
                 </div>
-                <div className="text-base font-bold text-orange-400">{stats.currentStreak}</div>
+                <div className="text-base font-bold text-orange-500">{stats.currentStreak}</div>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-blue-400" />
-                  <span className="text-xs text-gray-400">Total Entries</span>
+                  <FileText className="w-4 h-4 text-blue-500" />
+                  <span className="text-xs text-gray-600">Total Entries</span>
                 </div>
-                <div className="text-base font-bold text-blue-400">{stats.totalEntries}</div>
+                <div className="text-base font-bold text-blue-500">{stats.totalEntries}</div>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Dumbbell className="w-4 h-4 text-purple-400" />
-                  <span className="text-xs text-gray-400">Active Habits</span>
+                  <Dumbbell className="w-4 h-4 text-purple-500" />
+                  <span className="text-xs text-gray-600">Active Habits</span>
                 </div>
-                <div className="text-base font-bold text-purple-400">{habitStats.totalHabits}</div>
+                <div className="text-base font-bold text-purple-500">{habitStats.totalHabits}</div>
               </div>
             </div>
           </div>
