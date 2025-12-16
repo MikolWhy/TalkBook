@@ -7,6 +7,9 @@ const nextConfig: NextConfig = {
   // how: set turbopack to undefined to force webpack
   // syntax: turbopack: undefined
   turbopack: undefined,
+  
+  // Note: Webpack optimizations removed temporarily to fix module resolution issue
+  // Can be re-added later with more careful configuration if needed
 };
 
 // wrap config with pwa

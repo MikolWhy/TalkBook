@@ -14,7 +14,14 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, FileText, Check, Trash2 } from "lucide-react";
 import DashboardLayout from "../../components/DashboardLayout";
-import RichTextEditor, { RichTextEditorRef } from "../../../src/components/RichTextEditor";
+import dynamic from "next/dynamic";
+import type { RichTextEditorRef } from "../../../src/components/RichTextEditor";
+
+// Dynamically import RichTextEditor (TipTap) to reduce initial bundle size
+const RichTextEditor = dynamic(
+  () => import("../../../src/components/RichTextEditor").then(mod => mod.default),
+  { ssr: false }
+);
 import PromptSuggestions from "../../../src/components/PromptSuggestions";
 import TopicSuggestions from "../../../src/components/TopicSuggestions";
 import { extractMetadata } from "../../../src/lib/nlp/extract";

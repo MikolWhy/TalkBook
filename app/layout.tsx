@@ -179,6 +179,31 @@ export default function RootLayout({
         className={`${cabin.variable} antialiased`}
         suppressHydrationWarning
       >
+        {/* Set background color immediately to prevent flash */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var savedColor = localStorage.getItem('appBackgroundColor');
+                  var colors = {
+                    white: '#ffffff',
+                    orange: '#fff4e6',
+                    pink: '#fef2f2',
+                    green: '#f0fdf4',
+                    blue: '#eff6ff'
+                  };
+                  var colorKey = savedColor && colors[savedColor] ? savedColor : 'white';
+                  var bgColor = colors[colorKey];
+                  document.documentElement.style.setProperty('--background', bgColor);
+                  document.body.style.backgroundColor = bgColor;
+                } catch(e) {
+                  document.body.style.backgroundColor = '#ffffff';
+                }
+              })();
+            `,
+          }}
+        />
         {/* ================================================================
             SIDEBAR PROVIDER
             ================================================================

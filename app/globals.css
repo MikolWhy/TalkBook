@@ -11,12 +11,13 @@
   --font-sans: var(--font-cabin);
 }
 
-@media (prefers-color-scheme: dark) {
+/* Disable dark mode auto-detection - we use custom background colors */
+/* @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
   }
-}
+} */
 
 body {
   background: var(--background);

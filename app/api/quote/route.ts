@@ -16,7 +16,35 @@ export async function GET() {
       throw new Error('Failed to fetch quote');
     }
 
-    const data = await response.json();
+    // Get response as text first to handle malformed JSON
+    const text = await response.text();
+    
+    // Try to parse JSON, handling potential escape character issues
+    let data;
+    try {
+      // Clean up common JSON issues: unescaped quotes, backslashes, etc.
+      const cleanedText = text
+        .replace(/\\'/g, "'")  // Fix escaped single quotes
+        .replace(/\\"/g, '"')  // Fix escaped double quotes
+        .replace(/\\n/g, '\n') // Fix escaped newlines
+        .replace(/\\r/g, '\r') // Fix escaped carriage returns
+        .replace(/\\t/g, '\t'); // Fix escaped tabs
+      
+      data = JSON.parse(cleanedText);
+    } catch (parseError) {
+      // If parsing still fails, try to extract quote manually using regex
+      const quoteMatch = text.match(/"quoteText"\s*:\s*"([^"]*(?:\\.[^"]*)*)"/);
+      const authorMatch = text.match(/"quoteAuthor"\s*:\s*"([^"]*(?:\\.[^"]*)*)"/);
+      
+      if (quoteMatch || authorMatch) {
+        data = {
+          quoteText: quoteMatch ? quoteMatch[1].replace(/\\"/g, '"').replace(/\\n/g, '\n') : '',
+          quoteAuthor: authorMatch ? authorMatch[1].replace(/\\"/g, '"') : 'Unknown'
+        };
+      } else {
+        throw new Error('Failed to parse quote response');
+      }
+    }
     
     return NextResponse.json({
       quoteText: data.quoteText || '',
