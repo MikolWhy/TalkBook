@@ -1,3 +1,5 @@
+"use client";
+
 // journal list page - displays all journal entries
 // shows entries in chronological order with preview and actions
 //
@@ -6,163 +8,51 @@
 // - Each entry shows: date, mood emoji, truncated content preview
 // - Actions: click to view/edit, delete entry
 // - Empty state when no entries exist
-//
-// OWNERSHIP:
-// - Aadil implements this completely
-//
-// COORDINATION NOTES:
-// - Uses repo.ts entry functions (Aadil creates)
-// - No conflicts - Aadil owns this entirely
-//
-// CONTEXT FOR AI ASSISTANTS:
-// - This page shows all journal entries in a list
-// - Entries are displayed in reverse chronological order (newest first)
-// - Each entry shows: date, mood, truncated content preview
-// - Actions: view, edit, delete
-// - Supports filtering and search (future enhancement)
-//
-// DEVELOPMENT NOTES:
-// - Fetch all entries from database (or use journalStore cache)
-// - Display entries as cards with preview
-// - Show rich text content (use dangerouslySetInnerHTML with sanitization)
-// - Link to edit page for each entry
-// - Delete confirmation before deleting
-// - Empty state when no entries exist
-//
-// TODO: implement journal list page
-//
-// FUNCTIONALITY:
-// - Load entries from database
-// - Display entries in reverse chronological order
-// - Show entry preview (date, mood emoji, truncated content)
-// - Link to edit page
-// - Delete entry with confirmation
-// - Empty state message
-//
-// UI:
-// - List of entry cards
-// - Each card: date, mood, content preview, actions
-// - Hover effects on cards
-// - Responsive grid/list layout
-//
-// SYNTAX:
-// "use client";
-// import { useEffect, useState } from "react";
-// import Link from "next/link";
-// import { getEntries, deleteEntry } from "@/lib/db/repo";
-//
-// export default function JournalPage() {
-//   // implementation
-// }
 
 "use client";
 
-//adding to use nav links
-import Link from "next/link";
-import { useState, useEffect, useRef } from "react";
-import DashboardLayout from "../components/DashboardLayout";
-import IOSList, { IOSListItem } from "../components/IOSList";
+import { useState, useEffect } from "react";
+import DashboardLayout from "@/components/layout/DashboardLayout";
 import {
   initializeJournals,
   getJournals,
   getActiveJournalId,
   setActiveJournal,
-  createJournal,
-  renameJournal,
-  deleteJournal,
-  getJournalById,
   type Journal
-} from "../../src/lib/journals/manager";
-import { getEntries, saveEntries, deleteEntry as deleteCachedEntry } from "../../src/lib/cache/entriesCache";
-import { Settings, PenTool, FileText as FileTextIcon } from "lucide-react";
+} from "@/lib/journals/manager";
+import { getEntries, deleteEntry as deleteCachedEntry, type JournalEntry } from "@/lib/cache/entriesCache";
 
-// Mood ID to emoji mapping
-const moodMap: Record<string, string> = {
-  "very-happy": "😄",
-  "happy": "😊",
-  "neutral": "😐",
-  "sad": "😢",
-  "very-sad": "😭",
-  "excited": "🤩",
-  "calm": "😌",
-  "anxious": "😰",
-  "angry": "😠",
-  "grateful": "🙏",
-};
+// New Components
+import JournalHeader from "@/components/features/journal/JournalHeader";
+import JournalListSidebar from "@/components/features/journal/JournalListSidebar";
+import JournalEntryView from "@/components/features/journal/JournalEntryView";
+import JournalManageDialog from "@/components/features/journal/JournalManageDialog";
 
-// Tag color options (matching the new entry page)
-const tagColors = [
-  "bg-blue-100 text-blue-800 border-blue-300",
-  "bg-green-100 text-green-800 border-green-300",
-  "bg-purple-100 text-purple-800 border-purple-300",
-  "bg-pink-100 text-pink-800 border-pink-300",
-  "bg-yellow-100 text-yellow-800 border-yellow-300",
-  "bg-red-100 text-red-800 border-red-300",
-  "bg-indigo-100 text-indigo-800 border-indigo-300",
-  "bg-teal-100 text-teal-800 border-teal-300",
-  "bg-orange-100 text-orange-800 border-orange-300",
-  "bg-cyan-100 text-cyan-800 border-cyan-300",
-];
-
-// Function to get color for a tag based on its index
-const getTagColor = (index: number) => {
-  return tagColors[index % tagColors.length];
-};
-
-// Function to strip HTML tags for preview
-const stripHtml = (html: string): string => {
-  if (typeof window === "undefined") return html;
-  const tmp = document.createElement("DIV");
-  tmp.innerHTML = html;
-  return tmp.textContent || tmp.innerText || "";
-};
-
-// Function to format date
-const formatDate = (dateString: string): string => {
-  const date = new Date(dateString);
-  return date.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-};
-
-// Function to truncate text
-const truncateText = (text: string, maxLength: number = 100): string => {
-  if (text.length <= maxLength) return text;
-  return text.substring(0, maxLength) + "...";
-};
-
-// TODO: implement journal list page
-
-// TEMPORARY: Basic page structure to prevent navigation errors
-// This will be replaced with full implementation later
 export default function JournalPage() {
   const [selectedEntryId, setSelectedEntryId] = useState<string | number | null>(null);
-  const [entries, setEntries] = useState<any[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedTagFilter, setSelectedTagFilter] = useState<string | null>(null);
-  const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
-  const filterDropdownRef = useRef<HTMLDivElement>(null);
+  const [entries, setEntries] = useState<JournalEntry[]>([]);
 
   // Journal management state
   const [journals, setJournals] = useState<Journal[]>([]);
   const [activeJournalId, setActiveJournalIdState] = useState<string>("");
-  const [isJournalDropdownOpen, setIsJournalDropdownOpen] = useState(false);
   const [isManageDialogOpen, setIsManageDialogOpen] = useState(false);
-  const [newJournalName, setNewJournalName] = useState("");
-  const [editingJournalId, setEditingJournalId] = useState<string | null>(null);
-  const [editingJournalName, setEditingJournalName] = useState("");
-  const journalDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Load entries from localStorage
   // Initialize journals on mount
   useEffect(() => {
     initializeJournals();
+    updateJournalsList();
+  }, []);
+
+  const updateJournalsList = () => {
     const loadedJournals = getJournals();
     setJournals(loadedJournals);
     setActiveJournalIdState(getActiveJournalId());
-  }, []);
+  };
+
+  const handleSetActiveJournal = (id: string) => {
+    setActiveJournalIdState(id);
+    setActiveJournal(id);
+  };
 
   const loadEntries = () => {
     try {
@@ -171,12 +61,12 @@ export default function JournalPage() {
 
       // Filter entries by active journal
       const journalEntries = storedEntries.filter(
-        (entry: any) => (entry.journalId || "journal-1") === activeJournalId
+        (entry) => (entry.journalId || "journal-1") === activeJournalId
       );
 
       // Sort by createdAt (newest first)
       const sortedEntries = journalEntries.sort(
-        (a: any, b: any) =>
+        (a, b) =>
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
       setEntries(sortedEntries);
@@ -185,46 +75,6 @@ export default function JournalPage() {
       setEntries([]);
     }
   };
-
-  // #19: Click-Outside Detection for Tag Filter Dropdown
-  // WHY: User experience - dropdown should close when clicking outside of it.
-  //      This is standard dropdown behavior users expect.
-  // HOW: Use ref to track dropdown element, add mousedown listener when open.
-  //      Check if click target is outside dropdown element, close if so.
-  // APPROACH: Standard React pattern - useEffect with event listener, cleanup on unmount.
-  //           Uses ref.current.contains() to check if click is inside element.
-  //           This is conventional - many UI libraries use this pattern.
-  // CONNECTION: Works with #18 (tag filter dropdown) - closes dropdown on outside click.
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        isFilterDropdownOpen &&
-        filterDropdownRef.current &&
-        !filterDropdownRef.current.contains(event.target as Node)
-      ) {
-        setIsFilterDropdownOpen(false);
-      }
-    };
-
-    if (isFilterDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [isFilterDropdownOpen]);
-
-  // Click-outside detection for journal dropdown
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (journalDropdownRef.current && !journalDropdownRef.current.contains(event.target as Node)) {
-        setIsJournalDropdownOpen(false);
-      }
-    };
-
-    if (isJournalDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [isJournalDropdownOpen]);
 
   // Load entries on mount and when page becomes visible or active journal changes
   useEffect(() => {
@@ -253,164 +103,6 @@ export default function JournalPage() {
     };
   }, [activeJournalId]);
 
-  // #13: Get All Unique Tags for Filter Dropdown
-  // WHY: User requested filter-by-tag dropdown showing all available tags.
-  //      Need to collect unique tags from all entries to populate the dropdown.
-  // HOW: Use flatMap to get all tags, Set to deduplicate, sort alphabetically.
-  // APPROACH: Simple array manipulation - conventional JavaScript patterns.
-  //           Not over-engineered - straightforward data transformation.
-  // CONNECTION: Used to populate tag filter dropdown (#15).
-  const allTags = Array.from(
-    new Set(
-      entries.flatMap((entry) => entry.tags || [])
-    )
-  ).sort();
-
-  // #14: Filter Entries by Search Query and Tag
-  // WHY: User requested search functionality and tag filtering.
-  //      Search should scan title, content, and tags. Tag filter should show only entries with that tag.
-  // HOW: Filter entries array - check search query against title/content/tags (case-insensitive).
-  //      Then check if entry has selected tag (if tag filter is active).
-  //      Both filters work together (AND logic) - entry must match both.
-  // SYNTAX BREAKDOWN:
-  //   - entries.filter((entry) => { ... })
-  //     - Array.filter() - JavaScript Array method, creates new array with filtered elements
-  //     - Arrow function: (entry) => { ... } - callback for each entry
-  //     - Returns true to include entry, false to exclude
-  //   - searchQuery.trim() - String.trim() removes whitespace, returns empty string if all whitespace
-  //     - Empty string is falsy, so if (searchQuery.trim()) checks if query exists
-  //   - .toLowerCase() - String method, converts to lowercase for case-insensitive comparison
-  //   - .includes(query) - String method, checks if string contains substring
-  //     - Returns boolean (true/false)
-  //   - stripHtml(entry.content || "") - Custom function (defined elsewhere)
-  //     - || "" : fallback to empty string if content is falsy
-  //     - Removes HTML tags from content for text search
-  //   - (entry.tags || []).some((tag: string) => ...)
-  //     - Array.some() - JavaScript Array method, returns true if ANY element matches condition
-  //     - Arrow function: (tag: string) => tag.toLowerCase().includes(query)
-  //     - Checks if any tag includes the search query
-  //   - !titleMatch && !contentMatch && !tagMatch
-  //     - Logical NOT (!) and Logical AND (&&)
-  //     - All three must be false (no matches) to return false
-  //   - entry.tags.includes(selectedTagFilter)
-  //     - Array.includes() - JavaScript Array method, checks if array contains value
-  //     - Returns boolean
-  // REFERENCES:
-  //   - Array.filter(): JavaScript Array.prototype.filter() - MDN Web Docs
-  //   - String.toLowerCase(): JavaScript String.prototype.toLowerCase() - MDN Web Docs
-  //   - String.includes(): JavaScript String.prototype.includes() - MDN Web Docs
-  //   - Array.some(): JavaScript Array.prototype.some() - MDN Web Docs
-  //   - Array.includes(): JavaScript Array.prototype.includes() - MDN Web Docs
-  //   - stripHtml: Custom function (likely uses regex or DOM parsing)
-  // APPROACH: Simple filter function with multiple conditions - conventional React pattern.
-  //           Case-insensitive matching for better UX. HTML stripped from content for text search.
-  // CONNECTION: filteredEntries used to render list items (#15).
-  const filteredEntries = entries.filter((entry) => {
-    // Search filter: check title and content
-    if (searchQuery.trim()) { // Only filter if search query exists
-      const query = searchQuery.toLowerCase(); // Convert to lowercase for case-insensitive search
-      const titleMatch = (entry.title || "").toLowerCase().includes(query);
-      const contentText = stripHtml(entry.content || "").toLowerCase(); // Strip HTML for text search
-      const contentMatch = contentText.includes(query);
-      const tagMatch = (entry.tags || []).some((tag: string) =>
-        tag.toLowerCase().includes(query) // Check if any tag includes query
-      );
-
-      if (!titleMatch && !contentMatch && !tagMatch) {
-        return false; // Entry doesn't match search query (exclude it)
-      }
-    }
-
-    // Tag filter
-    if (selectedTagFilter) { // Only filter if tag is selected
-      if (!entry.tags || !entry.tags.includes(selectedTagFilter)) {
-        return false; // Entry doesn't have selected tag (exclude it)
-      }
-    }
-
-    return true; // Entry passes all filters (include it)
-  });
-
-  // #15: Transform Entries to List Items with Draft Badge
-  // WHY: User requested draft entries show a badge indicator in the list.
-  //      This helps users identify which entries are drafts vs regular entries.
-  // HOW: Check entry.draft === true, conditionally render yellow "Draft" badge below mood emoji.
-  //      Badge uses yellow color scheme to stand out but not be alarming.
-  // APPROACH: Simple conditional rendering - conventional React pattern.
-  //           Badge positioned below mood emoji in startContent for visual hierarchy.
-  // CONNECTION: Works with #7/#11 (draft saving) - badges show draft status.
-  // Card color options (matching new/edit pages)
-  const cardColorOptions: Record<string, { bgClass: string; borderClass: string }> = {
-    default: { bgClass: "bg-white", borderClass: "border-gray-200" },
-    mint: { bgClass: "bg-emerald-50", borderClass: "border-emerald-200" },
-    blue: { bgClass: "bg-blue-50", borderClass: "border-blue-200" },
-    pink: { bgClass: "bg-pink-50", borderClass: "border-pink-200" },
-    red: { bgClass: "bg-red-50", borderClass: "border-red-200" },
-    purple: { bgClass: "bg-purple-50", borderClass: "border-purple-200" },
-    orange: { bgClass: "bg-orange-50", borderClass: "border-orange-200" },
-    yellow: { bgClass: "bg-amber-50", borderClass: "border-amber-200" },
-    rose: { bgClass: "bg-rose-50", borderClass: "border-rose-200" },
-    indigo: { bgClass: "bg-indigo-50", borderClass: "border-indigo-200" },
-  };
-
-  const listItems: IOSListItem[] = filteredEntries.map((entry) => {
-    const moodEmoji = entry.mood ? moodMap[entry.mood] || "😐" : "😐";
-    const contentPreview = truncateText(stripHtml(entry.content || ""));
-    const displayTitle = entry.title || formatDate(entry.createdAt);
-    const isDraft = entry.draft === true;
-    const colorConfig = cardColorOptions[entry.cardColor as string] || cardColorOptions.default;
-
-    return {
-      id: entry.id,
-      title: displayTitle,
-      description: contentPreview || "No content",
-      bgColor: colorConfig.bgClass,
-      borderColor: colorConfig.borderClass,
-      tags: entry.tags && entry.tags.length > 0 ? (
-        <>
-          {entry.tags.slice(0, 3).map((tag: string, index: number) => (
-            <span
-              key={tag}
-              className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border shadow-sm ${getTagColor(
-                index
-              )}`}
-            >
-              {tag}
-            </span>
-          ))}
-          {entry.tags.length > 3 && (
-            <span className="text-[11px] text-gray-500 font-medium">+{entry.tags.length - 3} more</span>
-          )}
-        </>
-      ) : undefined,
-      endContent: (
-        <div className="flex flex-col items-center gap-2">
-          <div className="text-4xl leading-none transition-transform hover:scale-110">
-            {moodEmoji}
-          </div>
-          {isDraft && (
-            <span className="px-2 py-1 bg-amber-100 text-amber-700 text-[10px] font-semibold rounded-full border border-amber-200 shadow-sm">
-              DRAFT
-            </span>
-          )}
-        </div>
-      ),
-      onClick: () => {
-        setSelectedEntryId(entry.id);
-      },
-    };
-  });
-
-  const selectedEntry = filteredEntries.find((e) => e.id === selectedEntryId);
-
-  // #16: Delete Entry Functionality
-  // WHY: User requested delete button in journal list page.
-  //      Users should be able to delete entries from the list view.
-  // HOW: Show confirmation dialog, filter out entry from localStorage, reload list.
-  //      Clear selection if deleted entry was currently selected.
-  // APPROACH: Standard delete pattern - confirmation, remove from storage, update UI.
-  //           Simple and conventional - not over-engineered.
-  // CONNECTION: Delete button shown in entry detail view (#17).
   const handleDeleteEntry = (entryId: string | number) => {
     if (!confirm("Are you sure you want to delete this entry? This action cannot be undone.")) {
       return;
@@ -432,399 +124,49 @@ export default function JournalPage() {
       alert("Failed to delete entry. Please try again.");
     }
   };
+
+  const selectedEntry = entries.find((e) => e.id === selectedEntryId) || null;
+
   return (
     <DashboardLayout>
       <div className="container">
-
-        {/* Header Section with Journal Selector and New Entry Button */}
-        <div className="flex items-center justify-between mb-6">
-          {/* Journal Selector Dropdown */}
-          <div className="relative" ref={journalDropdownRef}>
-            <button
-              onClick={() => setIsJournalDropdownOpen(!isJournalDropdownOpen)}
-              className="flex items-center gap-2 text-2xl font-bold text-gray-900 hover:text-blue-600 transition-colors"
-            >
-              {getJournalById(activeJournalId)?.name || "Journal-1"}
-              <span className="text-lg">
-                {isJournalDropdownOpen ? "▲" : "▼"}
-              </span>
-            </button>
-
-            {isJournalDropdownOpen && (
-              <div className="absolute z-20 mt-2 w-64 border-2 border-gray-100 rounded-xl shadow-[0_8px_24px_rgba(0,0,0,0.12)] overflow-hidden" style={{ backgroundColor: "var(--background, #ffffff)" }}>
-                <div className="max-h-60 overflow-y-auto">
-                  {journals.map((journal) => (
-                    <button
-                      key={journal.id}
-                      onClick={() => {
-                        setActiveJournalIdState(journal.id);
-                        setActiveJournal(journal.id);
-                        setIsJournalDropdownOpen(false);
-                      }}
-                      className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors ${activeJournalId === journal.id
-                        ? "bg-blue-50 font-semibold text-gray-900"
-                        : "text-gray-700"
-                        }`}
-                    >
-                      {journal.name}
-                    </button>
-                  ))}
-                </div>
-                <div className="border-t-2 border-gray-100">
-                  <button
-                    onClick={() => {
-                      setIsManageDialogOpen(true);
-                      setIsJournalDropdownOpen(false);
-                    }}
-                    className="w-full px-4 py-3 text-left text-blue-600 hover:bg-blue-50 font-medium transition-colors flex items-center gap-2"
-                  >
-                    <Settings className="w-4 h-4" />
-                    Manage Journals
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* New Entry Button */}
-          <Link
-            href="/journal/new"
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center gap-2"
-          >
-            <PenTool className="w-4 h-4" />
-            new entry
-          </Link>
-        </div>
+        {/* Header Section */}
+        <JournalHeader
+          journals={journals}
+          activeJournalId={activeJournalId}
+          onSetActiveJournal={handleSetActiveJournal}
+          onManageJournals={() => setIsManageDialogOpen(true)}
+        />
 
         {/* Manage Journals Dialog */}
-        {isManageDialogOpen && (
-          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div className="rounded-2xl shadow-xl max-w-md w-full max-h-[80vh] flex flex-col" style={{ backgroundColor: "var(--background, #ffffff)" }}>
-              <div className="p-6 border-b-2 border-gray-100">
-                <h2 className="text-2xl font-bold text-gray-900">Manage Journals</h2>
-              </div>
+        <JournalManageDialog
+          isOpen={isManageDialogOpen}
+          onClose={() => setIsManageDialogOpen(false)}
+          journals={journals}
+          onJournalsUpdated={() => {
+            updateJournalsList();
+            // Just in case current journal was deleted or renamed, we refresh everything
+            // The dialog component handles logic, but parent refresh is good.
+          }}
+          activeJournalId={activeJournalId}
+          onSetActiveJournal={handleSetActiveJournal}
+        />
 
-              <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                {/* Create New Journal */}
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-700">
-                    Create New Journal
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={newJournalName}
-                      onChange={(e) => setNewJournalName(e.target.value)}
-                      placeholder="Journal name..."
-                      maxLength={30}
-                      className="flex-1 px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-400"
-                    />
-                    <button
-                      onClick={() => {
-                        if (newJournalName.trim()) {
-                          try {
-                            const newJournal = createJournal(newJournalName);
-                            setJournals(getJournals());
-                            setNewJournalName("");
-                          } catch (error: any) {
-                            alert(error.message);
-                          }
-                        }
-                      }}
-                      disabled={!newJournalName.trim() || journals.length >= 15}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium"
-                    >
-                      Create
-                    </button>
-                  </div>
-                  {journals.length >= 15 && (
-                    <p className="text-xs text-red-500">Maximum of 15 journals reached</p>
-                  )}
-                </div>
-
-                {/* Existing Journals */}
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-700">
-                    Your Journals ({journals.length}/15)
-                  </label>
-                  <div className="space-y-2">
-                    {journals.map((journal) => (
-                      <div
-                        key={journal.id}
-                        className="flex items-center gap-2 p-3 border-2 border-gray-100 rounded-lg hover:border-gray-200 transition-colors"
-                      >
-                        {editingJournalId === journal.id ? (
-                          <>
-                            <input
-                              type="text"
-                              value={editingJournalName}
-                              onChange={(e) => setEditingJournalName(e.target.value)}
-                              maxLength={30}
-                              className="flex-1 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                              autoFocus
-                            />
-                            <button
-                              onClick={() => {
-                                if (editingJournalName.trim()) {
-                                  renameJournal(journal.id, editingJournalName);
-                                  setJournals(getJournals());
-                                  setEditingJournalId(null);
-                                }
-                              }}
-                              className="px-2 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700"
-                            >
-                              ✓
-                            </button>
-                            <button
-                              onClick={() => setEditingJournalId(null)}
-                              className="px-2 py-1 bg-gray-400 text-white rounded text-sm hover:bg-gray-500"
-                            >
-                              ✕
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <span className="flex-1 font-medium text-gray-900">
-                              {journal.name}
-                            </span>
-                            <button
-                              onClick={() => {
-                                setEditingJournalId(journal.id);
-                                setEditingJournalName(journal.name);
-                              }}
-                              className="px-2 py-1 text-blue-600 hover:bg-blue-50 rounded text-sm font-medium"
-                            >
-                              Rename
-                            </button>
-                            <button
-                              onClick={() => {
-                                if (journals.length > 1) {
-                                  if (confirm(`Delete "${journal.name}"? All entries in this journal will be permanently deleted. This cannot be undone.`)) {
-                                    deleteJournal(journal.id);
-                                    setJournals(getJournals());
-                                    setActiveJournalIdState(getActiveJournalId());
-                                  }
-                                } else {
-                                  alert("Cannot delete the last journal");
-                                }
-                              }}
-                              disabled={journals.length === 1}
-                              className="px-2 py-1 text-red-600 hover:bg-red-50 rounded text-sm font-medium disabled:text-gray-300 disabled:cursor-not-allowed"
-                            >
-                              Delete
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-6 border-t-2 border-gray-100">
-                <button
-                  onClick={() => {
-                    setIsManageDialogOpen(false);
-                    setEditingJournalId(null);
-                  }}
-                  className="w-full px-4 py-3 bg-gray-600 text-white rounded-xl hover:bg-gray-700 transition-colors font-semibold"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
         <div className=" flex h-[calc(100vh-200px)] gap-4 mt-6">
           {/* Left Sidebar - 1/3 width: Search and Scrollable List */}
-          <div className="w-1/3 flex flex-col border-r border-gray-200 pr-4">
-            {/* Search and Filter Section */}
-            <div className="mb-4 space-y-3">
-              {/* Search Input */}
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search entries..."
-                className="w-full px-4 py-2 border text-gray-900 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-gray-400"
-              />
-
-              {/* #18: Filter by Tag Dropdown */}
-              {/* WHY: User requested filter-by-tag functionality with dropdown showing all tags. */}
-              {/*      Tags should be displayed with their color-coded badges matching entry tags. */}
-              {/* HOW: Use ref for click-outside detection, state for open/close, conditional rendering. */}
-              {/*      Show selected tag in button with color badge, dropdown shows "All Entries" + all tags. */}
-              {/*      Tags displayed with same color scheme as in entries (getTagColor function). */}
-              {/* APPROACH: Standard dropdown pattern - button toggles state, absolute positioned menu. */}
-              {/*           Click-outside detection via useEffect (#19) closes dropdown. */}
-              {/*           Not over-engineered - simple state + conditional rendering. */}
-              {/* CONNECTION: Works with #14 (filter logic) - selectedTagFilter used to filter entries. */}
-              <div className="relative" ref={filterDropdownRef}>
-                <button
-                  onClick={() => setIsFilterDropdownOpen(!isFilterDropdownOpen)}
-                  className="w-full px-4 py-2 border text-gray-900 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors flex items-center justify-between"
-                  style={{ backgroundColor: "var(--background, #ffffff)" }}
-                >
-                  <span>
-                    {selectedTagFilter ? (
-                      <span className="flex items-center gap-2">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${getTagColor(
-                          allTags.indexOf(selectedTagFilter)
-                        )}`}>
-                          {selectedTagFilter}
-                        </span>
-                      </span>
-                    ) : (
-                      <span className="text-gray-400">Filter by tag...</span>
-                    )}
-                  </span>
-                  <span className="text-gray-400">
-                    {isFilterDropdownOpen ? "▲" : "▼"}
-                  </span>
-                </button>
-
-                {/* Dropdown Menu */}
-                {isFilterDropdownOpen && (
-                  <div className="absolute z-10 w-full mt-1 border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto" style={{ backgroundColor: "var(--background, #ffffff)" }}>
-                    <button
-                      onClick={() => {
-                        setSelectedTagFilter(null);
-                        setIsFilterDropdownOpen(false);
-                      }}
-                      className={`w-full px-4 py-2 text-left hover:bg-gray-100 transition-colors ${selectedTagFilter === null ? "bg-blue-50 font-medium text-gray-900" : "text-gray-400"
-                        }`}
-                    >
-                      All Entries
-                    </button>
-                    {allTags.length > 0 ? (
-                      allTags.map((tag, index) => (
-                        <button
-                          key={tag}
-                          onClick={() => {
-                            setSelectedTagFilter(tag);
-                            setIsFilterDropdownOpen(false);
-                          }}
-                          className={`w-full px-4 py-2 text-left hover:bg-gray-100 transition-colors flex items-center gap-2 ${selectedTagFilter === tag ? "bg-blue-50 font-medium" : ""
-                            }`}
-                        >
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${getTagColor(
-                            index
-                          )}`}>
-                            {tag}
-                          </span>
-                        </button>
-                      ))
-                    ) : (
-                      <div className="px-4 py-2 text-gray-500 text-sm">
-                        No tags available
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Clear filters button */}
-              {(searchQuery || selectedTagFilter) && (
-                <button
-                  onClick={() => {
-                    setSearchQuery("");
-                    setSelectedTagFilter(null);
-                  }}
-                  className="w-full px-4 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  Clear filters
-                </button>
-              )}
-            </div>
-
-            {/* Scrollable iOS-style List */}
-            <div className="flex-1 min-h-0" >
-              <IOSList
-                items={listItems}
-                onItemClick={(item) => {
-                  setSelectedEntryId(item.id);
-                }}
-                selectedKeys={selectedEntryId ? new Set([String(selectedEntryId)]) : new Set()}
-                emptyMessage={
-                  searchQuery || selectedTagFilter
-                    ? "No entries match your filters."
-                    : "No journal entries yet. Create your first entry!"
-                }
-              />
-            </div>
-          </div>
+          <JournalListSidebar
+            entries={entries}
+            selectedEntryId={selectedEntryId}
+            onSelectEntry={setSelectedEntryId}
+          />
 
           {/* Right Section - 2/3 width: View Selected Page */}
-          <div className="w-2/3 flex flex-col">
-            <div className="flex-1 border-2 border-gray-100 rounded-2xl p-8 shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-y-auto" style={{ backgroundColor: "var(--background, #ffffff)" }}>
-              {selectedEntry ? (
-                <div className="space-y-6">
-                  <div className="flex items-start justify-between pb-6 border-b-2 border-gray-100 sticky top-0 bg-white z-10">
-                    <div className="flex-1">
-                      <h2 className="text-3xl font-bold text-gray-900 tracking-tight leading-tight">
-                        {selectedEntry.title || "Untitled Entry"}
-                      </h2>
-                      <p className="text-sm text-gray-500 mt-2 font-medium">
-                        {formatDate(selectedEntry.createdAt)}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3 ml-4">
-                      <span className="text-5xl leading-none" title={selectedEntry.mood || "neutral"}>
-                        {selectedEntry.mood ? (moodMap[selectedEntry.mood] || "😐") : "😐"}
-                      </span>
-                    </div>
-                  </div>
-                  {selectedEntry.tags && selectedEntry.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {selectedEntry.tags.map((tag: string, index: number) => (
-                        <span
-                          key={tag}
-                          className={`px-4 py-2 rounded-full text-sm font-semibold border-2 shadow-sm transition-transform hover:scale-105 ${getTagColor(
-                            index
-                          )}`}
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  <div className="prose max-w-none entry-content">
-                    {selectedEntry.content ? (
-                      <div
-                        className="text-gray-700 text-[15px] leading-relaxed"
-                        dangerouslySetInnerHTML={{ __html: selectedEntry.content }}
-                      />
-                    ) : (
-                      <p className="text-gray-400 italic text-center py-8">No content</p>
-                    )}
-                  </div>
-                  <div className="pt-6 border-t-2 border-gray-100 flex gap-3">
-                    <Link
-                      href={`/journal/${selectedEntry.id}`}
-                      className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 active:scale-95 transition-all font-semibold shadow-sm hover:shadow-md"
-                    >
-                      Edit Entry
-                    </Link>
-                    <button
-                      onClick={() => handleDeleteEntry(selectedEntry.id)}
-                      className="px-6 py-3 bg-red-500 text-white rounded-xl hover:bg-red-600 active:scale-95 transition-all font-semibold shadow-sm hover:shadow-md"
-                    >
-                      Delete Entry
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full text-center">
-                  <FileTextIcon className="w-16 h-16 mb-4 opacity-20 text-gray-400" />
-                  <p className="text-gray-400 text-lg font-medium">Select an entry to view</p>
-                  <p className="text-gray-300 text-sm mt-2">Choose from the list on the left</p>
-                </div>
-              )}
-            </div>
-          </div>
+          <JournalEntryView
+            entry={selectedEntry}
+            onDelete={(id) => handleDeleteEntry(id)}
+          />
         </div>
       </div>
     </DashboardLayout>
   );
 }
-

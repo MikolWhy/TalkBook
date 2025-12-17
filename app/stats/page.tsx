@@ -2,15 +2,15 @@
 
 import { useState, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
-import DashboardLayout from "../components/DashboardLayout";
-import { getEntries } from "../../src/lib/cache/entriesCache";
-import { getJournals, type Journal } from "../../src/lib/journals/manager";
-import { getActiveHabits, getHabitLogs } from "../../src/lib/db/repo";
-import { getUserStats } from "../../src/lib/gamification/xp";
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import { getEntries } from "@/lib/cache/entriesCache";
+import { getJournals, type Journal } from "@/lib/journals/manager";
+import { getActiveHabits, getHabitLogs } from "@/lib/db/repo";
+import { getUserStats } from "@/lib/gamification/xp";
 import { BarChart as BarChartIcon, Flame, Zap, Smile, Clock, PenTool, TrendingUp, BookOpen, Sunrise, Sun, Sunset, Moon } from "lucide-react";
 
 // Dynamically import charts section to reduce initial bundle size and improve compile times
-const ChartsSection = dynamic(() => import("./ChartsSection"), { ssr: false });
+const ChartsSection = dynamic(() => import("@/components/features/stats/ChartsSection"), { ssr: false });
 
 // Mood mapping
 const moodMap: Record<string, string> = {
@@ -102,7 +102,7 @@ export default function StatsPage() {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - timeRange);
     const cutoffString = cutoffDate.toISOString().split('T')[0];
-    
+
     return habitLogs.filter((log: any) => log.date >= cutoffString);
   }, [habitLogs, timeRange]);
 
@@ -132,18 +132,18 @@ export default function StatsPage() {
       const dateString = entryDate.toISOString().split('T')[0];
       datesWithEntries.add(dateString);
     });
-    
+
     let currentStreak = 0;
     if (datesWithEntries.size > 0) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       let currentDate = new Date(today);
-      
+
       // Start from today and go backwards day by day
       // Count consecutive days that have at least one entry
       while (true) {
         const dateString = currentDate.toISOString().split('T')[0];
-        
+
         if (datesWithEntries.has(dateString)) {
           currentStreak++;
           // Move to previous day
@@ -152,7 +152,7 @@ export default function StatsPage() {
           // Gap in streak, stop counting
           break;
         }
-        
+
         // Safety limit to prevent infinite loops
         if (currentStreak > 10000) break;
       }
@@ -177,7 +177,7 @@ export default function StatsPage() {
         }
       }
     });
-    
+
     // Count active habits (excluding completed one-time habits)
     const activeHabits = habits.filter(habit => {
       if (habit.frequency === 'one-time' && habit.id && completedOneTimeHabitIds.has(habit.id)) {
@@ -185,10 +185,10 @@ export default function StatsPage() {
       }
       return true;
     });
-    
+
     const totalHabits = activeHabits.length;
     const totalCompletions = filteredHabitLogs.filter((log: any) => log.value > 0).length;
-    
+
     // Calculate habit completion rate per day
     const dateGroups: Record<string, number> = {};
     filteredHabitLogs.forEach((log: any) => {
@@ -196,7 +196,7 @@ export default function StatsPage() {
         dateGroups[log.date] = (dateGroups[log.date] || 0) + 1;
       }
     });
-    
+
     const daysWithCompletions = Object.keys(dateGroups).length;
     const avgCompletionsPerDay = daysWithCompletions > 0 ? totalCompletions / daysWithCompletions : 0;
 
@@ -211,24 +211,24 @@ export default function StatsPage() {
           return d.getTime();
         })
       );
-      
+
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       // Find the most recent completion date
       const completionDates = Array.from(completionDatesSet)
         .map(time => new Date(time))
         .sort((a, b) => b.getTime() - a.getTime());
-      
+
       const mostRecentDate = completionDates[0];
       if (mostRecentDate) {
         const daysSinceLastCompletion = Math.floor((today.getTime() - mostRecentDate.getTime()) / (1000 * 60 * 60 * 24));
-        
+
         // Streak continues if last completion was today or yesterday
         if (daysSinceLastCompletion <= 1) {
           // Start checking from the most recent completion date
           let checkDate = new Date(mostRecentDate);
-          
+
           // Count consecutive days backwards
           while (completionDatesSet.has(checkDate.getTime())) {
             habitStreak++;
@@ -251,7 +251,7 @@ export default function StatsPage() {
   // Combined activity data (entries + habits over time)
   const activityOverTime = useMemo(() => {
     const grouped: Record<string, { entries: number; habits: number; dateObj: Date }> = {};
-    
+
     // Count entries per day
     filteredEntries.forEach((e: any) => {
       const entryDate = new Date(e.createdAt);
@@ -262,7 +262,7 @@ export default function StatsPage() {
       }
       grouped[dateKey].entries++;
     });
-    
+
     // Count habit completions per day
     filteredHabitLogs.forEach((log: any) => {
       if (log.value > 0) {
@@ -275,26 +275,26 @@ export default function StatsPage() {
         grouped[dateKey].habits++;
       }
     });
-    
+
     // Generate all dates in the range for better visualization
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - timeRange);
     cutoffDate.setHours(0, 0, 0, 0);
-    
+
     const result: Array<{ date: string; entries: number; habits: number }> = [];
     const currentDate = new Date(cutoffDate);
-    
+
     // For shorter ranges (7-30 days), show daily data
     // For longer ranges (90+ days), show weekly/monthly aggregates
     const shouldAggregate = timeRange > 30;
     const aggregationDays = timeRange > 90 ? 7 : 1; // Weekly for 90+ days, daily otherwise
-    
+
     while (currentDate <= today) {
       const dateKey = currentDate.toISOString().split('T')[0];
       const data = grouped[dateKey] || { entries: 0, habits: 0 };
-      
+
       // Format date for display
       let dateLabel: string;
       if (timeRange <= 7) {
@@ -304,16 +304,16 @@ export default function StatsPage() {
       } else {
         dateLabel = currentDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
       }
-      
+
       result.push({
         date: dateLabel,
         entries: data.entries,
         habits: data.habits,
       });
-      
+
       currentDate.setDate(currentDate.getDate() + aggregationDays);
     }
-    
+
     return result;
   }, [filteredEntries, filteredHabitLogs, timeRange]);
 
@@ -321,20 +321,20 @@ export default function StatsPage() {
   // Includes default emoji (😐) for entries with no mood selected
   const moodPatternData = useMemo(() => {
     const counts: Record<string, number> = {};
-    
+
     // Count all moods including default (null mood = 😐)
     filteredEntries.forEach((e: any) => {
       const moodKey = e.mood || "neutral"; // Default to "neutral" for null mood
       counts[moodKey] = (counts[moodKey] || 0) + 1;
     });
-    
+
     // Convert to array format for pie chart
     // Include all possible moods even if count is 0, so chart structure is consistent
     const allMoods = [
-      "very-happy", "happy", "excited", "grateful", "calm", 
+      "very-happy", "happy", "excited", "grateful", "calm",
       "neutral", "anxious", "sad", "angry", "very-sad"
     ];
-    
+
     return allMoods
       .map((mood) => ({
         mood: mood,
@@ -353,14 +353,14 @@ export default function StatsPage() {
       const hour = new Date(e.createdAt).getHours();
       hours[hour] = (hours[hour] || 0) + 1;
     });
-    
+
     const periods = {
       "Morning": 0,
       "Afternoon": 0,
       "Evening": 0,
       "Night": 0,
     };
-    
+
     Object.entries(hours).forEach(([hour, count]) => {
       const h = parseInt(hour);
       if (h >= 6 && h < 12) periods["Morning"] += count;
@@ -368,7 +368,7 @@ export default function StatsPage() {
       else if (h >= 18 && h < 22) periods["Evening"] += count;
       else periods["Night"] += count;
     });
-    
+
     // Always return all periods, even if count is 0
     return [
       { period: "Morning", count: periods["Morning"] },

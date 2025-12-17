@@ -1,6 +1,6 @@
 "use client";
 
-import DashboardLayout from "../components/DashboardLayout";
+import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Rocket, FileText, Bot, CheckCircle2, BarChart, Settings, Lock, Lightbulb } from "lucide-react";
 
 export default function HelpPage() {

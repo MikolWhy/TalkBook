@@ -5,23 +5,23 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, FileText, Check } from "lucide-react";
-import DashboardLayout from "../../components/DashboardLayout";
+import DashboardLayout from "@/components/layout/DashboardLayout";
 import dynamic from "next/dynamic";
-import type { RichTextEditorRef } from "../../../src/components/RichTextEditor";
+import type { RichTextEditorRef } from "@/components/ui/RichTextEditor";
 
 // Dynamically import RichTextEditor (TipTap) to reduce initial bundle size
 const RichTextEditor = dynamic(
-  () => import("../../../src/components/RichTextEditor").then(mod => mod.default),
+  () => import("@/components/ui/RichTextEditor").then(mod => mod.default),
   { ssr: false }
 );
-import PromptSuggestions from "../../../src/components/PromptSuggestions";
-import TopicSuggestions from "../../../src/components/TopicSuggestions";
-import { extractMetadata } from "../../../src/lib/nlp/extract";
-import { generatePrompts, filterUsedPrompts, filterExpiredPrompts, Prompt, markPromptAsUsed, getTopicSuggestions, TopicSuggestion } from "../../../src/lib/nlp/prompts";
-import { getActiveJournalId, getJournals, type Journal } from "../../../src/lib/journals/manager";
-import { getEntries, addEntry, updateEntry } from "../../../src/lib/cache/entriesCache";
-import { awardEntryXP } from "../../../src/lib/gamification/xp";
-import XPNotification from "../../components/XPNotification";
+import PromptSuggestions from "@/components/features/PromptSuggestions";
+import TopicSuggestions from "@/components/features/TopicSuggestions";
+import { extractMetadata } from "@/lib/nlp/extract";
+import { generatePrompts, filterUsedPrompts, filterExpiredPrompts, Prompt, markPromptAsUsed, getTopicSuggestions, TopicSuggestion } from "@/lib/nlp/prompts";
+import { getActiveJournalId, getJournals, type Journal } from "@/lib/journals/manager";
+import { getEntries, addEntry, updateEntry } from "@/lib/cache/entriesCache";
+import { awardEntryXP } from "@/lib/gamification/xp";
+import XPNotification from "@/components/gamification/XPNotification";
 
 export default function NewEntryPage() {
   const router = useRouter();

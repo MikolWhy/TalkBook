@@ -2,7 +2,7 @@
 // Eliminates redundant JSON.parse() calls across the application
 // Performance optimization: Parse once, cache in memory, invalidate on changes
 
-interface JournalEntry {
+export interface JournalEntry {
   id: string;
   title: string;
   content: string;
@@ -48,14 +48,14 @@ function incrementCacheVersion(): void {
  */
 export function getEntries(): JournalEntry[] {
   if (typeof window === "undefined") return [];
-  
+
   // Check if cache is valid
   const storedVersion = getCacheVersion();
   if (entriesCache !== null && cacheVersion === storedVersion) {
     console.log("✅ [Cache Hit] Using cached entries, skipping parse");
     return entriesCache;
   }
-  
+
   // Cache miss or invalidated - parse from localStorage
   console.log("⚠️ [Cache Miss] Parsing entries from localStorage");
   try {
@@ -77,7 +77,7 @@ export function getEntries(): JournalEntry[] {
  */
 export function saveEntries(entries: JournalEntry[]): void {
   if (typeof window === "undefined") return;
-  
+
   try {
     localStorage.setItem(ENTRIES_KEY, JSON.stringify(entries));
     entriesCache = entries; // Update cache immediately
@@ -105,12 +105,12 @@ export function addEntry(entry: JournalEntry): void {
 export function updateEntry(entryId: string, updates: Partial<JournalEntry>): boolean {
   const entries = getEntries();
   const entryIndex = entries.findIndex(e => e.id === entryId);
-  
+
   if (entryIndex === -1) {
     console.error("Entry not found:", entryId);
     return false;
   }
-  
+
   entries[entryIndex] = { ...entries[entryIndex], ...updates };
   saveEntries(entries);
   return true;
@@ -123,12 +123,12 @@ export function updateEntry(entryId: string, updates: Partial<JournalEntry>): bo
 export function deleteEntry(entryId: string): boolean {
   const entries = getEntries();
   const updatedEntries = entries.filter(e => e.id !== entryId);
-  
+
   if (updatedEntries.length === entries.length) {
     console.error("Entry not found:", entryId);
     return false;
   }
-  
+
   saveEntries(updatedEntries);
   return true;
 }

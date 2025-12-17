@@ -14,9 +14,9 @@
 import type { Metadata } from "next";
 import { Cabin } from "next/font/google";
 import "./globals.css";
-import { SidebarProvider } from "./components/SidebarProvider";
-import LockScreen from "./components/LockScreen";
-import BackgroundColorProvider from "./components/BackgroundColorProvider";
+import { SidebarProvider } from "@/components/providers/SidebarProvider";
+import LockScreen from "@/components/features/LockScreen";
+import BackgroundColorProvider from "@/components/providers/BackgroundColorProvider";
 
 // ============================================================================
 // FONT SETUP
@@ -132,7 +132,7 @@ export default function RootLayout({
   //
   // return = what the component displays
   // JSX = HTML-like syntax (but it's actually JavaScript)
-  
+
   return (
     // ====================================================================
     // HTML TAG (Line 84)
@@ -140,9 +140,9 @@ export default function RootLayout({
     // <html lang="en">
     // - <html> = root HTML element (required by Next.js)
     // - lang="en" = language attribute (tells browsers/search engines it's English)
-    
+
     <html lang="en">
-      
+
       {/* ================================================================
           BODY TAG (Lines 85-90)
           ================================================================
