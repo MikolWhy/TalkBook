@@ -122,6 +122,18 @@ export async function archiveHabit(id: number): Promise<void> {
   }
 }
 
+export async function deleteHabit(id: number): Promise<void> {
+  try {
+    // Delete all logs for this habit first
+    await db.habitLogs.where('habitId').equals(id).delete();
+    // Delete the habit itself
+    await db.habits.delete(id);
+  } catch (error) {
+    console.error('Failed to delete habit:', error);
+    throw error;
+  }
+}
+
 // ============================================================================
 // HABIT LOG OPERATIONS (Zayn)
 // ============================================================================
