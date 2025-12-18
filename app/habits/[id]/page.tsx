@@ -1,67 +1,23 @@
-// habits/[id]/page.tsx
-// edit habit page - update existing habit
-// similar to new page but pre-fills with existing habit data
-//
-// WHAT WE'RE CREATING:
-// - A page for editing existing habits
-// - Pre-fills form with existing habit data (name, type, target, unit, color)
-// - Same interface as new habit page but with update/archive actions
-// - Handles habit not found (404 error)
-//
-// OWNERSHIP:
-// - Zayn implements this completely
-//
-// COORDINATION NOTES:
-// - Uses repo.ts habit functions (Zayn adds these)
-// - No conflicts - Zayn owns this entirely
-//
-// CONTEXT FOR AI ASSISTANTS:
-// - This page allows editing existing habits
-// - Pre-fills form with existing habit data
-// - Can update all fields (name, type, target, unit, color)
-// - Can delete/archive habit from this page
-//
-// DEVELOPMENT NOTES:
-// - Fetch habit by ID from URL params
-// - Pre-fill form with existing data
-// - Update habit on save
-// - Archive habit (soft delete) with confirmation
-// - Handle habit not found (404)
-//
-// TODO: implement habit editing form
-//
-// FUNCTIONALITY:
-// - Load habit by ID from database
-// - Pre-fill form with existing data
-// - Update habit on save
-// - Archive habit with confirmation
-// - Navigate back to habits list after save/archive
-// - Show 404 if habit not found
-//
-// UI:
-// - Same as new habit page but with pre-filled data
-// - Archive/delete button (in addition to save)
-//
-// SYNTAX:
-// "use client";
-// import { useEffect, useState } from "react";
-// import { useRouter, useParams } from "next/navigation";
-// import { getHabitById, updateHabit, archiveHabit } from "@/lib/db/repo";
-//
-// export default function EditHabitPage() {
-//   const params = useParams();
-//   const habitId = parseInt(params.id as string);
-//   // implementation
-// }
-
 "use client";
+
+/**
+ * Edit Habit Page
+ * 
+ * Description: Facilitates the modification of existing habits, including tracking parameters, 
+ * metadata, and archival status.
+ * 
+ * Flow & Connections:
+ * - Routing: Extracts habit ID from URL parameters via `useParams`.
+ * - Persistence: Syncs state with `getHabitById`, `updateHabit`, and `archiveHabit` repo functions.
+ * - UX: Pre-populates form data based on current habit configuration and handles 404/error states.
+ * 
+ * @module app/habits/[id]/page.tsx
+ */
 
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { getHabitById, updateHabit, archiveHabit } from "@/lib/db/repo";
 import { Habit } from "@/lib/db/schema";
-
-// TODO: implement habit editing form
 
 // TEMPORARY: Basic page structure to prevent navigation errors
 // useParams = gets URL parameters (the [id] from the route)
@@ -133,7 +89,7 @@ export default function EditHabitPage() {
   const loadHabit = async () => {
     try {
       const habitData = await getHabitById(habitId);
-      
+
       if (!habitData) {
         alert("Habit not found");
         router.push("/habits");
@@ -162,7 +118,7 @@ export default function EditHabitPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.name.trim()) {
       alert("Please enter a habit name");
       return;
@@ -185,7 +141,7 @@ export default function EditHabitPage() {
         weekDays: formData.weekDays.length > 0 ? formData.weekDays : undefined,
         description: formData.description.trim() || undefined,
       });
-      
+
       router.push("/habits");
     } catch (error) {
       console.error("Failed to update habit:", error);
@@ -215,7 +171,7 @@ export default function EditHabitPage() {
       const newWeekDays = prev.weekDays.includes(day)
         ? prev.weekDays.filter(d => d !== day)
         : [...prev.weekDays, day].sort((a, b) => a - b);
-      
+
       // Auto-update frequency based on selected days
       let newFrequency = prev.frequency;
       if (newWeekDays.length === 7) {
@@ -234,7 +190,7 @@ export default function EditHabitPage() {
           newFrequency = "one-time";
         }
       }
-      
+
       return {
         ...prev,
         weekDays: newWeekDays,
@@ -246,7 +202,7 @@ export default function EditHabitPage() {
   const handleFrequencyChange = (newFrequency: "daily" | "weekly" | "monthly" | "one-time") => {
     setFormData(prev => {
       let newWeekDays = prev.weekDays;
-      
+
       if (newFrequency === "daily") {
         // Auto-select all days when daily is selected
         newWeekDays = [0, 1, 2, 3, 4, 5, 6];
@@ -254,7 +210,7 @@ export default function EditHabitPage() {
         // When switching from daily to weekly, unselect one day (keep 6 days)
         newWeekDays = [0, 1, 2, 3, 4, 5]; // Remove Saturday (day 6)
       }
-      
+
       return {
         ...prev,
         frequency: newFrequency,
@@ -291,7 +247,7 @@ export default function EditHabitPage() {
           </button>
           <h1 className="text-2xl font-bold text-gray-900">Edit Habit</h1>
         </div>
-        
+
         <form onSubmit={handleSubmit} className="rounded-lg shadow p-6 space-y-6" style={{ backgroundColor: "var(--background, #ffffff)" }}>
           {/* Title */}
           <div>
@@ -398,11 +354,10 @@ export default function EditHabitPage() {
                     key={`${day.label}-${day.value}`}
                     type="button"
                     onClick={() => toggleWeekday(day.value)}
-                    className={`w-10 h-10 rounded-full font-medium transition-all ${
-                      formData.weekDays.includes(day.value)
-                        ? "bg-blue-500 text-white shadow-md"
-                        : "bg-gray-200 text-gray-600 hover:bg-gray-300"
-                    }`}
+                    className={`w-10 h-10 rounded-full font-medium transition-all ${formData.weekDays.includes(day.value)
+                      ? "bg-blue-500 text-white shadow-md"
+                      : "bg-gray-200 text-gray-600 hover:bg-gray-300"
+                      }`}
                   >
                     {day.label}
                   </button>
@@ -425,9 +380,8 @@ export default function EditHabitPage() {
                   key={color}
                   type="button"
                   onClick={() => setFormData({ ...formData, color })}
-                  className={`w-10 h-10 rounded-full transition-all ${
-                    formData.color === color ? "ring-2 ring-offset-2 ring-gray-400 scale-110" : "hover:scale-105"
-                  }`}
+                  className={`w-10 h-10 rounded-full transition-all ${formData.color === color ? "ring-2 ring-offset-2 ring-gray-400 scale-110" : "hover:scale-105"
+                    }`}
                   style={{ backgroundColor: color }}
                   title={color}
                 />

@@ -5,10 +5,12 @@ import AppSidebar from "./AppSidebar";
 import { useSidebar } from "@/components/providers/SidebarProvider";
 
 /**
- * DashboardLayout
+ * Dashboard Layout
  * 
- * This component is the layout wrapper for pages.
- * It combines the Sidebar and the main content area.
+ * Shared UI wrapper for all dashboard-style pages. 
+ * Manages the high-level arrangement of the sidebar and main content area.
+ * 
+ * @module src/components/layout/DashboardLayout.tsx
  */
 export default function DashboardLayout({ children }: { children: ReactNode }) {
     const { sidebarOpen } = useSidebar();

@@ -1,18 +1,22 @@
-// edit journal entry page - update existing entry
-// similar to new page but pre-fills with existing entry data
-//
-// WHAT WE'RE CREATING:
-// - A page for editing existing journal entries
-// - Pre-fills form with existing entry data (content, mood, tags)
-// - Same interface as new entry page but with update/delete actions
-// - Handles entry not found (404 error)
-// - Includes NLP prompt system for editing
-
 "use client";
+
+/**
+ * Edit Journal Entry Page
+ * 
+ * Description: Provides a full-featured interface for revising existing journal entries, 
+ * leveraging AI prompts and rich-text editing to enhance the reflection process.
+ * 
+ * Flow & Connections:
+ * - Flow: Loads existing record by ID from `entriesCache` on mount.
+ * - AI Integration: Persists NLP context to provide relevant writing prompts during the edit session.
+ * - Updates: Syncs modifications back to the local persistence layer and triggers gamification events.
+ * 
+ * @module app/journal/[id]/page.tsx
+ */
 
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, FileText, Check, Trash2 } from "lucide-react";
+import { ArrowLeft, FileText, Check, Trash2, Calendar } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import dynamic from "next/dynamic";
 import type { RichTextEditorRef } from "@/components/ui/RichTextEditor";
@@ -41,7 +45,6 @@ const moodOptions = [
   { id: "calm", emoji: "😌", label: "Calm" },
   { id: "anxious", emoji: "😰", label: "Anxious" },
   { id: "angry", emoji: "😠", label: "Angry" },
-  { id: "grateful", emoji: "🙏", label: "Grateful" },
 ];
 
 // Tag colors (same as new entry page)
@@ -108,6 +111,7 @@ export default function EditEntryPage() {
   const [entryNotFound, setEntryNotFound] = useState(false);
   const [isDraft, setIsDraft] = useState(false); // Track if entry is a draft
   const [originalContent, setOriginalContent] = useState<string>(""); // Track original content to detect changes
+  const [entryDate, setEntryDate] = useState<string>(""); // Track entry creation date
 
   // NLP Prompt System State
   const [allPrompts, setAllPrompts] = useState<Prompt[]>([]);
@@ -191,6 +195,15 @@ export default function EditEntryPage() {
         setIsDraft(entry.draft === true); // Load draft status (strict check)
         setOriginalPromptIds(entry.promptIds || []); // Store original prompt IDs
         setInsertedPromptIds(new Set(entry.promptIds || [])); // Convert array to Set
+
+        // Initialize entryDate from createdAt for the date picker
+        if (entry.createdAt) {
+          const date = new Date(entry.createdAt);
+          // Adjust for local time zone to pre-fill datetime-local input
+          const tzOffset = date.getTimezoneOffset() * 60000;
+          const localISODate = new Date(date.getTime() - tzOffset).toISOString().slice(0, 16);
+          setEntryDate(localISODate);
+        }
 
         setLoading(false); // Mark as loaded
       } catch (error) {
@@ -312,7 +325,8 @@ export default function EditEntryPage() {
     }, 5000);
 
     try {
-      const entryTitle = title.trim() || formatDateAsTitle(new Date());
+      const entryTitle = title.trim() || formatDateAsTitle(new Date(entryDate));
+      const finalCreatedAt = entryDate ? new Date(entryDate).toISOString() : new Date().toISOString();
 
       // OPTIMIZATION: Use cache update
       const success = updateEntry(entryId as string, {
@@ -321,6 +335,7 @@ export default function EditEntryPage() {
         mood: mood,
         tags: tags,
         cardColor: cardColor,
+        createdAt: finalCreatedAt,
         updatedAt: new Date().toISOString(),
         draft: true, // Keep as draft
         promptIds: Array.from(insertedPromptIds),
@@ -371,8 +386,9 @@ export default function EditEntryPage() {
     }, 5000);
 
     try {
-      const entryTitle = title.trim() || formatDateAsTitle(new Date());
+      const entryTitle = title.trim() || formatDateAsTitle(new Date(entryDate));
       const contentChanged = content !== originalContent;
+      const finalCreatedAt = entryDate ? new Date(entryDate).toISOString() : new Date().toISOString();
 
       // OPTIMIZATION: Save immediately, extract metadata in background only if content changed
       const success = updateEntry(entryId as string, {
@@ -381,6 +397,7 @@ export default function EditEntryPage() {
         mood: mood,
         tags: tags,
         cardColor: cardColor,
+        createdAt: finalCreatedAt,
         updatedAt: new Date().toISOString(),
         draft: false, // Remove draft status
         promptIds: Array.from(insertedPromptIds),
@@ -616,18 +633,34 @@ export default function EditEntryPage() {
             />
           )}
 
-          {/* Title */}
-          <div>
-            <div className="mb-2">
-              <h2 className="text-lg font-bold text-gray-900">Title</h2>
+          <div className="flex flex-col md:flex-row gap-4">
+            {/* Title */}
+            <div className="flex-1">
+              <div className="mb-2">
+                <h2 className="text-lg font-bold text-gray-900">Title</h2>
+              </div>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-400"
+                placeholder="Enter a title for your journal entry..."
+              />
             </div>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-400"
-              placeholder="Enter a title for your journal entry..."
-            />
+
+            {/* Date/Time Picker */}
+            <div className="md:w-[250px]">
+              <div className="mb-2 flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-gray-500" />
+                <h2 className="text-lg font-bold text-gray-900">Date</h2>
+              </div>
+              <input
+                type="datetime-local"
+                value={entryDate}
+                onChange={(e) => setEntryDate(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+              />
+            </div>
           </div>
 
           {/* Entry Content */}
@@ -686,8 +719,8 @@ export default function EditEntryPage() {
                   key={moodOption.id}
                   onClick={() => setMood(mood === moodOption.id ? null : moodOption.id)}
                   className={`flex flex-col items-center justify-center w-16 h-16 rounded-lg border-2 transition-all hover:scale-105 ${mood === moodOption.id
-                      ? "border-blue-500 bg-blue-50 shadow-md"
-                      : "border-gray-300 hover:border-gray-400"
+                    ? "border-blue-500 bg-blue-50 shadow-md"
+                    : "border-gray-300 hover:border-gray-400"
                     }`}
                   style={mood !== moodOption.id ? { backgroundColor: "var(--background, #ffffff)" } : undefined}
                   title={moodOption.label}

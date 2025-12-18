@@ -1,15 +1,19 @@
 "use client";
 
-// journal list page - displays all journal entries
-// shows entries in chronological order with preview and actions
-//
-// WHAT WE'RE CREATING:
-// - A page that lists all journal entries in reverse chronological order (newest first)
-// - Each entry shows: date, mood emoji, truncated content preview
-// - Actions: click to view/edit, delete entry
-// - Empty state when no entries exist
-
-"use client";
+/**
+ * Journal Dashboard
+ * 
+ * Main view for managing journal entries. Includes search, filtering, 
+ * and detailed entry viewing.
+ * 
+ * Flow:
+ * - Wraps navigation in `DashboardLayout`.
+ * - Manages selection state and broad journal organization.
+ * - Composes specialized sub-components like `JournalListSidebar` and `JournalEntryView`.
+ * - Syncs with the `entriesCache` for fast, offline-first data loading.
+ * 
+ * @module app/journal/page.tsx
+ */
 
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";

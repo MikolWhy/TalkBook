@@ -27,6 +27,16 @@ body {
   font-variation-settings: "wdth" 100;
 }
 
+/* Custom Cozy Cursor */
+body, button, a, input, select, textarea, [role="button"] {
+  cursor: url('data:image/svg+xml;utf8,<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="8" fill="white" stroke="black" stroke-width="2" opacity="0.9"/></svg>') 12 12, auto !important;
+}
+
+/* Ensure pointer cursor for interactive elements is also custom but maybe distinct? 
+   For now, keeping it consistent for the "cozy" feel. */
+button:hover, a:hover, [role="button"]:hover {
+  cursor: url('data:image/svg+xml;utf8,<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="6" fill="%233B82F6" stroke="white" stroke-width="2" opacity="0.9"/></svg>') 12 12, pointer !important;
+}
 /* Tiptap Editor Styles */
 .ProseMirror {
   outline: none;

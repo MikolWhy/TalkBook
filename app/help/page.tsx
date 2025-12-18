@@ -1,5 +1,18 @@
 "use client";
 
+/**
+ * Help & Documentation Page
+ * 
+ * Description: Serves as the primary onboarding and reference hub for end-users, 
+ * detailing core features like smart extraction, habits, and privacy disclosures.
+ * 
+ * Flow & Connections:
+ * - Content: Static documentation sections supported by `lucide-react` iconography.
+ * - Layout: Wrapped in `DashboardLayout` for consistent navigation.
+ * 
+ * @module app/help/page.tsx
+ */
+
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Rocket, FileText, Bot, CheckCircle2, BarChart, Settings, Lock, Lightbulb } from "lucide-react";
 

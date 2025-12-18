@@ -1,6 +1,15 @@
-// Centralized localStorage cache for journal entries
-// Eliminates redundant JSON.parse() calls across the application
-// Performance optimization: Parse once, cache in memory, invalidate on changes
+/**
+ * Journal Entries Cache
+ * 
+ * High-performance, memory-backed cache layer for journal entries stored in localStorage.
+ * 
+ * Optimization Strategy:
+ * - Minimizes expensive `JSON.parse` operations by maintaining an in-memory replica.
+ * - Synchronizes across tabs using a versioned invalidation mechanism.
+ * - Provides immediate cache updates during CRUD operations for a zero-latency UI feel.
+ * 
+ * @module src/lib/cache/entriesCache.ts
+ */
 
 export interface JournalEntry {
   id: string;

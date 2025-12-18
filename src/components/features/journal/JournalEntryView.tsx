@@ -43,11 +43,17 @@ const getTagColor = (index: number) => {
 const formatDate = (dateString: string): string => {
     if (!dateString) return "";
     const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-        year: "numeric",
+    const datePart = date.toLocaleDateString("en-US", {
         month: "long",
         day: "numeric",
+        year: "numeric",
     });
+    const timePart = date.toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+    });
+    return `${datePart} at ${timePart}`;
 };
 
 interface JournalEntryViewProps {

@@ -1,5 +1,18 @@
 "use client";
 
+/**
+ * Analytics Dashboard
+ * 
+ * Visualizes user data including mood trends, journaling gaps, and habit data.
+ * 
+ * Implementation:
+ * - Aggregates historical data from `entriesCache` and `habitLogs`.
+ * - Leverages a lazy-loaded `ChartsSection` for better page performance.
+ * - Displays RPG-style progression stats via `getUserStats`.
+ * 
+ * @module app/stats/page.tsx
+ */
+
 import { useState, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -7,10 +20,12 @@ import { getEntries } from "@/lib/cache/entriesCache";
 import { getJournals, type Journal } from "@/lib/journals/manager";
 import { getActiveHabits, getHabitLogs } from "@/lib/db/repo";
 import { getUserStats } from "@/lib/gamification/xp";
-import { BarChart as BarChartIcon, Flame, Zap, Smile, Clock, PenTool, TrendingUp, BookOpen, Sunrise, Sun, Sunset, Moon } from "lucide-react";
+import { BarChart as BarChartIcon, Flame, Zap, PenTool, TrendingUp, BookOpen } from "lucide-react";
 
-// Dynamically import charts section to reduce initial bundle size and improve compile times
+// Dynamically import heavy components to reduce initial bundle size
 const ChartsSection = dynamic(() => import("@/components/features/stats/ChartsSection"), { ssr: false });
+const InsightsPanel = dynamic(() => import("@/components/features/stats/InsightsPanel"), { ssr: false });
+const WordCloud = dynamic(() => import("@/components/features/stats/WordCloud"), { ssr: false });
 
 // Mood mapping
 const moodMap: Record<string, string> = {
@@ -47,7 +62,7 @@ export default function StatsPage() {
   const [habitLogs, setHabitLogs] = useState<any[]>([]);
   const [journals, setJournals] = useState<Journal[]>([]);
   const [selectedJournalId, setSelectedJournalId] = useState<string>("all");
-  const [timeRange, setTimeRange] = useState<number>(30); // days
+  const [timeRange, setTimeRange] = useState<number>(7); // days
   const [xpStats, setXpStats] = useState<any>(null);
 
   // Load data
@@ -378,6 +393,92 @@ export default function StatsPage() {
     ];
   }, [filteredEntries]);
 
+  // Mood timeline (mood trends over time)
+  const moodTimelineData = useMemo(() => {
+    // Map moods to numerical scores for visualization
+    const moodScores: Record<string, number> = {
+      "very-sad": 0,
+      "sad": 1,
+      "angry": 2,
+      "anxious": 3,
+      "neutral": 4,
+      "calm": 5,
+      "happy": 6,
+      "grateful": 6, // Map legacy grateful to happy
+      "very-happy": 7,
+      "excited": 8,
+    };
+
+    const moodLabels: Record<string, string> = {
+      "very-sad": "Very Sad 😭",
+      "sad": "Sad 😢",
+      "angry": "Angry 😠",
+      "anxious": "Anxious 😰",
+      "neutral": "Neutral 😐",
+      "calm": "Calm 😌",
+      "happy": "Happy 😊",
+      "grateful": "Grateful 🙏",
+      "very-happy": "Very Happy 😄",
+      "excited": "Excited 🤩",
+    };
+
+    // Group entries by date and calculate average mood score
+    const dateGroups: Record<string, { scores: number[]; moods: string[] }> = {};
+
+    filteredEntries.forEach((e: any) => {
+      if (e.mood) {
+        const entryDate = new Date(e.createdAt);
+        entryDate.setHours(0, 0, 0, 0);
+        const dateKey = entryDate.toISOString().split('T')[0];
+
+        if (!dateGroups[dateKey]) {
+          dateGroups[dateKey] = { scores: [], moods: [] };
+        }
+
+        const score = moodScores[e.mood] ?? 5; // Default to neutral if unknown
+        dateGroups[dateKey].scores.push(score);
+        dateGroups[dateKey].moods.push(e.mood);
+      }
+    });
+
+    // Calculate average mood per day
+    const result: Array<{ date: string; moodScore: number; moodLabel: string }> = [];
+
+    Object.entries(dateGroups).forEach(([dateKey, data]) => {
+      const avgScore = data.scores.reduce((sum, score) => sum + score, 0) / data.scores.length;
+
+      // Find the most common mood for that day
+      const moodCounts: Record<string, number> = {};
+      data.moods.forEach(mood => {
+        moodCounts[mood] = (moodCounts[mood] || 0) + 1;
+      });
+      const mostCommonMood = Object.entries(moodCounts).sort((a, b) => b[1] - a[1])[0][0];
+
+      const date = new Date(dateKey + 'T00:00:00');
+      let dateLabel: string;
+      if (timeRange <= 7) {
+        dateLabel = date.toLocaleDateString("en-US", { weekday: "short", day: "numeric" });
+      } else if (timeRange <= 30) {
+        dateLabel = date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      } else {
+        dateLabel = date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      }
+
+      result.push({
+        date: dateLabel,
+        moodScore: Math.round(avgScore * 10) / 10, // Round to 1 decimal
+        moodLabel: moodLabels[mostCommonMood] || "Neutral 😐",
+      });
+    });
+
+    // Sort by date
+    return result.sort((a, b) => {
+      const dateA = new Date(a.date);
+      const dateB = new Date(b.date);
+      return dateA.getTime() - dateB.getTime();
+    });
+  }, [filteredEntries, timeRange]);
+
   return (
     <DashboardLayout>
       <div className="mb-8">
@@ -457,15 +558,25 @@ export default function StatsPage() {
         </div>
       </div>
 
+      {/* Insights Panel */}
+      <InsightsPanel entries={filteredEntries} timeRange={timeRange} />
+
       {/* Charts Grid - Dynamically loaded to improve initial compile time */}
       <ChartsSection
         activityOverTime={activityOverTime}
         moodPatternData={moodPatternData}
+        moodTimelineData={moodTimelineData}
         timeDistribution={timeDistribution}
         timeRange={timeRange}
         MOOD_COLORS={MOOD_COLORS}
         COLORS={COLORS}
       />
+
+      {/* Word Cloud */}
+      <div className="mt-8">
+        <WordCloud entries={filteredEntries} />
+      </div>
+
 
       {/* Additional Stats */}
       <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -1,5 +1,20 @@
 "use client";
 
+/**
+ * Application Settings Page
+ * 
+ * Description: Manages user preferences, security configurations, and local data persistence. 
+ * Includes profile customization, password management, and data maintenance tools.
+ * 
+ * Flow & Connections:
+ * - Security: Interfaces with `localStorage` for password and lock states.
+ * - Personalization: Manages `userName`, `profilePicture`, and `appBackgroundColor` preferences.
+ * - Maintenance: Provides utilities to `rebuildAllMetadata` and load demo datasets.
+ * - Data Privacy: Offers a "Reset All Data" function for local storage and IndexedDB.
+ * 
+ * @module app/settings/page.tsx
+ */
+
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -753,8 +768,8 @@ export default function SettingsPage() {
             onClick={handleLoadDemoData}
             disabled={isLoadingDemo}
             className={`px-6 py-2 rounded-lg transition-colors font-semibold ${isLoadingDemo
-                ? "bg-gray-400 text-gray-700 cursor-not-allowed"
-                : "bg-green-600 text-white hover:bg-green-700"
+              ? "bg-gray-400 text-gray-700 cursor-not-allowed"
+              : "bg-green-600 text-white hover:bg-green-700"
               }`}
           >
             {isLoadingDemo ? "Loading Demo Data..." : "Load Demo Data"}
@@ -786,8 +801,8 @@ export default function SettingsPage() {
             onClick={handleRebuildCache}
             disabled={isRebuilding}
             className={`px-6 py-2 rounded-lg transition-colors font-semibold ${isRebuilding
-                ? "bg-gray-400 text-gray-700 cursor-not-allowed"
-                : "bg-blue-600 text-white hover:bg-blue-700"
+              ? "bg-gray-400 text-gray-700 cursor-not-allowed"
+              : "bg-blue-600 text-white hover:bg-blue-700"
               }`}
           >
             {isRebuilding ? "Rebuilding..." : "Rebuild Cache"}

@@ -1,3 +1,17 @@
+/**
+ * App Sidebar
+ * 
+ * The primary navigation component for the application. 
+ * 
+ * Features:
+ * - Dynamic route highlighting via Next.js `usePathname`.
+ * - Integrated ProfileSection for user identity.
+ * - Live XP progression bar and leveling stats.
+ * - Global lock functionality for privacy.
+ * - Responsive collapse state managed via `SidebarProvider`.
+ * 
+ * @module src/components/layout/AppSidebar.tsx
+ */
 "use client";
 
 import Link from "next/link";

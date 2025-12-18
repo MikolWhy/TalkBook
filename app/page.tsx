@@ -1,23 +1,18 @@
-// Dashboard Homepage - Sidebar + Main Content Layout
-// REMOVE COMMENTS WHEN FINALIZING FOR PRODUCTION/SUBMISSION
-// FILE STRUCTURE EXPLANATION:
-// This file is a React component that renders the homepage.
-// It's structured in sections:
-// 1. Imports (what we need from other files)
-// 2. Type definitions (TypeScript interfaces - what data looks like)
-// 3. Data constants (arrays/objects with our data)
-// 4. Main component (the actual page that gets displayed)
-
-//
-// This page contains:
-// 1. Fixed sidebar navigation (left side) -> CHANGE TO MINIMIZABLE + PERSIST ACROSS SITE
-// 2. Main content area (right side) with scrollable content
-// 3. Dashboard cards: promotional banner, statistics, habit cards
-// 4. Tab navigation and date selector
-// 5. Horizontal scrolling for habit cards
-
-// needed to use server components + required when using useState, useEffect, event handlers, etc
 "use client";
+
+/**
+ * Dashboard Home
+ * 
+ * The main landing page showing user progress, habit streaks, and recent activity.
+ * 
+ * Architecture:
+ * - Renders inside `DashboardLayout`.
+ * - Aggregates data from local `entriesCache` and the database repository.
+ * - Uses dynamic imports for DB logic to keep everything client-side.
+ * - Connects to the `/api/quote` endpoint for the daily inspiration.
+ * 
+ * @module app/page.tsx
+ */
 
 import { useState, useEffect, useMemo } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";

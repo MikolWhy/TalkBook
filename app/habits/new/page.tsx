@@ -1,63 +1,17 @@
-// habits/new/page.tsx
-// new habit page - create habit form
-// includes name, type (bool/number), target, unit, color selection
-//
-// WHAT WE'RE CREATING:
-// - A form page for creating new habits
-// - Inputs: name, type (boolean or numeric), target (for numeric), unit, color
-// - Validates form before saving
-// - Saves habit to database and navigates to habits list
-//
-// OWNERSHIP:
-// - Zayn implements this completely
-//
-// COORDINATION NOTES:
-// - Uses repo.ts habit functions (Zayn adds these)
-// - No conflicts - Zayn owns this entirely
-//
-// CONTEXT FOR AI ASSISTANTS:
-// - This page allows creating new habits
-// - Habits can be boolean (done/not done) or numeric (target value)
-// - Users set name, target (for numeric), unit (e.g., "reps", "pages"), and color
-//
-// DEVELOPMENT NOTES:
-// - Form with name input, type selection (radio buttons), target input (for numeric)
-// - Unit input (optional, for numeric habits)
-// - Color picker or color selection buttons
-// - Validate form before saving
-// - Save to database and navigate to habits list
-//
-// TODO: implement habit creation form
-//
-// FUNCTIONALITY:
-// - Name input
-// - Type selection (boolean or number)
-// - Target input (for numeric habits, min 1)
-// - Unit input (optional, for numeric habits)
-// - Color selection
-// - Save habit to database
-// - Navigate to habits list after save
-//
-// UI:
-// - Form layout
-// - Radio buttons for type selection
-// - Conditional fields (target/unit only for numeric)
-// - Color picker/buttons
-// - Save button
-//
-// SYNTAX:
-// "use client";
-// import { useState } from "react";
-// import { useRouter } from "next/navigation";
-// import { createHabit } from "@/lib/db/repo";
-//
-// export default function NewHabitPage() {
-//   // implementation
-// }
-
 "use client";
 
-// TODO: implement habit creation form
+/**
+ * New Habit Creation Page
+ * 
+ * Description: Provides a comprehensive form to define and initialize new habits, 
+ * supporting various tracking types (boolean/numeric) and scheduling frequencies.
+ * 
+ * Flow & Connections:
+ * @file New Habit Creation Page
+ * @module app/habits/new/page.tsx
+ * @description Provides a form to define and initialize new habits with various tracking types and scheduling.
+ * @see {@link createHabit} for data persistence.
+ */
 
 // TEMPORARY: Basic page structure to prevent navigation errors
 
@@ -111,7 +65,7 @@ export default function NewHabitPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.name.trim()) {
       alert("Please enter a habit name");
       return;
@@ -138,7 +92,7 @@ export default function NewHabitPage() {
         locked: false,
         createdAt: new Date().toISOString(),
       });
-      
+
       router.push("/habits");
     } catch (error) {
       console.error("Failed to create habit:", error);
@@ -154,7 +108,7 @@ export default function NewHabitPage() {
       const newWeekDays = prev.weekDays.includes(day)
         ? prev.weekDays.filter(d => d !== day)
         : [...prev.weekDays, day].sort((a, b) => a - b);
-      
+
       // Auto-update frequency based on selected days
       let newFrequency = prev.frequency;
       if (newWeekDays.length === 7) {
@@ -173,7 +127,7 @@ export default function NewHabitPage() {
           newFrequency = "one-time";
         }
       }
-      
+
       return {
         ...prev,
         weekDays: newWeekDays,
@@ -185,7 +139,7 @@ export default function NewHabitPage() {
   const handleFrequencyChange = (newFrequency: "daily" | "weekly" | "monthly" | "one-time") => {
     setFormData(prev => {
       let newWeekDays = prev.weekDays;
-      
+
       if (newFrequency === "daily") {
         // Auto-select all days when daily is selected
         newWeekDays = [0, 1, 2, 3, 4, 5, 6];
@@ -193,7 +147,7 @@ export default function NewHabitPage() {
         // When switching from daily to weekly, unselect one day (keep 6 days)
         newWeekDays = [0, 1, 2, 3, 4, 5]; // Remove Saturday (day 6)
       }
-      
+
       return {
         ...prev,
         frequency: newFrequency,
@@ -215,7 +169,7 @@ export default function NewHabitPage() {
           </button>
           <h1 className="text-2xl font-bold text-gray-900">Add Habit</h1>
         </div>
-        
+
         <form onSubmit={handleSubmit} className="rounded-lg shadow p-6 space-y-6" style={{ backgroundColor: "var(--background, #ffffff)" }}>
           {/* Title */}
           <div>
@@ -322,11 +276,10 @@ export default function NewHabitPage() {
                     key={`${day.label}-${day.value}`}
                     type="button"
                     onClick={() => toggleWeekday(day.value)}
-                    className={`w-10 h-10 rounded-full font-medium transition-all ${
-                      formData.weekDays.includes(day.value)
-                        ? "bg-blue-500 text-white shadow-md"
-                        : "bg-gray-200 text-gray-600 hover:bg-gray-300"
-                    }`}
+                    className={`w-10 h-10 rounded-full font-medium transition-all ${formData.weekDays.includes(day.value)
+                      ? "bg-blue-500 text-white shadow-md"
+                      : "bg-gray-200 text-gray-600 hover:bg-gray-300"
+                      }`}
                   >
                     {day.label}
                   </button>
@@ -349,9 +302,8 @@ export default function NewHabitPage() {
                   key={color}
                   type="button"
                   onClick={() => setFormData({ ...formData, color })}
-                  className={`w-10 h-10 rounded-full transition-all ${
-                    formData.color === color ? "ring-2 ring-offset-2 ring-gray-400 scale-110" : "hover:scale-105"
-                  }`}
+                  className={`w-10 h-10 rounded-full transition-all ${formData.color === color ? "ring-2 ring-offset-2 ring-gray-400 scale-110" : "hover:scale-105"
+                    }`}
                   style={{ backgroundColor: color }}
                   title={color}
                 />

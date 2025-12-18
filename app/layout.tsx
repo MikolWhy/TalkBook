@@ -1,15 +1,16 @@
-// Root Layout - Original Next.js Starter Code
-//
-// This is the root layout that wraps all pages in your app.
-// Next.js requires this file - it sets up the HTML structure, fonts, and metadata.
-//
-// WHAT THIS FILE DOES:
-// - Wraps all pages with <html> and <body> tags
-// - Sets up fonts (Geist Sans and Geist Mono)
-// - Defines metadata (title, description) for SEO
-// - Imports global CSS styles
-//
-// LATER: We'll add PinGate component here to protect all pages with PIN
+/**
+ * Root Layout
+ * 
+ * Main entry point that sets up the base HTML, global styles, and context providers.
+ * 
+ * Key features:
+ * - Application-wide providers (Sidebar, Background Color).
+ * - App-level security via the `LockScreen` component.
+ * - Custom font loading (Cabin) optimized via `next/font`.
+ * - Injected script to sync localStorage theme with CSS variables, preventing background flickers.
+ * 
+ * @module app/layout.tsx
+ */
 
 import type { Metadata } from "next";
 import { Cabin } from "next/font/google";

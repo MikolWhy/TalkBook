@@ -1,68 +1,18 @@
-// habits/page.tsx
-// habits list page - displays all active habits
-// shows habits with progress, streaks, and logging interface
-//
-// WHAT WE'RE CREATING:
-// - A page that lists all active (non-archived) habits
-// - Each habit shows: name, target, current progress, streak, logging interface
-// - Users can log habits directly from this page
-// - Supports both boolean habits (done/not done) and numeric habits (target value)
-//
-// OWNERSHIP:
-// - Zayn implements this completely
-//
-// COORDINATION NOTES:
-// - Uses repo.ts habit functions (Zayn adds these)
-// - Uses HabitCard component (Zayn creates)
-// - No conflicts - Zayn owns this entirely
-//
-// CONTEXT FOR AI ASSISTANTS:
-// - This page shows all active (non-archived) habits
-// - Each habit displays: name, target, current progress, streak, logging interface
-// - Users can log habits directly from this page
-// - Supports both boolean habits (done/not done) and numeric habits (target value)
-//
-// DEVELOPMENT NOTES:
-// - Fetch active habits from database
-// - Display habits using HabitCard component
-// - Handle habit logging (update database, recalculate streak)
-// - Show loading state during operations
-// - Empty state when no habits exist
-// - Link to create new habit
-//
-// TODO: implement habits list page
-//
-// FUNCTIONALITY:
-// - Load active habits from database
-// - Display habits with HabitCard component
-// - Handle habit logging (bool and numeric)
-// - Recalculate streak after logging
-// - Archive habit option
-// - Link to edit habit
-// - Empty state message
-//
-// UI:
-// - List of habit cards
-// - Each card shows progress, streak, logging interface
-// - Create new habit button/link
-// - Responsive layout
-//
-// SYNTAX:
-// "use client";
-// import { useEffect, useState } from "react";
-// import Link from "next/link";
-// import { getActiveHabits, logHabit, calculateStreak, getHabitLogs } from "@/lib/db/repo";
-// import HabitCard from "@/components/HabitCard";
-//
-// export default function HabitsPage() {
-//   // implementation
-// }
-
-
-// TODO: implement habits list page
-
-// TEMPORARY: Basic page structure to prevent navigation errors
 "use client";
+
+/**
+ * Habits Dashboard
+ * 
+ * Center for tracking daily progress, viewing streaks, and logging habit completions. 
+ * Supports both simple checkboxes and numeric targets.
+ * 
+ * Architecture:
+ * - Integrated with the gamification engine for XP rewards.
+ * - Uses `HabitCard` components for individual tracking units.
+ * - Persists state to the IndexedDB repository for reliable offline storage.
+ * 
+ * @module app/habits/page.tsx
+ */
 
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
@@ -533,8 +483,8 @@ export default function HabitsPage() {
           <button
             onClick={() => setSelectedColor(null)}
             className={`px-3 py-1 rounded-md text-sm transition-colors ${selectedColor === null
-                ? 'bg-gray-900 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              ? 'bg-gray-900 text-white'
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
           >
             All
@@ -544,8 +494,8 @@ export default function HabitsPage() {
               key={color}
               onClick={() => setSelectedColor(selectedColor === color ? null : color)}
               className={`w-8 h-8 rounded-full transition-all ${selectedColor === color
-                  ? 'ring-2 ring-offset-2 ring-gray-400 scale-110'
-                  : 'hover:scale-105'
+                ? 'ring-2 ring-offset-2 ring-gray-400 scale-110'
+                : 'hover:scale-105'
                 }`}
               style={{ backgroundColor: color }}
               title={color}
