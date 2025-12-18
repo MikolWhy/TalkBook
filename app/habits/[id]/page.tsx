@@ -16,8 +16,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { getHabitById, updateHabit, archiveHabit } from "@/lib/db/repo";
+import { getHabitById, updateHabit, deleteHabit } from "@/lib/db/repo";
 import { Habit } from "@/lib/db/schema";
+import ConfirmationModal from "@/components/ui/ConfirmationModal";
 
 // TEMPORARY: Basic page structure to prevent navigation errors
 // useParams = gets URL parameters (the [id] from the route)
@@ -69,6 +70,9 @@ export default function EditHabitPage() {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  // Confirmation modal state
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   useEffect(() => {
     loadHabit();
@@ -151,17 +155,17 @@ export default function EditHabitPage() {
     }
   };
 
-  const handleArchive = async () => {
-    if (!confirm(`Are you sure you want to archive "${habit?.name}"? This will hide it from your habits list.`)) {
-      return;
-    }
+  const handleDelete = () => {
+    setIsDeleteModalOpen(true);
+  };
 
+  const confirmDelete = async () => {
     try {
-      await archiveHabit(habitId);
+      await deleteHabit(habitId);
       router.push("/habits");
     } catch (error) {
-      console.error("Failed to archive habit:", error);
-      alert("Failed to archive habit. Please try again.");
+      console.error("Failed to delete habit:", error);
+      alert("Failed to delete habit. Please try again.");
     }
   };
 
@@ -418,10 +422,10 @@ export default function EditHabitPage() {
             </button>
             <button
               type="button"
-              onClick={handleArchive}
+              onClick={handleDelete}
               className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors font-medium"
             >
-              Archive
+              Delete
             </button>
             <button
               type="submit"
@@ -433,6 +437,17 @@ export default function EditHabitPage() {
           </div>
         </form>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDelete}
+        title="Delete Habit?"
+        message={`Are you sure you want to delete "${habit?.name}"? This will permanently delete the habit and all its logs. This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
     </div>
   );
 }

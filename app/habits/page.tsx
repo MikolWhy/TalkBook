@@ -21,6 +21,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import HabitCard from "@/components/features/HabitCard";
 import XPNotification from "@/components/gamification/XPNotification";
+import ConfirmationModal from "@/components/ui/ConfirmationModal";
 import { awardHabitXP, calculateGlobalHabitStreak, awardAllHabitsCompletedBonus } from "@/lib/gamification/xp";
 import { updateHabitPR } from "@/lib/gamification/pr";
 import {
@@ -29,7 +30,7 @@ import {
   calculateStreak,
   getHabitLogs,
   updateHabitOrder,
-  archiveHabit,
+  deleteHabit,
   toggleHabitLock
 } from "@/lib/db/repo";
 import { Habit } from "@/lib/db/schema";
@@ -53,6 +54,10 @@ export default function HabitsPage() {
   const [leveledUp, setLeveledUp] = useState(false);
   const [oldLevel, setOldLevel] = useState<number | undefined>(undefined);
   const [newLevel, setNewLevel] = useState<number | undefined>(undefined);
+
+  // Confirmation modal state
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [habitToDelete, setHabitToDelete] = useState<{ id: number; name: string } | null>(null);
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -225,13 +230,23 @@ export default function HabitsPage() {
     router.push(`/habits/${habitId}`);
   };
 
-  const handleArchive = async (habitId: number) => {
+  const handleDelete = (habitId: number) => {
+    const habit = habits.find(h => h.id === habitId);
+    if (habit) {
+      setHabitToDelete({ id: habitId, name: habit.name });
+      setIsDeleteModalOpen(true);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!habitToDelete) return;
+
     try {
-      await archiveHabit(habitId);
+      await deleteHabit(habitToDelete.id);
       await loadHabits();
     } catch (error) {
-      console.error("Failed to archive habit:", error);
-      alert("Failed to archive habit. Please try again.");
+      console.error("Failed to delete habit:", error);
+      alert("Failed to delete habit. Please try again.");
     }
   };
 
@@ -255,15 +270,15 @@ export default function HabitsPage() {
 
     const lockedCount = habits.length - unlockedHabits.length;
     const message = lockedCount > 0
-      ? `This will delete ${unlockedHabits.length} unlocked habit(s). ${lockedCount} locked habit(s) will be kept. Continue?`
-      : `This will delete all ${unlockedHabits.length} habit(s). Continue?`;
+      ? `This will permanently delete ${unlockedHabits.length} unlocked habit(s) and all their logs. ${lockedCount} locked habit(s) will be kept. This cannot be undone. Continue?`
+      : `This will permanently delete all ${unlockedHabits.length} habit(s) and all their logs. This cannot be undone. Continue?`;
 
     if (!confirm(message)) return;
 
     try {
       for (const habit of unlockedHabits) {
         if (habit.id) {
-          await archiveHabit(habit.id);
+          await deleteHabit(habit.id);
         }
       }
       await loadHabits();
@@ -592,7 +607,7 @@ export default function HabitsPage() {
                     todayLog={todayLogs[habit.id!]}
                     onLog={handleLog}
                     onEdit={handleEdit}
-                    onArchive={handleArchive}
+                    onDelete={handleDelete}
                     onToggleLock={handleToggleLock}
                   />
                 </motion.div>
@@ -644,6 +659,17 @@ export default function HabitsPage() {
         leveledUp={leveledUp}
         oldLevel={oldLevel}
         newLevel={newLevel}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDelete}
+        title="Delete Habit?"
+        message={`Are you sure you want to delete "${habitToDelete?.name}"? This will permanently delete the habit and all its logs. This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
       />
     </DashboardLayout>
   );
