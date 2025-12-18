@@ -91,6 +91,8 @@ export function saveEntries(entries: JournalEntry[]): void {
     localStorage.setItem(ENTRIES_KEY, JSON.stringify(entries));
     entriesCache = entries; // Update cache immediately
     incrementCacheVersion(); // Invalidate cache in other tabs/windows
+    // Dispatch custom event for same-tab updates (storage event only fires for cross-tab)
+    window.dispatchEvent(new Event('entries-updated'));
     console.log("✅ [Cache Update] Saved entries and updated cache");
   } catch (error) {
     console.error("Error saving entries to localStorage:", error);

@@ -62,12 +62,37 @@ export default function StatsPage() {
   const [habitLogs, setHabitLogs] = useState<any[]>([]);
   const [journals, setJournals] = useState<Journal[]>([]);
   const [selectedJournalId, setSelectedJournalId] = useState<string>("all");
-  const [timeRange, setTimeRange] = useState<number>(7); // days
+  const [timeRange, setTimeRange] = useState<number>(30); // days - default to 30 for better visibility
   const [xpStats, setXpStats] = useState<any>(null);
 
   // Load data
   useEffect(() => {
     loadData();
+  }, []);
+
+  // Reload data when entries might have changed (e.g., after editing)
+  useEffect(() => {
+    const handleDataChange = () => {
+      loadData();
+    };
+    
+    // Listen for storage events (cross-tab updates)
+    window.addEventListener('storage', handleDataChange);
+    // Listen for custom event (same-tab updates)
+    window.addEventListener('entries-updated', handleDataChange);
+    // Reload when page becomes visible (user navigates back from editing)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadData();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleDataChange);
+      window.removeEventListener('entries-updated', handleDataChange);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   const loadData = async () => {
@@ -394,6 +419,8 @@ export default function StatsPage() {
   }, [filteredEntries]);
 
   // Mood timeline (mood trends over time)
+  // Shows ALL individual mood entries as separate points (not aggregated by day)
+  // Multiple entries on same day = multiple points on chart
   const moodTimelineData = useMemo(() => {
     // Map moods to numerical scores for visualization
     const moodScores: Record<string, number> = {
@@ -422,61 +449,83 @@ export default function StatsPage() {
       "excited": "Excited 🤩",
     };
 
-    // Group entries by date and calculate average mood score
-    const dateGroups: Record<string, { scores: number[]; moods: string[] }> = {};
+    // Get cutoff date for time range
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - timeRange);
+
+    // Process ALL entries with moods (not grouped by day)
+    const result: Array<{ 
+      entryIndex: number;
+      date: string; 
+      timestamp: number; 
+      moodScore: number; 
+      moodLabel: string;
+      fullDate: string;
+    }> = [];
 
     filteredEntries.forEach((e: any) => {
-      if (e.mood) {
+      if (e.mood && e.createdAt) {
         const entryDate = new Date(e.createdAt);
-        entryDate.setHours(0, 0, 0, 0);
-        const dateKey = entryDate.toISOString().split('T')[0];
+        
+        // Only include entries within the time range
+        if (entryDate >= cutoffDate) {
+          const score = moodScores[e.mood] ?? 4; // Default to neutral if unknown
+          
+          // Format date label based on time range
+          let dateLabel: string;
+          if (timeRange <= 7) {
+            // For short ranges, show time of day too
+            dateLabel = entryDate.toLocaleDateString("en-US", { 
+              weekday: "short", 
+              day: "numeric",
+              hour: "numeric",
+              minute: "2-digit"
+            });
+          } else if (timeRange <= 30) {
+            dateLabel = entryDate.toLocaleDateString("en-US", { 
+              month: "short", 
+              day: "numeric",
+              hour: "numeric",
+              minute: "2-digit"
+            });
+          } else {
+            dateLabel = entryDate.toLocaleDateString("en-US", { 
+              month: "short", 
+              day: "numeric"
+            });
+          }
 
-        if (!dateGroups[dateKey]) {
-          dateGroups[dateKey] = { scores: [], moods: [] };
+          result.push({
+            entryIndex: 0, // Will be set after sorting
+            date: dateLabel,
+            timestamp: entryDate.getTime(), // Use timestamp for proper sorting
+            moodScore: score,
+            moodLabel: moodLabels[e.mood] || "Neutral 😐",
+            fullDate: entryDate.toISOString(),
+          });
         }
-
-        const score = moodScores[e.mood] ?? 5; // Default to neutral if unknown
-        dateGroups[dateKey].scores.push(score);
-        dateGroups[dateKey].moods.push(e.mood);
       }
     });
 
-    // Calculate average mood per day
-    const result: Array<{ date: string; moodScore: number; moodLabel: string }> = [];
-
-    Object.entries(dateGroups).forEach(([dateKey, data]) => {
-      const avgScore = data.scores.reduce((sum, score) => sum + score, 0) / data.scores.length;
-
-      // Find the most common mood for that day
-      const moodCounts: Record<string, number> = {};
-      data.moods.forEach(mood => {
-        moodCounts[mood] = (moodCounts[mood] || 0) + 1;
-      });
-      const mostCommonMood = Object.entries(moodCounts).sort((a, b) => b[1] - a[1])[0][0];
-
-      const date = new Date(dateKey + 'T00:00:00');
-      let dateLabel: string;
-      if (timeRange <= 7) {
-        dateLabel = date.toLocaleDateString("en-US", { weekday: "short", day: "numeric" });
-      } else if (timeRange <= 30) {
-        dateLabel = date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-      } else {
-        dateLabel = date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-      }
-
-      result.push({
-        date: dateLabel,
-        moodScore: Math.round(avgScore * 10) / 10, // Round to 1 decimal
-        moodLabel: moodLabels[mostCommonMood] || "Neutral 😐",
-      });
-    });
-
-    // Sort by date
-    return result.sort((a, b) => {
-      const dateA = new Date(a.date);
-      const dateB = new Date(b.date);
-      return dateA.getTime() - dateB.getTime();
-    });
+    // Sort by timestamp (chronological order)
+    const sorted = result.sort((a, b) => a.timestamp - b.timestamp);
+    
+    // Cap entries to prevent off-screen overflow
+    // Reasonable cap: ~50 entries for good visibility, adjust based on time range
+    const maxEntries = timeRange <= 7 ? 100 : timeRange <= 30 ? 150 : 200;
+    
+    let finalData = sorted;
+    if (sorted.length > maxEntries) {
+      // If too many entries, sample evenly to show trend without overflow
+      const step = Math.ceil(sorted.length / maxEntries);
+      finalData = sorted.filter((_, index) => index % step === 0 || index === sorted.length - 1);
+    }
+    
+    // Assign sequential entry indices (1, 2, 3, ...) for X-axis positioning
+    return finalData.map((entry, index) => ({
+      ...entry,
+      entryIndex: index + 1, // Start from 1
+    }));
   }, [filteredEntries, timeRange]);
 
   return (

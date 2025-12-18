@@ -39,7 +39,7 @@ import { BarChart as BarChartIcon, Smile, Clock, Sunrise, Sun, Sunset, Moon, Tre
 interface ChartsSectionProps {
   activityOverTime: Array<{ date: string; entries: number; habits: number }>;
   moodPatternData: Array<{ mood: string; moodEmoji: string; count: number; fullMood: string }>;
-  moodTimelineData: Array<{ date: string; moodScore: number; moodLabel: string }>;
+  moodTimelineData: Array<{ entryIndex: number; date: string; timestamp: number; moodScore: number; moodLabel: string; fullDate: string }>;
   timeDistribution: Array<{ period: string; count: number }>;
   timeRange: number;
   MOOD_COLORS: Record<string, string>;
@@ -125,8 +125,11 @@ export default function ChartsSection({
               <p className="text-sm text-gray-600">See how your emotional state changes day by day</p>
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={moodTimelineData}>
+          <ResponsiveContainer width="100%" height={350}>
+            <LineChart 
+              data={moodTimelineData}
+              margin={{ top: 5, right: 20, left: 10, bottom: 60 }}
+            >
               <defs>
                 <linearGradient id="colorMood" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#F43F5E" stopOpacity={0.8} />
@@ -135,12 +138,30 @@ export default function ChartsSection({
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <XAxis
-                dataKey="date"
+                dataKey="entryIndex"
+                type="number"
+                domain={['dataMin', 'dataMax']}
                 stroke="#6b7280"
-                style={{ fontSize: timeRange > 30 ? "10px" : "12px", fontWeight: "500" }}
-                angle={timeRange > 30 ? -45 : 0}
-                textAnchor={timeRange > 30 ? "end" : "middle"}
-                height={timeRange > 30 ? 60 : 30}
+                style={{ fontSize: timeRange > 30 ? "9px" : timeRange > 7 ? "10px" : "11px", fontWeight: "500" }}
+                angle={moodTimelineData.length > 15 ? -45 : 0}
+                textAnchor={moodTimelineData.length > 15 ? "end" : "middle"}
+                height={moodTimelineData.length > 15 ? 80 : 50}
+                tickFormatter={(value, index) => {
+                  // Find the corresponding entry for this index
+                  const entry = moodTimelineData.find(e => e.entryIndex === value);
+                  if (!entry) return String(value);
+                  
+                  const date = new Date(entry.timestamp);
+                  if (timeRange <= 7) {
+                    return date.toLocaleDateString("en-US", { weekday: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+                  } else if (timeRange <= 30) {
+                    return date.toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric" });
+                  } else {
+                    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                  }
+                }}
+                interval={moodTimelineData.length > 20 ? Math.ceil(moodTimelineData.length / 10) : 0}
+                label={{ value: 'Entry Order', position: 'insideBottom', offset: -5, style: { textAnchor: 'middle', fill: '#6b7280' } }}
               />
               <YAxis
                 stroke="#6b7280"
@@ -173,16 +194,33 @@ export default function ChartsSection({
                 formatter={(value: any, name: string, props: any) => {
                   return [props.payload.moodLabel, "Mood"];
                 }}
+                labelFormatter={(value) => {
+                  if (!value) return '';
+                  // Find the entry by entryIndex
+                  const entry = moodTimelineData.find(e => e.entryIndex === value);
+                  if (!entry) return `Entry ${value}`;
+                  const date = new Date(entry.timestamp);
+                  return date.toLocaleString("en-US", { 
+                    weekday: "long",
+                    year: "numeric",
+                    month: "long", 
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit"
+                  });
+                }}
               />
               <Legend verticalAlign="top" height={40} />
               <Line
-                type="monotone"
+                type="linear"
                 dataKey="moodScore"
                 stroke="#F43F5E"
-                strokeWidth={3}
-                dot={{ fill: "#F43F5E", r: 5 }}
-                activeDot={{ r: 8 }}
+                strokeWidth={2}
+                dot={{ fill: "#F43F5E", r: moodTimelineData.length > 50 ? 4 : 5, strokeWidth: 2, stroke: "#fff" }}
+                activeDot={{ r: 8, strokeWidth: 2, stroke: "#fff" }}
                 name="Mood"
+                connectNulls={false}
+                isAnimationActive={moodTimelineData.length < 100}
               />
             </LineChart>
           </ResponsiveContainer>
