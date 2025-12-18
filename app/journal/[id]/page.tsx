@@ -1,27 +1,38 @@
-// edit journal entry page - update existing entry
-// similar to new page but pre-fills with existing entry data
-//
-// WHAT WE'RE CREATING:
-// - A page for editing existing journal entries
-// - Pre-fills form with existing entry data (content, mood, tags)
-// - Same interface as new entry page but with update/delete actions
-// - Handles entry not found (404 error)
-// - Includes NLP prompt system for editing
-
 "use client";
+
+/**
+ * Edit Journal Entry Page
+ * 
+ * Description: Provides a full-featured interface for revising existing journal entries, 
+ * leveraging AI prompts and rich-text editing to enhance the reflection process.
+ * 
+ * Flow & Connections:
+ * - Flow: Loads existing record by ID from `entriesCache` on mount.
+ * - AI Integration: Persists NLP context to provide relevant writing prompts during the edit session.
+ * - Updates: Syncs modifications back to the local persistence layer and triggers gamification events.
+ * 
+ * @module app/journal/[id]/page.tsx
+ */
 
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, FileText, Check, Trash2 } from "lucide-react";
-import DashboardLayout from "../../components/DashboardLayout";
-import RichTextEditor, { RichTextEditorRef } from "../../../src/components/RichTextEditor";
-import PromptSuggestions from "../../../src/components/PromptSuggestions";
-import TopicSuggestions from "../../../src/components/TopicSuggestions";
-import { extractMetadata } from "../../../src/lib/nlp/extract";
-import { generatePrompts, filterUsedPrompts, filterExpiredPrompts, Prompt, markPromptAsUsed, getTopicSuggestions, TopicSuggestion } from "../../../src/lib/nlp/prompts";
-import { getEntries, getEntryById, updateEntry, saveEntries } from "../../../src/lib/cache/entriesCache";
-import { awardEntryXP } from "../../../src/lib/gamification/xp";
-import XPNotification from "../../components/XPNotification";
+import { ArrowLeft, FileText, Check, Trash2, Calendar } from "lucide-react";
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import dynamic from "next/dynamic";
+import type { RichTextEditorRef } from "@/components/ui/RichTextEditor";
+
+// Dynamically import RichTextEditor (TipTap) to reduce initial bundle size
+const RichTextEditor = dynamic(
+  () => import("@/components/ui/RichTextEditor").then(mod => mod.default),
+  { ssr: false }
+);
+import PromptSuggestions from "@/components/features/PromptSuggestions";
+import TopicSuggestions from "@/components/features/TopicSuggestions";
+import { extractMetadata } from "@/lib/nlp/extract";
+import { generatePrompts, filterUsedPrompts, filterExpiredPrompts, Prompt, markPromptAsUsed, getTopicSuggestions, TopicSuggestion } from "@/lib/nlp/prompts";
+import { getEntries, getEntryById, updateEntry, saveEntries } from "@/lib/cache/entriesCache";
+import { awardEntryXP } from "@/lib/gamification/xp";
+import XPNotification from "@/components/gamification/XPNotification";
 
 // Mood options (same as new entry page)
 const moodOptions = [
@@ -34,7 +45,6 @@ const moodOptions = [
   { id: "calm", emoji: "😌", label: "Calm" },
   { id: "anxious", emoji: "😰", label: "Anxious" },
   { id: "angry", emoji: "😠", label: "Angry" },
-  { id: "grateful", emoji: "🙏", label: "Grateful" },
 ];
 
 // Tag colors (same as new entry page)
@@ -72,11 +82,11 @@ const cardColorOptions = [
 // Helper function to format date as a title if title is empty
 const formatDateAsTitle = (date: Date): string => {
   const day = date.getDate();
-  const daySuffix = 
+  const daySuffix =
     day === 1 || day === 21 || day === 31 ? "st" :
-    day === 2 || day === 22 ? "nd" :
-    day === 3 || day === 23 ? "rd" : "th";
-  
+      day === 2 || day === 22 ? "nd" :
+        day === 3 || day === 23 ? "rd" : "th";
+
   return date.toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
@@ -101,6 +111,7 @@ export default function EditEntryPage() {
   const [entryNotFound, setEntryNotFound] = useState(false);
   const [isDraft, setIsDraft] = useState(false); // Track if entry is a draft
   const [originalContent, setOriginalContent] = useState<string>(""); // Track original content to detect changes
+  const [entryDate, setEntryDate] = useState<string>(""); // Track entry creation date
 
   // NLP Prompt System State
   const [allPrompts, setAllPrompts] = useState<Prompt[]>([]);
@@ -184,6 +195,15 @@ export default function EditEntryPage() {
         setIsDraft(entry.draft === true); // Load draft status (strict check)
         setOriginalPromptIds(entry.promptIds || []); // Store original prompt IDs
         setInsertedPromptIds(new Set(entry.promptIds || [])); // Convert array to Set
+
+        // Initialize entryDate from createdAt for the date picker
+        if (entry.createdAt) {
+          const date = new Date(entry.createdAt);
+          // Adjust for local time zone to pre-fill datetime-local input
+          const tzOffset = date.getTimezoneOffset() * 60000;
+          const localISODate = new Date(date.getTime() - tzOffset).toISOString().slice(0, 16);
+          setEntryDate(localISODate);
+        }
 
         setLoading(false); // Mark as loaded
       } catch (error) {
@@ -298,14 +318,15 @@ export default function EditEntryPage() {
     }
 
     setIsSaving(true);
-    
+
     // Re-enable button after 5 seconds
     setTimeout(() => {
       setIsSaving(false);
     }, 5000);
 
     try {
-      const entryTitle = title.trim() || formatDateAsTitle(new Date());
+      const entryTitle = title.trim() || formatDateAsTitle(new Date(entryDate));
+      const finalCreatedAt = entryDate ? new Date(entryDate).toISOString() : new Date().toISOString();
 
       // OPTIMIZATION: Use cache update
       const success = updateEntry(entryId as string, {
@@ -314,6 +335,7 @@ export default function EditEntryPage() {
         mood: mood,
         tags: tags,
         cardColor: cardColor,
+        createdAt: finalCreatedAt,
         updatedAt: new Date().toISOString(),
         draft: true, // Keep as draft
         promptIds: Array.from(insertedPromptIds),
@@ -357,15 +379,16 @@ export default function EditEntryPage() {
     }
 
     setIsSaving(true);
-    
+
     // Re-enable button after 5 seconds
     setTimeout(() => {
       setIsSaving(false);
     }, 5000);
 
     try {
-      const entryTitle = title.trim() || formatDateAsTitle(new Date());
+      const entryTitle = title.trim() || formatDateAsTitle(new Date(entryDate));
       const contentChanged = content !== originalContent;
+      const finalCreatedAt = entryDate ? new Date(entryDate).toISOString() : new Date().toISOString();
 
       // OPTIMIZATION: Save immediately, extract metadata in background only if content changed
       const success = updateEntry(entryId as string, {
@@ -374,6 +397,7 @@ export default function EditEntryPage() {
         mood: mood,
         tags: tags,
         cardColor: cardColor,
+        createdAt: finalCreatedAt,
         updatedAt: new Date().toISOString(),
         draft: false, // Remove draft status
         promptIds: Array.from(insertedPromptIds),
@@ -413,14 +437,14 @@ export default function EditEntryPage() {
       // Award XP if word count increased (for editing entries)
       const wordCount = content.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().split(/\s+/).filter((w: string) => w.length > 0).length;
       const originalWordCount = originalContent.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().split(/\s+/).filter((w: string) => w.length > 0).length;
-      
+
       if (wordCount > originalWordCount) {
         // Calculate streak for XP calculation
         const allEntries = getEntries().filter((e: any) => !e.draft && e.id !== entryId);
         const sortedEntries = allEntries
           .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
           .slice(0, 60);
-        
+
         let journalStreak = 0;
         if (sortedEntries.length > 0) {
           const today = new Date();
@@ -428,7 +452,7 @@ export default function EditEntryPage() {
           const lastEntry = new Date(sortedEntries[0].createdAt);
           lastEntry.setHours(0, 0, 0, 0);
           const daysSinceLastEntry = Math.floor((today.getTime() - lastEntry.getTime()) / (1000 * 60 * 60 * 24));
-          
+
           if (daysSinceLastEntry <= 1) {
             let streakDate = new Date(lastEntry);
             for (let i = 0; i < sortedEntries.length; i++) {
@@ -446,10 +470,10 @@ export default function EditEntryPage() {
             }
           }
         }
-        
+
         const additionalWords = wordCount - originalWordCount;
         const xpResult = awardEntryXP(additionalWords, journalStreak);
-        
+
         if (xpResult.xp > 0) {
           setXpEarned(xpResult.xp);
           setLeveledUp(xpResult.leveledUp);
@@ -457,7 +481,7 @@ export default function EditEntryPage() {
           setNewLevel(xpResult.newLevel);
           setShowXPNotification(true);
           window.dispatchEvent(new Event("xp-updated"));
-          
+
           // Navigate after notification delay
           setTimeout(() => {
             router.push("/journal");
@@ -594,7 +618,7 @@ export default function EditEntryPage() {
                 Original Prompts (from when entry was created)
               </h3>
               <p className="text-xs text-gray-500">
-                These prompts were used when this entry was originally saved. 
+                These prompts were used when this entry was originally saved.
                 They remain marked as used even if you remove them from the entry.
               </p>
             </div>
@@ -609,18 +633,34 @@ export default function EditEntryPage() {
             />
           )}
 
-          {/* Title */}
-          <div>
-            <div className="mb-2">
-              <h2 className="text-lg font-bold text-gray-900">Title</h2>
+          <div className="flex flex-col md:flex-row gap-4">
+            {/* Title */}
+            <div className="flex-1">
+              <div className="mb-2">
+                <h2 className="text-lg font-bold text-gray-900">Title</h2>
+              </div>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-400"
+                placeholder="Enter a title for your journal entry..."
+              />
             </div>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-400"
-              placeholder="Enter a title for your journal entry..."
-            />
+
+            {/* Date/Time Picker */}
+            <div className="md:w-[250px]">
+              <div className="mb-2 flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-gray-500" />
+                <h2 className="text-lg font-bold text-gray-900">Date</h2>
+              </div>
+              <input
+                type="datetime-local"
+                value={entryDate}
+                onChange={(e) => setEntryDate(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+              />
+            </div>
           </div>
 
           {/* Entry Content */}
@@ -655,15 +695,12 @@ export default function EditEntryPage() {
                 <button
                   key={colorOption.id}
                   onClick={() => setCardColor(colorOption.id)}
-                  className={`px-4 py-3 rounded-lg border-2 transition-all ${
-                    colorOption.bgClass
-                  } ${
-                    colorOption.borderClass
-                  } ${
-                    cardColor === colorOption.id
+                  className={`px-4 py-3 rounded-lg border-2 transition-all ${colorOption.bgClass
+                    } ${colorOption.borderClass
+                    } ${cardColor === colorOption.id
                       ? "ring-2 ring-blue-500 ring-offset-2 scale-105"
                       : "hover:scale-105"
-                  }`}
+                    }`}
                 >
                   <div className="text-sm font-medium text-gray-700">{colorOption.name}</div>
                 </button>
@@ -681,11 +718,10 @@ export default function EditEntryPage() {
                 <button
                   key={moodOption.id}
                   onClick={() => setMood(mood === moodOption.id ? null : moodOption.id)}
-                  className={`flex flex-col items-center justify-center w-16 h-16 rounded-lg border-2 transition-all hover:scale-105 ${
-                    mood === moodOption.id
-                      ? "border-blue-500 bg-blue-50 shadow-md"
-                      : "border-gray-300 hover:border-gray-400"
-                  }`}
+                  className={`flex flex-col items-center justify-center w-16 h-16 rounded-lg border-2 transition-all hover:scale-105 ${mood === moodOption.id
+                    ? "border-blue-500 bg-blue-50 shadow-md"
+                    : "border-gray-300 hover:border-gray-400"
+                    }`}
                   style={mood !== moodOption.id ? { backgroundColor: "var(--background, #ffffff)" } : undefined}
                   title={moodOption.label}
                 >
@@ -739,7 +775,7 @@ export default function EditEntryPage() {
           </div>
         </div>
       </div>
-      
+
       {/* XP Notification */}
       <XPNotification
         xp={xpEarned}

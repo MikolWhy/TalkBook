@@ -1,22 +1,23 @@
-// Root Layout - Original Next.js Starter Code
-//
-// This is the root layout that wraps all pages in your app.
-// Next.js requires this file - it sets up the HTML structure, fonts, and metadata.
-//
-// WHAT THIS FILE DOES:
-// - Wraps all pages with <html> and <body> tags
-// - Sets up fonts (Geist Sans and Geist Mono)
-// - Defines metadata (title, description) for SEO
-// - Imports global CSS styles
-//
-// LATER: We'll add PinGate component here to protect all pages with PIN
+/**
+ * Root Layout
+ * 
+ * Main entry point that sets up the base HTML, global styles, and context providers.
+ * 
+ * Key features:
+ * - Application-wide providers (Sidebar, Background Color).
+ * - App-level security via the `LockScreen` component.
+ * - Custom font loading (Cabin) optimized via `next/font`.
+ * - Injected script to sync localStorage theme with CSS variables, preventing background flickers.
+ * 
+ * @module app/layout.tsx
+ */
 
 import type { Metadata } from "next";
 import { Cabin } from "next/font/google";
 import "./globals.css";
-import { SidebarProvider } from "./components/SidebarProvider";
-import LockScreen from "./components/LockScreen";
-import BackgroundColorProvider from "./components/BackgroundColorProvider";
+import { SidebarProvider } from "@/components/providers/SidebarProvider";
+import LockScreen from "@/components/features/LockScreen";
+import BackgroundColorProvider from "@/components/providers/BackgroundColorProvider";
 
 // ============================================================================
 // FONT SETUP
@@ -132,7 +133,7 @@ export default function RootLayout({
   //
   // return = what the component displays
   // JSX = HTML-like syntax (but it's actually JavaScript)
-  
+
   return (
     // ====================================================================
     // HTML TAG (Line 84)
@@ -140,9 +141,9 @@ export default function RootLayout({
     // <html lang="en">
     // - <html> = root HTML element (required by Next.js)
     // - lang="en" = language attribute (tells browsers/search engines it's English)
-    
+
     <html lang="en">
-      
+
       {/* ================================================================
           BODY TAG (Lines 85-90)
           ================================================================
@@ -179,6 +180,31 @@ export default function RootLayout({
         className={`${cabin.variable} antialiased`}
         suppressHydrationWarning
       >
+        {/* Set background color immediately to prevent flash */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var savedColor = localStorage.getItem('appBackgroundColor');
+                  var colors = {
+                    white: '#ffffff',
+                    orange: '#fff4e6',
+                    pink: '#fef2f2',
+                    green: '#f0fdf4',
+                    blue: '#eff6ff'
+                  };
+                  var colorKey = savedColor && colors[savedColor] ? savedColor : 'white';
+                  var bgColor = colors[colorKey];
+                  document.documentElement.style.setProperty('--background', bgColor);
+                  document.body.style.backgroundColor = bgColor;
+                } catch(e) {
+                  document.body.style.backgroundColor = '#ffffff';
+                }
+              })();
+            `,
+          }}
+        />
         {/* ================================================================
             SIDEBAR PROVIDER
             ================================================================

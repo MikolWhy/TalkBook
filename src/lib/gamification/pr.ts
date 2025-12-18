@@ -1,5 +1,15 @@
-// Personal Record (PR) Tracking System
-// Tracks best performance for each habit (case-insensitive)
+/**
+ * Personal Records (PR) Tracking
+ * 
+ * Monitors and persists the user's best performance across all habits. 
+ * 
+ * Logic:
+ * - Case-insensitive habit identification via name normalization.
+ * - LocalStorage persistence for historical record tracking.
+ * - Automated PR detection and update logic.
+ * 
+ * @module src/lib/gamification/pr.ts
+ */
 
 const PR_STORAGE_KEY = "talkbook-habit-prs";
 
@@ -29,15 +39,15 @@ export function getHabitPR(habitName: string): number | null {
 }
 
 // Update PR for a habit if the new value is higher
-export function updateHabitPR(habitName: string, value: number): { 
-  isNewPR: boolean; 
-  previousPR: number | null; 
-  newPR: number 
+export function updateHabitPR(habitName: string, value: number): {
+  isNewPR: boolean;
+  previousPR: number | null;
+  newPR: number
 } {
   const normalizedName = normalizeHabitName(habitName);
   const prs = getAllPRs();
   const previousPR = prs[normalizedName] ?? null;
-  
+
   // Only update if new value is higher than current PR
   if (previousPR === null || value > previousPR) {
     prs[normalizedName] = value;
@@ -48,7 +58,7 @@ export function updateHabitPR(habitName: string, value: number): {
       newPR: value
     };
   }
-  
+
   return {
     isNewPR: false,
     previousPR,

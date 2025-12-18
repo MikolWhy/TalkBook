@@ -1,5 +1,18 @@
-// generates prompts from extracted people names and topics
-// prompts are clickable suggestions for people, topics are non-clickable suggestions
+/**
+ * Intelligent Prompt Generation
+ * 
+ * Transforms extracted metadata into tailored writing suggestions. 
+ * Clickable prompts are generated for people, while non-clickable "topics" 
+ * provide high-level inspiration.
+ * 
+ * Core Logic:
+ * - Context-aware possessive detection (e.g., "how is your project" vs "how is work").
+ * - Tone-based template rotation (cozy vs neutral).
+ * - Algorithmic validation to prevent awkward or ungrammatical suggestions.
+ * - Persistence of "used" prompt IDs in localStorage to prevent repetition.
+ * 
+ * @module src/lib/nlp/prompts.ts
+ */
 
 import { extractMetadata } from "./extract";
 import nlp from "compromise";
@@ -54,21 +67,21 @@ function shouldUsePossessive(topic: string, originalText?: string): boolean {
   if (originalText) {
     const lowerText = originalText.toLowerCase();
     const lowerTopic = topic.toLowerCase();
-    
+
     // pattern: "my/our/your topic"
     if (new RegExp(`(my|our|your)\\s+${lowerTopic}`, "i").test(lowerText)) {
       return true;
     }
-    
+
     // pattern: "topic of mine/ours/yours"
     if (new RegExp(`${lowerTopic}\\s+(of|for)\\s+(mine|ours|yours)`, "i").test(lowerText)) {
       return true;
     }
-    
+
     // use compromise to find possessive context in sentences
     const doc = nlp(originalText);
     const sentences = doc.sentences().out("array") as string[];
-    
+
     for (const sentenceText of sentences) {
       const lowerSentence = sentenceText.toLowerCase();
       if (lowerSentence.includes(lowerTopic)) {
@@ -78,18 +91,18 @@ function shouldUsePossessive(topic: string, originalText?: string): boolean {
       }
     }
   }
-  
+
   // minimal fallback for ambiguous cases
   const MINIMAL_POSSESSIVE_FALLBACK = new Set([
     "work",
     "project",
   ]);
-  
+
   const lowerTopic = topic.toLowerCase();
   if (MINIMAL_POSSESSIVE_FALLBACK.has(lowerTopic)) {
     return true;
   }
-  
+
   return false;
 }
 
@@ -99,46 +112,46 @@ function getTopicCategory(topic: string, originalText?: string): "work" | "perso
     const doc = nlp(originalText);
     const lowerText = originalText.toLowerCase();
     const lowerTopic = topic.toLowerCase();
-    
+
     // check for work context
     const workContextPattern = new RegExp(`${lowerTopic}.*(deadline|meeting|project|task|assignment|presentation|report|work|office|boss|colleague|team|client|customer|manager|supervisor|workplace|job|career)`, "i");
     if (workContextPattern.test(lowerText)) {
       return "work";
     }
-    
+
     const reverseWorkPattern = new RegExp(`(deadline|meeting|project|task|assignment|presentation|report|work|office|boss|colleague|team).*${lowerTopic}`, "i");
     if (reverseWorkPattern.test(lowerText)) {
       return "work";
     }
-    
+
     const workMatch = doc.match(`${lowerTopic}.*(deadline|meeting|project|task|assignment|work)`);
     if (workMatch.found) {
       return "work";
     }
-    
+
     // check for activity context
     const activityContextPattern = new RegExp(`${lowerTopic}.*(conversation|discussion|talk|call|meeting|chat|phone|message|text|email)`, "i");
     if (activityContextPattern.test(lowerText)) {
       return "activity";
     }
-    
+
     const reverseActivityPattern = new RegExp(`(conversation|discussion|talk|call|meeting|chat|phone|message|text|email).*${lowerTopic}`, "i");
     if (reverseActivityPattern.test(lowerText)) {
       return "activity";
     }
-    
+
     // check for personal context
     const personalContextPattern = new RegExp(`${lowerTopic}.*(feeling|emotion|mood|thought|idea|feels|felt|feeling|emotions|moods)`, "i");
     if (personalContextPattern.test(lowerText)) {
       return "personal";
     }
-    
+
     const reversePersonalPattern = new RegExp(`(feeling|emotion|mood|thought|idea|feels|felt|feeling|emotions|moods).*${lowerTopic}`, "i");
     if (reversePersonalPattern.test(lowerText)) {
       return "personal";
     }
   }
-  
+
   return "general";
 }
 
@@ -195,11 +208,11 @@ function generatePromptId(promptText: string): string {
 // filters out awkward prompts using part-of-speech detection
 function isValidPrompt(topic: string, template: string, type: EntityType): boolean {
   const lowerTopic = topic.toLowerCase();
-  
+
   if (topic.length < 3) return false;
-  
+
   const doc = nlp(topic);
-  
+
   // filter out parts of speech that don't work as topics
   if (doc.has("#Adjective")) return false;
   if (doc.has("#Adverb")) return false;
@@ -210,7 +223,7 @@ function isValidPrompt(topic: string, template: string, type: EntityType): boole
   if (doc.has("#Verb") && !doc.has("#Gerund") && !doc.has("#PresentTense")) {
     return false;
   }
-  
+
   // filter out pronouns that compromise might miss
   const COMMON_PRONOUNS = new Set([
     "it", "its", "he", "him", "she", "her", "they", "them", "we", "us",
@@ -221,11 +234,11 @@ function isValidPrompt(topic: string, template: string, type: EntityType): boole
     "few", "many", "nobody", "none", "one", "several", "some", "somebody", "someone", "something",
     "guy", "guys", "person", "people", "thing", "things", "stuff",
   ]);
-  
+
   if (COMMON_PRONOUNS.has(lowerTopic)) {
     return false;
   }
-  
+
   // fallback stop words for things compromise might miss
   const COMMON_STOP_WORDS = new Set([
     "the", "a", "an",
@@ -234,38 +247,38 @@ function isValidPrompt(topic: string, template: string, type: EntityType): boole
     "is", "are", "was", "were", "be", "been", "being", "have", "has", "had", "do", "does", "did",
     "today", "tomorrow", "yesterday", "now", "then", "here", "there", "where", "when",
   ]);
-  
+
   if (COMMON_STOP_WORDS.has(lowerTopic)) {
     return false;
   }
-  
+
   // for topics, check if template makes grammatical sense
   if (type === "topic") {
     const testPrompt = template.replace("{entity}", topic);
     const testDoc = nlp(testPrompt);
-    
+
     const awkwardPatterns = [
       /how's \w+ going\?/i,
       /what's happening with \w+\?/i,
     ];
-    
+
     if (awkwardPatterns.some(pattern => pattern.test(testPrompt))) {
       if (testDoc.has("#Adjective") || testDoc.has("#Adverb")) {
         return false;
       }
-      
+
       if (topic.length < 5 && !doc.has("#Noun")) {
         return false;
       }
     }
-    
+
     if (!doc.has("#Noun") && !doc.has("#Gerund")) {
       if (topic.length < 5) {
         return false;
       }
     }
   }
-  
+
   return true;
 }
 
@@ -281,13 +294,13 @@ function selectBestTemplate(
     const rotationIndex = index % templates.length;
     return templates[rotationIndex];
   }
-  
+
   if (type === "topic") {
     const templateSet: string[] = templates.general || [];
     const rotationIndex = index % templateSet.length;
     return templateSet[rotationIndex];
   }
-  
+
   return Array.isArray(templates) ? templates[0] : templates.general?.[0] || "";
 }
 
@@ -300,19 +313,19 @@ function generatePromptsFromMetadata(
   const prompts: Prompt[] = [];
   const templates = PROMPT_TEMPLATES[tone];
   const peopleCount = Math.min(count, metadata.people.length);
-  
+
   for (let i = 0; i < peopleCount && prompts.length < count; i++) {
     const person = metadata.people[i];
     const personTemplates = templates.person;
     const template = selectBestTemplate(
-      person, 
-      personTemplates, 
-      "person", 
+      person,
+      personTemplates,
+      "person",
       i,
       metadata.originalText
     );
     const promptText = template.replace("{entity}", person);
-    
+
     prompts.push({
       id: generatePromptId(promptText),
       text: promptText,
@@ -322,7 +335,7 @@ function generatePromptsFromMetadata(
       createdAt: new Date(),
     });
   }
-  
+
   return prompts;
 }
 
@@ -330,35 +343,35 @@ function generatePromptsFromMetadata(
 // catches names that might have been extracted as topics
 function isLikelyName(word: string): boolean {
   if (!word || word.length < 2) return false;
-  
+
   try {
     const wordLower = word.toLowerCase().trim();
     const testSentence = `I met ${word} yesterday.`;
     const doc = nlp(testSentence);
-    
+
     const people = doc.people().out("array") as string[];
     if (people.length > 0) {
       if (people.some(p => p.toLowerCase().trim() === wordLower)) {
         return true;
       }
     }
-    
+
     const terms = doc.terms().out("array") as any[];
     const wordTerm = terms.find(t => {
       const tText = (t.text || "").toLowerCase().replace(/[.,!?;:]/g, "");
       return tText === wordLower;
     });
-    
+
     if (wordTerm) {
       const tags = wordTerm.tags || [];
-      const isProperNoun = tags.some((tag: string) => 
+      const isProperNoun = tags.some((tag: string) =>
         tag.includes("ProperNoun") || tag.includes("Person")
       );
       if (isProperNoun) {
         return true;
       }
     }
-    
+
     return false;
   } catch (error) {
     return false;
@@ -375,20 +388,20 @@ export function getTopicSuggestions(
   const namesSet = new Set(
     excludeNames.map(name => name.toLowerCase().trim())
   );
-  
+
   const validTopics = (metadata?.topics || [])
     .filter(topic => {
       if (!isValidPrompt(topic, "", "topic")) return false;
-      
+
       const topicLower = topic.toLowerCase().trim();
       if (namesSet.has(topicLower)) {
         return false;
       }
-      
+
       if (isLikelyName(topic)) {
         return false;
       }
-      
+
       return true;
     })
     .slice(0, maxCount)
@@ -396,14 +409,14 @@ export function getTopicSuggestions(
       word: topic.charAt(0).toUpperCase() + topic.slice(1).toLowerCase(),
       entity: topic,
     }));
-  
+
   if (validTopics.length === 0 && DEFAULT_TOPIC_SUGGESTIONS.length > 0) {
     return DEFAULT_TOPIC_SUGGESTIONS.map(word => ({
       word: word.charAt(0).toUpperCase() + word.slice(1).toLowerCase(),
       entity: word,
     }));
   }
-  
+
   return validTopics;
 }
 
@@ -432,40 +445,40 @@ export async function generatePrompts(
     tone,
     count
   });
-  
+
   if (!extractedData) {
     console.log("⚠️ [generatePrompts] No extracted data, returning defaults");
     return getDefaultPrompts(count);
   }
-  
+
   const metadataWithContext: ExtractedMetadata = {
     ...extractedData,
     originalText: originalText || extractedData.originalText,
   };
-  
+
   if (metadataWithContext.people.length === 0) {
     console.log("⚠️ [generatePrompts] No people found, returning defaults");
     return getDefaultPrompts(count);
   }
-  
+
   console.log("✅ [generatePrompts] Generating prompts for people:", metadataWithContext.people);
-  
+
   const prompts = generatePromptsFromMetadata(metadataWithContext, tone, count);
-  
+
   console.log("✅ [generatePrompts] Generated prompts:", prompts.map(p => ({ text: p.text, entity: p.entity })));
-  
+
   if (prompts.length < count) {
     const defaultPrompts = getDefaultPrompts(count - prompts.length);
     prompts.push(...defaultPrompts);
   }
-  
+
   return prompts.slice(0, count);
 }
 
 // loads used prompts from localStorage
 export function getUsedPrompts(): Set<string> {
   if (typeof window === "undefined") return new Set();
-  
+
   try {
     const stored = localStorage.getItem("talkbook-used-prompts");
     if (!stored) return new Set();
@@ -480,7 +493,7 @@ export function getUsedPrompts(): Set<string> {
 // saves used prompt to localStorage
 export function markPromptAsUsed(promptId: string): void {
   if (typeof window === "undefined") return;
-  
+
   try {
     const usedPrompts = getUsedPrompts();
     usedPrompts.add(promptId);
@@ -494,7 +507,7 @@ export function markPromptAsUsed(promptId: string): void {
 export function filterUsedPrompts(prompts: Prompt[]): Prompt[] {
   const usedPrompts = getUsedPrompts();
   const filtered = prompts.filter((prompt) => !usedPrompts.has(prompt.id));
-  
+
   return filtered;
 }
 
@@ -505,12 +518,12 @@ export function filterExpiredPrompts(
 ): Prompt[] {
   const now = new Date();
   const expiryMs = expiryDays * 24 * 60 * 60 * 1000;
-  
+
   const filtered = prompts.filter((prompt) => {
     const age = now.getTime() - prompt.createdAt.getTime();
     return age < expiryMs;
   });
-  
+
   return filtered;
 }
 

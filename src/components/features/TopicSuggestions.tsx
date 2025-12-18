@@ -1,7 +1,7 @@
 "use client";
 
 import { Brain } from "lucide-react";
-import { TopicSuggestion } from "../lib/nlp/prompts";
+import { TopicSuggestion } from "@/lib/nlp/prompts";
 
 interface TopicSuggestionsProps {
   suggestions: TopicSuggestion[];

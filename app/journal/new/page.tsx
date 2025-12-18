@@ -1,25 +1,49 @@
-// new journal entry page - create entry form with rich text editor, mood selector, prompts
-
 "use client";
+
+/**
+ * New Journal Entry
+ * 
+ * Handles new entry creation using the TipTap editor and an AI-driven NLP system.
+ * 
+ * Logic & Flow:
+ * - Loads the `RichTextEditor` dynamically to reduce bundle size.
+ * - Real-time NLP analysis extracts entities and generates writing prompts as the user types.
+ * - Saves progress to `entriesCache` and awards XP upon completion.
+ * 
+ * @module app/journal/new/page.tsx
+ */
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, FileText, Check } from "lucide-react";
-import DashboardLayout from "../../components/DashboardLayout";
-import RichTextEditor, { RichTextEditorRef } from "../../../src/components/RichTextEditor";
-import PromptSuggestions from "../../../src/components/PromptSuggestions";
-import TopicSuggestions from "../../../src/components/TopicSuggestions";
-import { extractMetadata } from "../../../src/lib/nlp/extract";
-import { generatePrompts, filterUsedPrompts, filterExpiredPrompts, Prompt, markPromptAsUsed, getTopicSuggestions, TopicSuggestion } from "../../../src/lib/nlp/prompts";
-import { getActiveJournalId, getJournals, type Journal } from "../../../src/lib/journals/manager";
-import { getEntries, addEntry, updateEntry } from "../../../src/lib/cache/entriesCache";
-import { awardEntryXP } from "../../../src/lib/gamification/xp";
-import XPNotification from "../../components/XPNotification";
+import { ArrowLeft, FileText, Check, Calendar } from "lucide-react";
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import dynamic from "next/dynamic";
+import type { RichTextEditorRef } from "@/components/ui/RichTextEditor";
+import MoodSelector from "@/components/ui/MoodSelector";
+
+// Dynamically import RichTextEditor (TipTap) to reduce initial bundle size
+const RichTextEditor = dynamic(
+  () => import("@/components/ui/RichTextEditor").then(mod => mod.default),
+  { ssr: false }
+);
+import PromptSuggestions from "@/components/features/PromptSuggestions";
+import TopicSuggestions from "@/components/features/TopicSuggestions";
+import { extractMetadata } from "@/lib/nlp/extract";
+import { generatePrompts, filterUsedPrompts, filterExpiredPrompts, Prompt, markPromptAsUsed, getTopicSuggestions, TopicSuggestion } from "@/lib/nlp/prompts";
+import { getActiveJournalId, getJournals, type Journal } from "@/lib/journals/manager";
+import { getEntries, addEntry, updateEntry } from "@/lib/cache/entriesCache";
+import { awardEntryXP } from "@/lib/gamification/xp";
+import XPNotification from "@/components/gamification/XPNotification";
 
 export default function NewEntryPage() {
   const router = useRouter();
   const editorRef = useRef<RichTextEditorRef>(null);
   const [title, setTitle] = useState(""); // State to store entry title
+  const [entryDate, setEntryDate] = useState(() => {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    return now.toISOString().slice(0, 16);
+  });
   const [content, setContent] = useState(""); // State to store editor content
   const [mood, setMood] = useState<string | null>(null); // State to store selected mood
   const [tags, setTags] = useState<string[]>([]); // State to store tags
@@ -433,7 +457,7 @@ export default function NewEntryPage() {
       setIsSaving(false);
     }, 5000);
 
-    const entryTitle = title.trim() || formatDateAsTitle(new Date()); // Use date if title empty
+    const entryTitle = title.trim() || formatDateAsTitle(new Date(entryDate)); // Use selected date if title empty
 
     const entry = {
       id: Date.now().toString(), // Timestamp as string ID
@@ -443,7 +467,7 @@ export default function NewEntryPage() {
       tags: tags, // Array of tag strings
       cardColor: cardColor, // Card color selection
       journalId: selectedJournalId || getActiveJournalId(), // Use selected journal or fallback to active
-      createdAt: new Date().toISOString(), // ISO 8601 timestamp string
+      createdAt: new Date(entryDate).toISOString(), // Use selected date
       updatedAt: new Date().toISOString(), // Same as createdAt for new entries
       draft: true, // Mark as draft
       promptIds: Array.from(insertedPromptIds), // Convert Set to Array for storage
@@ -485,7 +509,7 @@ export default function NewEntryPage() {
       setIsSaving(false);
     }, 5000);
 
-    const entryTitle = title.trim() || formatDateAsTitle(new Date());
+    const entryTitle = title.trim() || formatDateAsTitle(new Date(entryDate));
     const entryId = Date.now().toString();
 
     // OPTIMIZATION: Save entry immediately, extract metadata in background
@@ -498,7 +522,7 @@ export default function NewEntryPage() {
       tags: tags,
       cardColor: cardColor, // Card color selection
       journalId: selectedJournalId || getActiveJournalId(), // Use selected journal or fallback to active
-      createdAt: new Date().toISOString(),
+      createdAt: new Date(entryDate).toISOString(),
       updatedAt: new Date().toISOString(),
       draft: false, // Not a draft
       promptIds: Array.from(insertedPromptIds), // Store prompt IDs with entry
@@ -651,10 +675,11 @@ export default function NewEntryPage() {
         </div>
       </div>
 
-      {/* Two Column Layout: 2/3 left, 1/3 right */}
-      <div className="flex gap-6">
-        {/* Left Column (2/3) - Writing Section */}
+      {/* Responsive Layout: Stack on mobile, side-by-side on large screens */}
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* Left Column (Main Content) */}
         <div className="flex-[2] space-y-6 text-gray-900">
+
           {/* ============================================================================ */}
           {/* SIMPLIFIED: Clickable Name Prompts */}
           {/* ============================================================================ */}
@@ -679,6 +704,25 @@ export default function NewEntryPage() {
                   onChange={(e) => setTitle(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder:text-gray-400"
                   placeholder="Enter a title for your journal entry..."
+                />
+              </div>
+            </div>
+
+            {/* Date Picker - 1/3 width */}
+            <div className="flex-1">
+              <div className="mb-2">
+                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-gray-500" />
+                  Date
+                </h2>
+              </div>
+              <div>
+                <input
+                  type="datetime-local"
+                  value={entryDate}
+                  onChange={(e) => setEntryDate(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                  style={{ backgroundColor: "var(--background, #ffffff)" }}
                 />
               </div>
             </div>
@@ -712,8 +756,6 @@ export default function NewEntryPage() {
             <div className="mb-2">
               <h2 className="text-lg font-bold text-gray-900">Entry Content</h2>
             </div>
-            {/* MODIFIED: Added ref={editorRef} - NECESSARY for NLP prompt integration */}
-            {/* Original teammate code: No ref prop */}
             <RichTextEditor
               ref={editorRef}
               value={content}
@@ -723,11 +765,8 @@ export default function NewEntryPage() {
           </div>
         </div>
 
-        {/* Right Column (1/3) - Settings and Suggestions */}
+        {/* Right Column (Sidebar) */}
         <div className="flex-1 space-y-6 text-gray-900">
-          {/* ============================================================================ */}
-          {/* SIMPLIFIED: Non-Clickable Topic Suggestions */}
-          {/* ============================================================================ */}
           {topicSuggestions.length > 0 && (
             <TopicSuggestions suggestions={topicSuggestions} />
           )}
@@ -756,27 +795,16 @@ export default function NewEntryPage() {
             </div>
           </div>
 
-          {/* Mood */}
+          {/* Mood Selector (Using Shared Component) */}
           <div>
             <div className="mb-2">
               <h2 className="text-lg font-bold text-gray-900">Mood</h2>
             </div>
-            <div className="flex flex-wrap gap-3">
-              {moodOptions.map((moodOption) => (
-                <button
-                  key={moodOption.id}
-                  onClick={() => setMood(mood === moodOption.id ? null : moodOption.id)}
-                  className={`flex flex-col items-center justify-center w-16 h-16 rounded-lg border-2 transition-all hover:scale-105 ${mood === moodOption.id
-                    ? "border-blue-500 bg-blue-50 shadow-md"
-                    : "border-gray-300 hover:border-gray-400"
-                    }`}
-                  style={mood !== moodOption.id ? { backgroundColor: "var(--background, #ffffff)" } : undefined}
-                  title={moodOption.label}
-                >
-                  <span className="text-2xl">{moodOption.emoji}</span>
-                </button>
-              ))}
-            </div>
+            <MoodSelector
+              value={mood}
+              onChange={setMood}
+              showLabels={true}
+            />
           </div>
 
           {/* Tags */}

@@ -1,33 +1,31 @@
 "use client";
 
+/**
+ * Analytics Dashboard
+ * 
+ * Visualizes user data including mood trends, journaling gaps, and habit data.
+ * 
+ * Implementation:
+ * - Aggregates historical data from `entriesCache` and `habitLogs`.
+ * - Leverages a lazy-loaded `ChartsSection` for better page performance.
+ * - Displays RPG-style progression stats via `getUserStats`.
+ * 
+ * @module app/stats/page.tsx
+ */
+
 import { useState, useEffect, useMemo } from "react";
-import DashboardLayout from "../components/DashboardLayout";
-import { getEntries } from "../../src/lib/cache/entriesCache";
-import { getJournals, type Journal } from "../../src/lib/journals/manager";
-import { getActiveHabits, getHabitLogs } from "../../src/lib/db/repo";
-import { getUserStats } from "../../src/lib/gamification/xp";
-import {
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  RadarChart,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  Radar,
-} from "recharts";
-import { BarChart as BarChartIcon, Flame, Zap, Smile, Clock, PenTool, TrendingUp, BookOpen, Sunrise, Sun, Sunset, Moon } from "lucide-react";
+import dynamic from "next/dynamic";
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import { getEntries } from "@/lib/cache/entriesCache";
+import { getJournals, type Journal } from "@/lib/journals/manager";
+import { getActiveHabits, getHabitLogs } from "@/lib/db/repo";
+import { getUserStats } from "@/lib/gamification/xp";
+import { BarChart as BarChartIcon, Flame, Zap, PenTool, TrendingUp, BookOpen } from "lucide-react";
+
+// Dynamically import heavy components to reduce initial bundle size
+const ChartsSection = dynamic(() => import("@/components/features/stats/ChartsSection"), { ssr: false });
+const InsightsPanel = dynamic(() => import("@/components/features/stats/InsightsPanel"), { ssr: false });
+const WordCloud = dynamic(() => import("@/components/features/stats/WordCloud"), { ssr: false });
 
 // Mood mapping
 const moodMap: Record<string, string> = {
@@ -64,12 +62,37 @@ export default function StatsPage() {
   const [habitLogs, setHabitLogs] = useState<any[]>([]);
   const [journals, setJournals] = useState<Journal[]>([]);
   const [selectedJournalId, setSelectedJournalId] = useState<string>("all");
-  const [timeRange, setTimeRange] = useState<number>(30); // days
+  const [timeRange, setTimeRange] = useState<number>(30); // days - default to 30 for better visibility
   const [xpStats, setXpStats] = useState<any>(null);
 
   // Load data
   useEffect(() => {
     loadData();
+  }, []);
+
+  // Reload data when entries might have changed (e.g., after editing)
+  useEffect(() => {
+    const handleDataChange = () => {
+      loadData();
+    };
+    
+    // Listen for storage events (cross-tab updates)
+    window.addEventListener('storage', handleDataChange);
+    // Listen for custom event (same-tab updates)
+    window.addEventListener('entries-updated', handleDataChange);
+    // Reload when page becomes visible (user navigates back from editing)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadData();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleDataChange);
+      window.removeEventListener('entries-updated', handleDataChange);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   const loadData = async () => {
@@ -119,7 +142,7 @@ export default function StatsPage() {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - timeRange);
     const cutoffString = cutoffDate.toISOString().split('T')[0];
-    
+
     return habitLogs.filter((log: any) => log.date >= cutoffString);
   }, [habitLogs, timeRange]);
 
@@ -149,18 +172,18 @@ export default function StatsPage() {
       const dateString = entryDate.toISOString().split('T')[0];
       datesWithEntries.add(dateString);
     });
-    
+
     let currentStreak = 0;
     if (datesWithEntries.size > 0) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       let currentDate = new Date(today);
-      
+
       // Start from today and go backwards day by day
       // Count consecutive days that have at least one entry
       while (true) {
         const dateString = currentDate.toISOString().split('T')[0];
-        
+
         if (datesWithEntries.has(dateString)) {
           currentStreak++;
           // Move to previous day
@@ -169,7 +192,7 @@ export default function StatsPage() {
           // Gap in streak, stop counting
           break;
         }
-        
+
         // Safety limit to prevent infinite loops
         if (currentStreak > 10000) break;
       }
@@ -194,7 +217,7 @@ export default function StatsPage() {
         }
       }
     });
-    
+
     // Count active habits (excluding completed one-time habits)
     const activeHabits = habits.filter(habit => {
       if (habit.frequency === 'one-time' && habit.id && completedOneTimeHabitIds.has(habit.id)) {
@@ -202,10 +225,10 @@ export default function StatsPage() {
       }
       return true;
     });
-    
+
     const totalHabits = activeHabits.length;
     const totalCompletions = filteredHabitLogs.filter((log: any) => log.value > 0).length;
-    
+
     // Calculate habit completion rate per day
     const dateGroups: Record<string, number> = {};
     filteredHabitLogs.forEach((log: any) => {
@@ -213,7 +236,7 @@ export default function StatsPage() {
         dateGroups[log.date] = (dateGroups[log.date] || 0) + 1;
       }
     });
-    
+
     const daysWithCompletions = Object.keys(dateGroups).length;
     const avgCompletionsPerDay = daysWithCompletions > 0 ? totalCompletions / daysWithCompletions : 0;
 
@@ -228,24 +251,24 @@ export default function StatsPage() {
           return d.getTime();
         })
       );
-      
+
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       // Find the most recent completion date
       const completionDates = Array.from(completionDatesSet)
         .map(time => new Date(time))
         .sort((a, b) => b.getTime() - a.getTime());
-      
+
       const mostRecentDate = completionDates[0];
       if (mostRecentDate) {
         const daysSinceLastCompletion = Math.floor((today.getTime() - mostRecentDate.getTime()) / (1000 * 60 * 60 * 24));
-        
+
         // Streak continues if last completion was today or yesterday
         if (daysSinceLastCompletion <= 1) {
           // Start checking from the most recent completion date
           let checkDate = new Date(mostRecentDate);
-          
+
           // Count consecutive days backwards
           while (completionDatesSet.has(checkDate.getTime())) {
             habitStreak++;
@@ -268,7 +291,7 @@ export default function StatsPage() {
   // Combined activity data (entries + habits over time)
   const activityOverTime = useMemo(() => {
     const grouped: Record<string, { entries: number; habits: number; dateObj: Date }> = {};
-    
+
     // Count entries per day
     filteredEntries.forEach((e: any) => {
       const entryDate = new Date(e.createdAt);
@@ -279,7 +302,7 @@ export default function StatsPage() {
       }
       grouped[dateKey].entries++;
     });
-    
+
     // Count habit completions per day
     filteredHabitLogs.forEach((log: any) => {
       if (log.value > 0) {
@@ -292,26 +315,26 @@ export default function StatsPage() {
         grouped[dateKey].habits++;
       }
     });
-    
+
     // Generate all dates in the range for better visualization
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - timeRange);
     cutoffDate.setHours(0, 0, 0, 0);
-    
+
     const result: Array<{ date: string; entries: number; habits: number }> = [];
     const currentDate = new Date(cutoffDate);
-    
+
     // For shorter ranges (7-30 days), show daily data
     // For longer ranges (90+ days), show weekly/monthly aggregates
     const shouldAggregate = timeRange > 30;
     const aggregationDays = timeRange > 90 ? 7 : 1; // Weekly for 90+ days, daily otherwise
-    
+
     while (currentDate <= today) {
       const dateKey = currentDate.toISOString().split('T')[0];
       const data = grouped[dateKey] || { entries: 0, habits: 0 };
-      
+
       // Format date for display
       let dateLabel: string;
       if (timeRange <= 7) {
@@ -321,16 +344,16 @@ export default function StatsPage() {
       } else {
         dateLabel = currentDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
       }
-      
+
       result.push({
         date: dateLabel,
         entries: data.entries,
         habits: data.habits,
       });
-      
+
       currentDate.setDate(currentDate.getDate() + aggregationDays);
     }
-    
+
     return result;
   }, [filteredEntries, filteredHabitLogs, timeRange]);
 
@@ -338,20 +361,20 @@ export default function StatsPage() {
   // Includes default emoji (😐) for entries with no mood selected
   const moodPatternData = useMemo(() => {
     const counts: Record<string, number> = {};
-    
+
     // Count all moods including default (null mood = 😐)
     filteredEntries.forEach((e: any) => {
       const moodKey = e.mood || "neutral"; // Default to "neutral" for null mood
       counts[moodKey] = (counts[moodKey] || 0) + 1;
     });
-    
+
     // Convert to array format for pie chart
     // Include all possible moods even if count is 0, so chart structure is consistent
     const allMoods = [
-      "very-happy", "happy", "excited", "grateful", "calm", 
+      "very-happy", "happy", "excited", "grateful", "calm",
       "neutral", "anxious", "sad", "angry", "very-sad"
     ];
-    
+
     return allMoods
       .map((mood) => ({
         mood: mood,
@@ -370,14 +393,14 @@ export default function StatsPage() {
       const hour = new Date(e.createdAt).getHours();
       hours[hour] = (hours[hour] || 0) + 1;
     });
-    
+
     const periods = {
       "Morning": 0,
       "Afternoon": 0,
       "Evening": 0,
       "Night": 0,
     };
-    
+
     Object.entries(hours).forEach(([hour, count]) => {
       const h = parseInt(hour);
       if (h >= 6 && h < 12) periods["Morning"] += count;
@@ -385,7 +408,7 @@ export default function StatsPage() {
       else if (h >= 18 && h < 22) periods["Evening"] += count;
       else periods["Night"] += count;
     });
-    
+
     // Always return all periods, even if count is 0
     return [
       { period: "Morning", count: periods["Morning"] },
@@ -394,6 +417,116 @@ export default function StatsPage() {
       { period: "Night", count: periods["Night"] },
     ];
   }, [filteredEntries]);
+
+  // Mood timeline (mood trends over time)
+  // Shows ALL individual mood entries as separate points (not aggregated by day)
+  // Multiple entries on same day = multiple points on chart
+  const moodTimelineData = useMemo(() => {
+    // Map moods to numerical scores for visualization
+    const moodScores: Record<string, number> = {
+      "very-sad": 0,
+      "sad": 1,
+      "angry": 2,
+      "anxious": 3,
+      "neutral": 4,
+      "calm": 5,
+      "happy": 6,
+      "grateful": 6, // Map legacy grateful to happy
+      "very-happy": 7,
+      "excited": 8,
+    };
+
+    const moodLabels: Record<string, string> = {
+      "very-sad": "Very Sad 😭",
+      "sad": "Sad 😢",
+      "angry": "Angry 😠",
+      "anxious": "Anxious 😰",
+      "neutral": "Neutral 😐",
+      "calm": "Calm 😌",
+      "happy": "Happy 😊",
+      "grateful": "Grateful 🙏",
+      "very-happy": "Very Happy 😄",
+      "excited": "Excited 🤩",
+    };
+
+    // Get cutoff date for time range
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - timeRange);
+
+    // Process ALL entries with moods (not grouped by day)
+    const result: Array<{ 
+      entryIndex: number;
+      date: string; 
+      timestamp: number; 
+      moodScore: number; 
+      moodLabel: string;
+      fullDate: string;
+    }> = [];
+
+    filteredEntries.forEach((e: any) => {
+      if (e.mood && e.createdAt) {
+        const entryDate = new Date(e.createdAt);
+        
+        // Only include entries within the time range
+        if (entryDate >= cutoffDate) {
+          const score = moodScores[e.mood] ?? 4; // Default to neutral if unknown
+          
+          // Format date label based on time range
+          let dateLabel: string;
+          if (timeRange <= 7) {
+            // For short ranges, show time of day too
+            dateLabel = entryDate.toLocaleDateString("en-US", { 
+              weekday: "short", 
+              day: "numeric",
+              hour: "numeric",
+              minute: "2-digit"
+            });
+          } else if (timeRange <= 30) {
+            dateLabel = entryDate.toLocaleDateString("en-US", { 
+              month: "short", 
+              day: "numeric",
+              hour: "numeric",
+              minute: "2-digit"
+            });
+          } else {
+            dateLabel = entryDate.toLocaleDateString("en-US", { 
+              month: "short", 
+              day: "numeric"
+            });
+          }
+
+          result.push({
+            entryIndex: 0, // Will be set after sorting
+            date: dateLabel,
+            timestamp: entryDate.getTime(), // Use timestamp for proper sorting
+            moodScore: score,
+            moodLabel: moodLabels[e.mood] || "Neutral 😐",
+            fullDate: entryDate.toISOString(),
+          });
+        }
+      }
+    });
+
+    // Sort by timestamp (chronological order)
+    const sorted = result.sort((a, b) => a.timestamp - b.timestamp);
+    
+    // Cap entries to prevent off-screen overflow
+    // Reasonable cap: ~50 entries for good visibility, adjust based on time range
+    const maxEntries = timeRange <= 7 ? 100 : timeRange <= 30 ? 150 : 200;
+    
+    let finalData = sorted;
+    if (sorted.length > maxEntries) {
+      // If too many entries, sample evenly to show trend without overflow
+      const step = Math.ceil(sorted.length / maxEntries);
+      finalData = sorted.filter((_, index) => index % step === 0 || index === sorted.length - 1);
+    }
+    
+    // Assign sequential entry indices (1, 2, 3, ...) for X-axis positioning
+    return finalData.map((entry, index) => ({
+      ...entry,
+      entryIndex: index + 1, // Start from 1
+    }));
+  }, [filteredEntries, timeRange]);
 
   return (
     <DashboardLayout>
@@ -474,163 +607,25 @@ export default function StatsPage() {
         </div>
       </div>
 
-      {/* Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Combined Activity */}
-        {activityOverTime.length > 0 && (
-          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 md:p-8 shadow-xl border-2 border-blue-100 lg:col-span-2">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="bg-blue-500 p-3 rounded-xl">
-                <BarChartIcon className="w-6 h-6 md:w-8 md:h-8 text-white" />
-              </div>
-              <h2 className="text-xl md:text-2xl font-bold text-gray-900">Your Activity</h2>
-            </div>
-            <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={activityOverTime}>
-                <defs>
-                  <linearGradient id="colorEntries" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#3B82F6" stopOpacity={0.1}/>
-                  </linearGradient>
-                  <linearGradient id="colorHabits" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10B981" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#10B981" stopOpacity={0.1}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis 
-                  dataKey="date" 
-                  stroke="#6b7280" 
-                  style={{ fontSize: timeRange > 30 ? "10px" : "12px", fontWeight: "500" }}
-                  angle={timeRange > 30 ? -45 : 0}
-                  textAnchor={timeRange > 30 ? "end" : "middle"}
-                  height={timeRange > 30 ? 60 : 30}
-                />
-                <YAxis stroke="#6b7280" style={{ fontSize: "12px", fontWeight: "500" }} />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: "#fff", 
-                    border: "2px solid #3B82F6", 
-                    borderRadius: "12px",
-                    boxShadow: "0 4px 6px rgba(0,0,0,0.1)"
-                  }}
-                  formatter={(value: any) => [value, ""]}
-                />
-                <Area type="monotone" dataKey="entries" stroke="#3B82F6" strokeWidth={3} fill="url(#colorEntries)" name="Journal Entries" />
-                <Area type="monotone" dataKey="habits" stroke="#10B981" strokeWidth={3} fill="url(#colorHabits)" name="Habit Completions" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        )}
+      {/* Insights Panel */}
+      <InsightsPanel entries={filteredEntries} timeRange={timeRange} />
 
-        {/* Mood Pattern (Pie Chart) */}
-        <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-6 md:p-8 shadow-xl border-2 border-amber-100">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="bg-amber-500 p-3 rounded-xl">
-              <Smile className="w-6 h-6 md:w-8 md:h-8 text-white" />
-            </div>
-            <h2 className="text-xl md:text-2xl font-bold text-gray-900">Mood Pattern</h2>
-          </div>
-          {moodPatternData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={moodPatternData}
-                  dataKey="count"
-                  nameKey="moodEmoji"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={90}
-                  label={(entry: any) => `${entry.moodEmoji} ${entry.count}`}
-                  labelLine={false}
-                  strokeWidth={3}
-                  stroke="#fff"
-                >
-                  {moodPatternData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={MOOD_COLORS[entry.fullMood] || COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: "#fff", 
-                    border: "2px solid #F59E0B", 
-                    borderRadius: "12px",
-                    boxShadow: "0 4px 6px rgba(0,0,0,0.1)"
-                  }}
-                  formatter={(value: any, name: string, props: any) => {
-                    return [`${value} entries`, `${props.payload.moodEmoji} ${props.payload.fullMood}`];
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-[300px] flex items-center justify-center text-gray-400">
-              <p className="text-center">No mood data yet. Start writing entries to see your mood pattern!</p>
-            </div>
-          )}
-        </div>
+      {/* Charts Grid - Dynamically loaded to improve initial compile time */}
+      <ChartsSection
+        activityOverTime={activityOverTime}
+        moodPatternData={moodPatternData}
+        moodTimelineData={moodTimelineData}
+        timeDistribution={timeDistribution}
+        timeRange={timeRange}
+        MOOD_COLORS={MOOD_COLORS}
+        COLORS={COLORS}
+      />
 
-
-        {/* Writing Time Distribution */}
-        <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-2xl p-6 md:p-8 shadow-xl border-2 border-cyan-100">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="bg-cyan-500 p-3 rounded-xl">
-              <Clock className="w-6 h-6 md:w-8 md:h-8 text-white" />
-            </div>
-            <h2 className="text-xl md:text-2xl font-bold text-gray-900">When You Write</h2>
-          </div>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={timeDistribution}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis 
-                dataKey="period" 
-                stroke="#6b7280" 
-                style={{ fontSize: "12px", fontWeight: "500" }}
-                height={50}
-                tick={(props: any) => {
-                  const { x, y, payload } = props;
-                  const IconComponent = 
-                    payload.value === "Morning" ? Sunrise :
-                    payload.value === "Afternoon" ? Sun :
-                    payload.value === "Evening" ? Sunset :
-                    payload.value === "Night" ? Moon : null;
-                  
-                  return (
-                    <g transform={`translate(${x},${y})`}>
-                      {IconComponent && (
-                        <foreignObject x={-10} y={-6} width={20} height={20} className="overflow-visible">
-                          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', height: '100%' }}>
-                            <IconComponent size={16} style={{ color: '#6b7280' }} />
-                          </div>
-                        </foreignObject>
-                      )}
-                      <text x={0} y={0} dy={28} textAnchor="middle" fill="#6b7280" style={{ fontSize: "12px", fontWeight: "500" }}>
-                        {payload.value}
-                      </text>
-                    </g>
-                  );
-                }}
-              />
-              <YAxis 
-                stroke="#6b7280" 
-                style={{ fontSize: "12px", fontWeight: "500" }}
-                allowDecimals={false}
-                domain={[0, 'dataMax']}
-              />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: "#fff", 
-                  border: "2px solid #06B6D4", 
-                  borderRadius: "12px",
-                  boxShadow: "0 4px 6px rgba(0,0,0,0.1)"
-                }}
-                formatter={(value: any) => [`${value} entries`, ""]}
-              />
-              <Bar dataKey="count" fill="#06B6D4" radius={[12, 12, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+      {/* Word Cloud */}
+      <div className="mt-8">
+        <WordCloud entries={filteredEntries} />
       </div>
+
 
       {/* Additional Stats */}
       <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -1,4 +1,11 @@
-// Blacklist management - prevent certain words from appearing in prompts/topics
+/**
+ * Content Blacklist Manager
+ * 
+ * Maintains a persistent list of suppressed keywords to prevent them from 
+ * being utilized in NLP-driven writing prompts or topic suggestions.
+ * 
+ * @module src/lib/blacklist/manager.ts
+ */
 
 const BLACKLIST_KEY = "talkbook-blacklist";
 
@@ -12,10 +19,10 @@ export function getBlacklist(): string[] {
 // Add word to blacklist
 export function addToBlacklist(word: string): void {
   if (typeof window === "undefined") return;
-  
+
   const blacklist = getBlacklist();
   const normalized = word.trim().toLowerCase();
-  
+
   if (normalized && !blacklist.includes(normalized)) {
     blacklist.push(normalized);
     localStorage.setItem(BLACKLIST_KEY, JSON.stringify(blacklist));
@@ -25,11 +32,11 @@ export function addToBlacklist(word: string): void {
 // Remove word from blacklist
 export function removeFromBlacklist(word: string): void {
   if (typeof window === "undefined") return;
-  
+
   const blacklist = getBlacklist();
   const normalized = word.toLowerCase();
   const filtered = blacklist.filter(w => w !== normalized);
-  
+
   localStorage.setItem(BLACKLIST_KEY, JSON.stringify(filtered));
 }
 

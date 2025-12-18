@@ -1,84 +1,18 @@
-// database repository - crud operations for all tables
-// provides typed functions for creating, reading, updating, deleting data
-//
-// WHAT WE'RE CREATING:
-// - A centralized file with all database operations (save, load, update, delete)
-// - Functions for entries, entities, habits, habit logs, aggregates, settings, profiles
-// - All database code goes here (not scattered across components)
-// - Type-safe functions that use interfaces from schema.ts
-//
-// OWNERSHIP:
-// - Aadil creates file structure and entry/profile/settings functions first
-// - Michael adds entity functions (on separate branch, merge after Aadil)
-// - Zayn adds habit and aggregate functions (on separate branch, merge after Aadil)
-//
-// COORDINATION NOTES:
-// - Aadil creates file first - this is critical, others wait for this
-// - Michael creates branch: `git checkout -b michael/entity-functions`
-// - Zayn creates branch: `git checkout -b zayn/habit-functions`
-// - Coordinate merges with Aadil (he reviews shared file changes)
-//
-// CONTEXT FOR AI ASSISTANTS:
-// - This is the data access layer - all database operations go through here
-// - Functions are async because IndexedDB operations are asynchronous
-// - Always use try/catch for error handling
-// - Return typed data (use interfaces from schema.ts)
-// - This file is imported by pages and components to interact with the database
-//
-// DEVELOPMENT NOTES:
-// - Keep functions focused - one function per operation
-// - Use Dexie query methods: .add(), .get(), .where(), .update(), .delete()
-// - For complex queries, use .filter() after .where()
-// - Always validate input data before saving
-// - Consider transaction safety for multi-table operations
-//
-// COORDINATION NOTES:
-// - Aadil creates file structure and entry functions first
-// - Michael adds entity functions (use Git branch, merge after Aadil)
-// - Zayn adds habit and aggregate functions (use Git branch, merge after Aadil)
-// - Use Git branches to avoid conflicts, coordinate merges
-//
-// TODO: implement all crud functions
-//
-// PROFILE OPERATIONS (Aadil):
-// - getOrCreateDefaultProfile(): get existing profile or create default one
-//
-// ENTRY OPERATIONS (Aadil):
-// - createEntry(entry): create new journal entry
-// - getEntries(startDate?, endDate?): get entries, optionally filtered by date range
-// - getEntryById(id): get single entry by id
-// - updateEntry(id, updates): update existing entry
-// - deleteEntry(id): delete entry (soft delete by setting archived flag)
-// - getRecentEntries(limit): get most recent entries for home page
-//
-// ENTITY OPERATIONS (Michael - add after Aadil creates file):
-// - createEntity(entity): save extracted entity (person, topic, date, sentiment)
-// - getEntitiesForPrompts(profileId, daysBack): get entities from recent entries for prompt generation
-// - getEntitiesByType(type, profileId): get entities filtered by type (person, topic, etc.)
-//
-// HABIT OPERATIONS (Zayn - add after Aadil creates file):
-// - createHabit(habit): create new habit
-// - getActiveHabits(profileId): get all non-archived habits
-// - getHabitById(id): get single habit by id
-// - updateHabit(id, updates): update existing habit
-// - archiveHabit(id): soft delete habit (set archived flag)
-//
-// HABIT LOG OPERATIONS (Zayn - add after Aadil creates file):
-// - logHabit(habitId, date, value?): log habit completion (upsert - replaces if exists)
-// - getHabitLogs(habitId, startDate?, endDate?): get logs for date range
-// - calculateStreak(habitId): calculate current streak (consecutive days with logs)
-//
-// DAILY AGGREGATE OPERATIONS (Zayn - add after Aadil creates file):
-// - createOrUpdateDailyAggregate(date, data): store pre-computed daily stats
-// - getDailyAggregates(startDate, endDate): get aggregates for date range (for stats page)
-//
-// SETTINGS OPERATIONS (Aadil):
-// - getSettings(profileId): get user settings
-// - updateSettings(profileId, updates): update settings
-//
-// SYNTAX: export async function operationName(params): Promise<ReturnType> { ... }
-
-// TODO: Aadil implements entry and profile functions first, then Michael and Zayn add their functions on separate branches
+/**
+ * Database Repository
+ * 
+ * The central data access layer for the application. Provides type-safe functions 
+ * for all CRUD operations targeting IndexedDB.
+ * 
+ * Core areas:
+ * - Habits & Habit Logs: Creation, tracking, and streak calculations.
+ * - Global Stats: High-level analytics like global habit streaks.
+ * 
+ * Note: All database interactions should go through this repository to ensure 
+ * consistent error handling and type safety.
+ * 
+ * @module src/lib/db/repo.ts
+ */
 
 import { db } from './dexie';
 import { Habit, HabitLog } from './schema';
@@ -95,16 +29,16 @@ export async function createHabit(habit: Omit<Habit, 'id'>): Promise<Habit> {
       .equals(habit.profileId)
       .filter(h => !h.archived)
       .toArray();
-    
+
     const maxOrder = existingHabits.reduce((max, h) => {
       return Math.max(max, h.order ?? 0);
     }, -1);
-    
+
     const habitWithOrder = {
       ...habit,
       order: maxOrder + 1
     };
-    
+
     const id = await db.habits.add(habitWithOrder);
     return { ...habitWithOrder, id };
   } catch (error) {
@@ -120,7 +54,7 @@ export async function getActiveHabits(profileId: number): Promise<Habit[]> {
       .equals(profileId)
       .filter(habit => !habit.archived)
       .toArray();
-    
+
     // Sort by order, then by createdAt
     return habits.sort((a, b) => {
       const orderA = a.order ?? 999999;
@@ -292,7 +226,7 @@ export async function calculateStreak(habitId: number): Promise<number> {
 
     while (dateIndex < sortedDates.length) {
       const dateString = currentDate.toISOString().split('T')[0];
-      
+
       // Check if this date has a completed log
       if (sortedDates[dateIndex] === dateString) {
         streak++;
@@ -316,13 +250,13 @@ export async function calculateGlobalStreak(profileId: number): Promise<number> 
   try {
     // Get all active habits
     const habits = await getActiveHabits(profileId);
-    
+
     if (habits.length === 0) return 0;
 
     // Filter out one-time goals - they don't contribute to daily streaks
     // Global streak is for days where all recurring habits are completed
     const recurringHabits = habits.filter(habit => habit.frequency !== 'one-time');
-    
+
     // If no recurring habits, return 0 (can't have a daily streak without daily habits)
     if (recurringHabits.length === 0) return 0;
 
@@ -330,7 +264,7 @@ export async function calculateGlobalStreak(profileId: number): Promise<number> 
     today.setHours(0, 0, 0, 0);
     let currentDate = new Date(today);
     let streak = 0;
-    
+
     // Safety: limit to checking last 365 days to prevent infinite loops
     const maxDaysToCheck = 365;
     let daysChecked = 0;
@@ -339,24 +273,24 @@ export async function calculateGlobalStreak(profileId: number): Promise<number> 
     while (daysChecked < maxDaysToCheck) {
       const dateString = currentDate.toISOString().split('T')[0];
       daysChecked++;
-      
+
       // Check if all recurring habits have logs for this date and are completed
       let allCompleted = true;
-      
+
       for (const habit of recurringHabits) {
         if (!habit.id) continue;
-        
+
         // Check if completed on this specific date
         const log = await db.habitLogs
           .where('[habitId+date]')
           .equals([habit.id, dateString])
           .first();
-        
+
         if (!log) {
           allCompleted = false;
           break;
         }
-        
+
         // Check if habit is actually completed
         if (habit.type === 'boolean') {
           // Boolean habits: completed if value > 0
@@ -380,7 +314,7 @@ export async function calculateGlobalStreak(profileId: number): Promise<number> 
           }
         }
       }
-      
+
       if (allCompleted) {
         streak++;
         // Move to previous day

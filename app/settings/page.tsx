@@ -1,41 +1,56 @@
 "use client";
 
+/**
+ * Application Settings Page
+ * 
+ * Description: Manages user preferences, security configurations, and local data persistence. 
+ * Includes profile customization, password management, and data maintenance tools.
+ * 
+ * Flow & Connections:
+ * - Security: Interfaces with `localStorage` for password and lock states.
+ * - Personalization: Manages `userName`, `profilePicture`, and `appBackgroundColor` preferences.
+ * - Maintenance: Provides utilities to `rebuildAllMetadata` and load demo datasets.
+ * - Data Privacy: Offers a "Reset All Data" function for local storage and IndexedDB.
+ * 
+ * @module app/settings/page.tsx
+ */
+
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import DashboardLayout from "../components/DashboardLayout";
-import { getBlacklist, addToBlacklist, removeFromBlacklist } from "../../src/lib/blacklist/manager";
-import { rebuildAllMetadata } from "../../src/lib/cache/rebuildCache";
-import { resetXP } from "../../src/lib/gamification/xp";
-import { BACKGROUND_COLORS, type BackgroundColorKey } from "../components/BackgroundColorProvider";
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import { getBlacklist, addToBlacklist, removeFromBlacklist } from "@/lib/blacklist/manager";
+import { rebuildAllMetadata } from "@/lib/cache/rebuildCache";
+import { resetXP } from "@/lib/gamification/xp";
+import { BACKGROUND_COLORS, type BackgroundColorKey } from "@/components/providers/BackgroundColorProvider";
 import { User, RefreshCw, AlertTriangle, CheckCircle2, X } from "lucide-react";
 
 export default function SettingsPage() {
   const router = useRouter();
-  
+
   // Password settings
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [hasPassword, setHasPassword] = useState(false);
   const [removePasswordInput, setRemovePasswordInput] = useState("");
   const [removePasswordError, setRemovePasswordError] = useState("");
-  
+
   // Profile settings
   const [userName, setUserName] = useState("");
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
-  
+
   // UI states
   const [passwordError, setPasswordError] = useState("");
   const [passwordSuccess, setPasswordSuccess] = useState("");
   const [profileSuccess, setProfileSuccess] = useState("");
-  
+
   // Blacklist settings
   const [blacklist, setBlacklist] = useState<string[]>([]);
   const [blacklistInput, setBlacklistInput] = useState("");
   const [blacklistSuccess, setBlacklistSuccess] = useState("");
-  
+
   // Reset confirmation
   const [showResetConfirm, setShowResetConfirm] = useState(false);
-  
+
   // Rebuild cache state
   const [isRebuilding, setIsRebuilding] = useState(false);
   const [rebuildMessage, setRebuildMessage] = useState("");
@@ -54,12 +69,12 @@ export default function SettingsPage() {
     const savedName = localStorage.getItem("userName");
     const savedPicture = localStorage.getItem("userProfilePicture");
     const savedBackgroundColor = localStorage.getItem("appBackgroundColor") as BackgroundColorKey | null;
-    
+
     setHasPassword(!!savedPassword);
     setUserName(savedName || "");
     setProfilePicture(savedPicture);
     setBlacklist(getBlacklist());
-    
+
     // Load background color preference
     if (savedBackgroundColor && savedBackgroundColor in BACKGROUND_COLORS) {
       setBackgroundColor(savedBackgroundColor);
@@ -89,7 +104,7 @@ export default function SettingsPage() {
     // Save password and immediately lock the app
     localStorage.setItem("appPassword", password);
     localStorage.setItem("appLocked", "true");
-    
+
     // Reload to show lock screen
     window.location.reload();
   };
@@ -97,21 +112,21 @@ export default function SettingsPage() {
   const handleRemovePassword = () => {
     setRemovePasswordError("");
     setPasswordSuccess("");
-    
+
     // Verify the password before removing
     const savedPassword = localStorage.getItem("appPassword");
-    
+
     if (!removePasswordInput.trim()) {
       setRemovePasswordError("Please enter your current password");
       return;
     }
-    
+
     if (removePasswordInput !== savedPassword) {
       setRemovePasswordError("Incorrect password");
       setRemovePasswordInput("");
       return;
     }
-    
+
     // Password is correct, remove it
     localStorage.removeItem("appPassword");
     localStorage.removeItem("appLocked");
@@ -122,7 +137,7 @@ export default function SettingsPage() {
 
   const handleSaveProfile = () => {
     setProfileSuccess("");
-    
+
     // Save name (max 20 characters to fit sidebar)
     const trimmedName = userName.trim().substring(0, 20);
     if (trimmedName) {
@@ -132,7 +147,7 @@ export default function SettingsPage() {
     }
 
     setProfileSuccess("Profile updated successfully!");
-    
+
     // Force sidebar to re-render
     window.dispatchEvent(new Event('storage'));
   };
@@ -177,15 +192,15 @@ export default function SettingsPage() {
     setBackgroundColor(colorKey);
     localStorage.setItem("appBackgroundColor", colorKey);
     setBackgroundColorSuccess("Background color updated!");
-    
+
     // Trigger background color update
     window.dispatchEvent(new Event('background-color-changed'));
-    
+
     // Apply immediately
     const selectedColor = BACKGROUND_COLORS[colorKey];
     document.documentElement.style.setProperty("--background", selectedColor.value);
     document.body.style.backgroundColor = selectedColor.value;
-    
+
     setTimeout(() => setBackgroundColorSuccess(""), 3000);
   };
 
@@ -215,26 +230,26 @@ export default function SettingsPage() {
       localStorage.removeItem("journalEntries"); // All entries
       localStorage.removeItem("talkbook-journals"); // All journals
       localStorage.removeItem("talkbook-active-journal"); // Active journal
-      
+
       // === CLEAR ALL NLP/EXTRACTION DATA ===
       localStorage.removeItem("talkbook-used-prompts"); // Used prompts
       localStorage.removeItem("talkbook-blacklist"); // Blacklist
-      
+
       // === CLEAR ALL XP/GAMIFICATION DATA ===
       resetXP(); // XP, level, last entry date
-      
+
       // === CLEAR ALL HABIT DATA (IndexedDB) ===
-      const { db } = await import("../../src/lib/db/dexie");
+      const { db } = await import("@/lib/db/dexie");
       await db.habitLogs.clear();
       await db.habits.clear();
       console.log("✅ All habit data cleared from IndexedDB");
-      
+
       // === CLEAR IN-MEMORY CACHE ===
-      const { saveEntries: saveCachedEntries, invalidateCache } = await import("../../src/lib/cache/entriesCache");
+      const { saveEntries: saveCachedEntries, invalidateCache } = await import("@/lib/cache/entriesCache");
       saveCachedEntries([]); // Clear all entries in cache
       invalidateCache(); // Force cache reload
       console.log("✅ Entries cache cleared");
-      
+
       // === REINITIALIZE WITH DEFAULTS ===
       // Create default journal
       localStorage.setItem("talkbook-journals", JSON.stringify([{
@@ -244,16 +259,16 @@ export default function SettingsPage() {
         updatedAt: new Date().toISOString(),
       }]));
       localStorage.setItem("talkbook-active-journal", "journal-1");
-      
+
       // Reset UI state
       setBlacklist([]);
       setShowResetConfirm(false);
-      
+
       // Dispatch event for XP bar to update
       window.dispatchEvent(new Event("xp-updated"));
-      
+
       alert("🗑️ All data deleted successfully!\n\n✅ Entries, journals, habits, XP, cache - all cleared.\n✓ Your profile (name, picture) and password were preserved.");
-      
+
       // Redirect to homepage (fresh start)
       router.push("/");
     } catch (error) {
@@ -265,11 +280,11 @@ export default function SettingsPage() {
   const handleRebuildCache = async () => {
     setIsRebuilding(true);
     setRebuildMessage("Rebuilding cache... This may take a moment.");
-    
+
     try {
       const result = await rebuildAllMetadata();
       setRebuildMessage(`✅ Successfully rebuilt cache! Updated ${result.updated} entries.`);
-      
+
       // Reload page after 2 seconds
       setTimeout(() => {
         window.location.reload();
@@ -285,12 +300,12 @@ export default function SettingsPage() {
   const handleLoadDemoData = async () => {
     setIsLoadingDemo(true);
     setDemoMessage("Loading demo data... This may take a moment.");
-    
+
     try {
       // Import required modules
-      const { db } = await import("../../src/lib/db/dexie");
-      const { saveEntries, invalidateCache } = await import("../../src/lib/cache/entriesCache");
-      
+      const { db } = await import("@/lib/db/dexie");
+      const { saveEntries, invalidateCache } = await import("@/lib/cache/entriesCache");
+
       // ============================================================================
       // JOURNALS
       // ============================================================================
@@ -300,7 +315,7 @@ export default function SettingsPage() {
       ];
       localStorage.setItem("talkbook-journals", JSON.stringify(journals));
       localStorage.setItem("talkbook-active-journal", "journal-1");
-      
+
       // ============================================================================
       // JOURNAL ENTRIES (26 entries spanning Oct 23 - Nov 22, 2025)
       // ============================================================================
@@ -337,10 +352,10 @@ export default function SettingsPage() {
         { id: "entry-1727197200000", title: "Morning Reflection - Oct 24", content: "<p>Started the day with a clear mind and positive energy. Had a great morning routine and feeling ready to tackle the day ahead.</p><p>Morning routines really set the tone for the whole day. Grateful for this practice.</p>", mood: "happy", tags: ["health", "personal"], cardColor: "default", journalId: "journal-1", createdAt: "2025-10-24T08:30:00.000Z", updatedAt: "2025-10-24T08:30:00.000Z", draft: false, promptIds: [], extractedPeople: [], extractedTopics: [], extractedDates: [] },
         { id: "entry-1727110800000", title: "Morning Reflection - Oct 23", content: "<p>Starting fresh today. New day, new opportunities. Feeling optimistic about what's ahead.</p><p>Set some intentions for the week and feeling ready to make progress on my goals.</p>", mood: "excited", tags: ["goals", "personal"], cardColor: "blue", journalId: "journal-1", createdAt: "2025-10-23T09:00:00.000Z", updatedAt: "2025-10-23T09:00:00.000Z", draft: false, promptIds: [], extractedPeople: [], extractedTopics: [], extractedDates: [] }
       ];
-      
+
       saveEntries(entries);
       localStorage.setItem("entriesCacheVersion", "1");
-      
+
       // ============================================================================
       // XP & LEVEL
       // ============================================================================
@@ -348,19 +363,19 @@ export default function SettingsPage() {
       localStorage.setItem("talkbook-level", "8");
       localStorage.setItem("talkbook-last-entry-date", "2025-11-22");
       localStorage.setItem("talkbook-last-all-habits-bonus-date", "2025-11-20");
-      
+
       // ============================================================================
       // USED PROMPTS & BLACKLIST
       // ============================================================================
       localStorage.setItem("talkbook-used-prompts", JSON.stringify(["prompt-001", "prompt-002", "prompt-003"]));
       localStorage.setItem("talkbook-blacklist", JSON.stringify(["example", "test"]));
-      
+
       // ============================================================================
       // HABITS & HABIT LOGS
       // ============================================================================
       await db.habits.clear();
       await db.habitLogs.clear();
-      
+
       const habits = [
         { profileId: 1, name: "Morning Meditation", type: "boolean" as const, color: "#3B82F6", frequency: "daily" as const, archived: false, locked: false, createdAt: "2025-10-15T08:00:00.000Z", order: 0 },
         { profileId: 1, name: "Exercise", type: "boolean" as const, color: "#EF4444", frequency: "daily" as const, archived: false, locked: false, createdAt: "2025-10-15T08:00:00.000Z", order: 1 },
@@ -369,28 +384,28 @@ export default function SettingsPage() {
         { profileId: 1, name: "Journal Entry", type: "boolean" as const, color: "#F59E0B", frequency: "daily" as const, archived: false, locked: false, createdAt: "2025-10-18T11:00:00.000Z", order: 4 },
         { profileId: 1, name: "Gratitude Practice", type: "boolean" as const, color: "#EC4899", frequency: "daily" as const, archived: false, locked: false, createdAt: "2025-10-19T12:00:00.000Z", order: 5 }
       ];
-      
+
       const habitIds = [];
       for (const habit of habits) {
         const id = await db.habits.add(habit);
         habitIds.push(id);
       }
-      
+
       // Generate habit logs for the month (Oct 23 - Nov 22, 2025)
       const startDate = new Date("2025-10-23");
       const logs = [];
-      
+
       for (let i = 0; i <= 30; i++) {
         const currentDate = new Date(startDate);
         currentDate.setDate(startDate.getDate() + i);
         const dateString = currentDate.toISOString().split('T')[0];
-        
+
         for (let j = 0; j < habitIds.length; j++) {
           const habitId = habitIds[j];
           const habit = habits[j];
           const completionRate = habit.name === "Morning Meditation" ? 0.25 : habit.name === "Exercise" ? 0.20 : habit.name === "Journal Entry" ? 0.10 : 0.15;
           const shouldLog = Math.random() > completionRate;
-          
+
           if (shouldLog) {
             let value = 1;
             if (habit.type === "numeric") {
@@ -398,25 +413,25 @@ export default function SettingsPage() {
               const maxValue = Math.floor(habit.target! * 1.2);
               value = Math.floor(Math.random() * (maxValue - minValue + 1)) + minValue;
             }
-            
+
             const hour = Math.floor(Math.random() * 12) + 8;
             const minute = Math.floor(Math.random() * 60);
             const completedAt = new Date(currentDate);
             completedAt.setHours(hour, minute, 0, 0);
-            
+
             logs.push({ habitId, date: dateString, value, completedAt: completedAt.toISOString() });
           }
         }
       }
-      
+
       await db.habitLogs.bulkAdd(logs);
-      
+
       // Invalidate cache and dispatch events
       invalidateCache();
       window.dispatchEvent(new Event("xp-updated"));
-      
+
       setDemoMessage(`Demo data loaded successfully! ${entries.length} entries, ${habits.length} habits, ${logs.length} habit logs.`);
-      
+
       // Reload page after 2 seconds
       setTimeout(() => {
         window.location.reload();
@@ -436,7 +451,7 @@ export default function SettingsPage() {
         {/* Profile Settings */}
         <div className="border border-gray-200 rounded-lg p-6 mb-6" style={{ backgroundColor: "var(--background, #ffffff)" }}>
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Profile Settings</h2>
-          
+
           {/* Profile Picture */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -445,9 +460,9 @@ export default function SettingsPage() {
             <div className="flex items-center gap-4">
               <div className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
                 {profilePicture ? (
-                  <img 
-                    src={profilePicture} 
-                    alt="Profile" 
+                  <img
+                    src={profilePicture}
+                    alt="Profile"
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -513,7 +528,7 @@ export default function SettingsPage() {
         {/* Appearance Settings - Background Color */}
         <div className="border border-gray-200 rounded-lg p-6 mb-6" style={{ backgroundColor: "var(--background, #ffffff)" }}>
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Appearance Settings</h2>
-          
+
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-3">
               Background Color
@@ -521,7 +536,7 @@ export default function SettingsPage() {
             <p className="text-xs text-gray-500 mb-4">
               Choose a background color for the entire application. All colors are designed to keep text readable.
             </p>
-            
+
             <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
               {Object.entries(BACKGROUND_COLORS).map(([key, color]) => (
                 <button
@@ -529,15 +544,15 @@ export default function SettingsPage() {
                   onClick={() => handleBackgroundColorChange(key as BackgroundColorKey)}
                   className={`
                     relative p-4 rounded-lg border-2 transition-all
-                    ${backgroundColor === key 
-                      ? "border-blue-500 ring-2 ring-blue-200" 
+                    ${backgroundColor === key
+                      ? "border-blue-500 ring-2 ring-blue-200"
                       : "border-gray-200 hover:border-gray-300"
                     }
                   `}
                   style={{ backgroundColor: color.value }}
                   title={color.name}
                 >
-                  <div 
+                  <div
                     className="w-full h-16 rounded mb-2"
                     style={{ backgroundColor: color.value }}
                   />
@@ -565,7 +580,7 @@ export default function SettingsPage() {
         {/* Password Settings */}
         <div className="border border-gray-200 rounded-lg p-6" style={{ backgroundColor: "var(--background, #ffffff)" }}>
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Password Protection</h2>
-          
+
           {hasPassword ? (
             <div>
               <p className="text-green-600 mb-4 flex items-center gap-1">
@@ -575,7 +590,7 @@ export default function SettingsPage() {
               <p className="text-gray-600 mb-4">
                 Your app is password protected. Use the Lock button in the sidebar to lock the app.
               </p>
-              
+
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Enter Current Password to Remove
@@ -609,7 +624,7 @@ export default function SettingsPage() {
               <p className="text-gray-600 mb-4">
                 Set a password to protect your journal from unauthorized access.
               </p>
-              
+
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   New Password
@@ -748,15 +763,14 @@ export default function SettingsPage() {
             <AlertTriangle className="w-3 h-3" />
             This will replace your existing data with demo data
           </p>
-          
+
           <button
             onClick={handleLoadDemoData}
             disabled={isLoadingDemo}
-            className={`px-6 py-2 rounded-lg transition-colors font-semibold ${
-              isLoadingDemo
-                ? "bg-gray-400 text-gray-700 cursor-not-allowed"
-                : "bg-green-600 text-white hover:bg-green-700"
-            }`}
+            className={`px-6 py-2 rounded-lg transition-colors font-semibold ${isLoadingDemo
+              ? "bg-gray-400 text-gray-700 cursor-not-allowed"
+              : "bg-green-600 text-white hover:bg-green-700"
+              }`}
           >
             {isLoadingDemo ? "Loading Demo Data..." : "Load Demo Data"}
           </button>
@@ -775,22 +789,21 @@ export default function SettingsPage() {
             Rebuild Metadata Cache
           </h2>
           <p className="text-sm text-blue-700 mb-4">
-            <strong>Safe operation</strong> - Only refreshes extracted metadata (names, topics) from your existing entries. 
+            <strong>Safe operation</strong> - Only refreshes extracted metadata (names, topics) from your existing entries.
             Does NOT delete any data. Use this if you see incorrect words in prompts or after updates.
           </p>
           <p className="text-xs text-blue-600 mb-4 italic flex items-center gap-1">
             <CheckCircle2 className="w-3 h-3" />
             Keeps all entries, journals, habits, and XP intact
           </p>
-          
+
           <button
             onClick={handleRebuildCache}
             disabled={isRebuilding}
-            className={`px-6 py-2 rounded-lg transition-colors font-semibold ${
-              isRebuilding
-                ? "bg-gray-400 text-gray-700 cursor-not-allowed"
-                : "bg-blue-600 text-white hover:bg-blue-700"
-            }`}
+            className={`px-6 py-2 rounded-lg transition-colors font-semibold ${isRebuilding
+              ? "bg-gray-400 text-gray-700 cursor-not-allowed"
+              : "bg-blue-600 text-white hover:bg-blue-700"
+              }`}
           >
             {isRebuilding ? "Rebuilding..." : "Rebuild Cache"}
           </button>
@@ -827,7 +840,7 @@ export default function SettingsPage() {
             <CheckCircle2 className="w-3 h-3" />
             Profile settings (name, picture) and password will be preserved
           </p>
-          
+
           {!showResetConfirm ? (
             <button
               onClick={() => setShowResetConfirm(true)}

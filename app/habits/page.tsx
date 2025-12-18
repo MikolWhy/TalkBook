@@ -1,81 +1,31 @@
-// habits/page.tsx
-// habits list page - displays all active habits
-// shows habits with progress, streaks, and logging interface
-//
-// WHAT WE'RE CREATING:
-// - A page that lists all active (non-archived) habits
-// - Each habit shows: name, target, current progress, streak, logging interface
-// - Users can log habits directly from this page
-// - Supports both boolean habits (done/not done) and numeric habits (target value)
-//
-// OWNERSHIP:
-// - Zayn implements this completely
-//
-// COORDINATION NOTES:
-// - Uses repo.ts habit functions (Zayn adds these)
-// - Uses HabitCard component (Zayn creates)
-// - No conflicts - Zayn owns this entirely
-//
-// CONTEXT FOR AI ASSISTANTS:
-// - This page shows all active (non-archived) habits
-// - Each habit displays: name, target, current progress, streak, logging interface
-// - Users can log habits directly from this page
-// - Supports both boolean habits (done/not done) and numeric habits (target value)
-//
-// DEVELOPMENT NOTES:
-// - Fetch active habits from database
-// - Display habits using HabitCard component
-// - Handle habit logging (update database, recalculate streak)
-// - Show loading state during operations
-// - Empty state when no habits exist
-// - Link to create new habit
-//
-// TODO: implement habits list page
-//
-// FUNCTIONALITY:
-// - Load active habits from database
-// - Display habits with HabitCard component
-// - Handle habit logging (bool and numeric)
-// - Recalculate streak after logging
-// - Archive habit option
-// - Link to edit habit
-// - Empty state message
-//
-// UI:
-// - List of habit cards
-// - Each card shows progress, streak, logging interface
-// - Create new habit button/link
-// - Responsive layout
-//
-// SYNTAX:
-// "use client";
-// import { useEffect, useState } from "react";
-// import Link from "next/link";
-// import { getActiveHabits, logHabit, calculateStreak, getHabitLogs } from "@/lib/db/repo";
-// import HabitCard from "@/components/HabitCard";
-//
-// export default function HabitsPage() {
-//   // implementation
-// }
-
-
-// TODO: implement habits list page
-
-// TEMPORARY: Basic page structure to prevent navigation errors
 "use client";
+
+/**
+ * Habits Dashboard
+ * 
+ * Center for tracking daily progress, viewing streaks, and logging habit completions. 
+ * Supports both simple checkboxes and numeric targets.
+ * 
+ * Architecture:
+ * - Integrated with the gamification engine for XP rewards.
+ * - Uses `HabitCard` components for individual tracking units.
+ * - Persists state to the IndexedDB repository for reliable offline storage.
+ * 
+ * @module app/habits/page.tsx
+ */
 
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import DashboardLayout from "../components/DashboardLayout";
-import HabitCard from "@/components/HabitCard";
-import XPNotification from "../components/XPNotification";
-import { awardHabitXP, calculateGlobalHabitStreak, awardAllHabitsCompletedBonus } from "../../src/lib/gamification/xp";
-import { updateHabitPR } from "../../src/lib/gamification/pr";
-import { 
-  getActiveHabits, 
-  logHabit, 
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import HabitCard from "@/components/features/HabitCard";
+import XPNotification from "@/components/gamification/XPNotification";
+import { awardHabitXP, calculateGlobalHabitStreak, awardAllHabitsCompletedBonus } from "@/lib/gamification/xp";
+import { updateHabitPR } from "@/lib/gamification/pr";
+import {
+  getActiveHabits,
+  logHabit,
   calculateStreak,
   getHabitLogs,
   updateHabitOrder,
@@ -96,7 +46,7 @@ export default function HabitsPage() {
   const [draggedHabitId, setDraggedHabitId] = useState<number | null>(null);
   const [shouldResetPosition, setShouldResetPosition] = useState<Record<number, boolean>>({});
   const containerRef = useRef<HTMLDivElement>(null);
-  
+
   // XP Notification State
   const [showXPNotification, setShowXPNotification] = useState(false);
   const [xpEarned, setXpEarned] = useState(0);
@@ -147,23 +97,23 @@ export default function HabitsPage() {
       // Find the habit being logged
       const habit = habits.find(h => h.id === habitId);
       if (!habit) return;
-      
+
       // Check if habit was/is completed based on type and target
       const previousValue = todayLogs[habitId]?.value || 0;
-      const wasCompleted = habit.type === 'numeric' 
+      const wasCompleted = habit.type === 'numeric'
         ? (habit.target ? previousValue >= habit.target : previousValue > 0)
         : previousValue > 0;
       const isNowCompleted = habit.type === 'numeric'
         ? (habit.target ? value >= habit.target : value > 0)
         : value > 0;
-      
+
       // Log the habit
       if (value === 0) {
         await logHabit(habitId, today, 0);
       } else {
         await logHabit(habitId, today, value);
       }
-      
+
       // Award XP only if habit is being completed (not un-logged) AND XP hasn't been awarded for this habit today
       if (isNowCompleted && !wasCompleted) {
         // Update PR for numeric habits when completed
@@ -177,15 +127,15 @@ export default function HabitsPage() {
         // Check if XP was already awarded for this habit today
         const xpAwardedKey = `talkbook-habit-xp-${habitId}-${today}`;
         const xpAlreadyAwarded = localStorage.getItem(xpAwardedKey) === 'true';
-        
+
         if (!xpAlreadyAwarded) {
           // Count how many habits are completed today (before reload, so add 1 for this one)
           const completedBeforeThis = Object.values(todayLogs).filter((log: any) => log?.value > 0).length;
           const completedToday = completedBeforeThis + 1;
-          
+
           // Calculate global habit streak
           const habitStreak = await calculateGlobalHabitStreak();
-          
+
           // Award regular habit XP
           const xpResult = awardHabitXP(
             habit.type,
@@ -193,32 +143,32 @@ export default function HabitsPage() {
             habitStreak,
             completedToday
           );
-          
+
           console.log("🎉 Habit XP Awarded:", xpResult);
-          
+
           // Mark XP as awarded for this habit today
           localStorage.setItem(xpAwardedKey, 'true');
-          
+
           let totalXP = xpResult.xp;
           let leveledUp = xpResult.leveledUp;
           let oldLevel = xpResult.oldLevel;
           let newLevel = xpResult.newLevel;
-          
+
           // Show XP notification for regular habit XP first
           setXpEarned(totalXP);
           setLeveledUp(leveledUp);
           setOldLevel(oldLevel);
           setNewLevel(newLevel);
           setShowXPNotification(true);
-          
+
           // Dispatch event for XP bar to update
           window.dispatchEvent(new Event("xp-updated"));
         }
       }
-      
+
       // Reload habits to update streaks and logs
       await loadHabits();
-      
+
       // After reloading, check if all habits are completed and award bonus XP (once per day)
       if (isNowCompleted && !wasCompleted) {
         // Get fresh data after reload
@@ -232,34 +182,34 @@ export default function HabitsPage() {
             }
           }
         }
-        
+
         // Count how many habits are completed today
         const completedCount = allHabits.filter(habit => {
           const log = updatedLogs[habit.id!];
           if (!log) return false;
-          
+
           if (habit.type === "boolean") {
             return log.value > 0;
           } else {
             return habit.target ? log.value >= habit.target : log.value > 0;
           }
         }).length;
-        
+
         // Check if all habits are completed and award bonus (once per day)
         const allCompleted = completedCount === allHabits.length && allHabits.length > 0;
-        
+
         if (allCompleted) {
           const bonusResult = awardAllHabitsCompletedBonus();
           if (bonusResult.awarded) {
             console.log("🎉 All Habits Completed Bonus:", bonusResult.xp, "XP");
-            
+
             // Show bonus XP notification
             setXpEarned(bonusResult.xp);
             setLeveledUp(bonusResult.leveledUp);
             setOldLevel(bonusResult.oldLevel);
             setNewLevel(bonusResult.newLevel);
             setShowXPNotification(true);
-            
+
             // Dispatch event for XP bar to update
             window.dispatchEvent(new Event("xp-updated"));
           }
@@ -297,7 +247,7 @@ export default function HabitsPage() {
 
   const handleDeleteAll = async () => {
     const unlockedHabits = habits.filter(h => !h.locked);
-    
+
     if (unlockedHabits.length === 0) {
       alert("All habits are locked. Unlock habits to delete them.");
       return;
@@ -331,17 +281,17 @@ export default function HabitsPage() {
 
   const handleDragEnd = async () => {
     if (draggedHabitId === null) return;
-    
+
     // Mark this habit as needing position reset
     setShouldResetPosition(prev => ({ ...prev, [draggedHabitId]: true }));
-    
+
     // Update order in database
     const habitIds = habits.map(h => h.id!).filter(id => id !== undefined);
     await updateHabitOrder(habitIds);
-    
+
     setDraggedIndex(null);
     setDraggedHabitId(null);
-    
+
     // Clear reset flag after animation
     setTimeout(() => {
       setShouldResetPosition(prev => {
@@ -357,7 +307,7 @@ export default function HabitsPage() {
 
   const handleDrag = (event: any, info: any) => {
     if (draggedIndex === null || draggedHabitId === null) return;
-    
+
     const draggedHabit = habits[draggedIndex];
     if (!draggedHabit) return;
 
@@ -410,7 +360,7 @@ export default function HabitsPage() {
 
     // Find which card we're hovering over using elementFromPoint
     const elementBelow = document.elementFromPoint(clientX, clientY);
-    
+
     // Restore pointer events
     if (draggedElement) {
       draggedElement.style.pointerEvents = originalPointerEvents || '';
@@ -437,7 +387,7 @@ export default function HabitsPage() {
       Math.pow(clientX - cardCenterX, 2) + Math.pow(clientY - cardCenterY, 2)
     );
     const maxDistance = Math.min(cardRect.width, cardRect.height) * 0.4; // 40% of card size - more strict
-    
+
     if (distanceFromCenter > maxDistance) return; // Too far from center, don't swap
 
     // Update order
@@ -452,7 +402,7 @@ export default function HabitsPage() {
   const availableColors = Array.from(new Set(habits.map(h => h.color)));
 
   // Filter and sort habits: in-progress at top, done at bottom
-  let filteredHabits = selectedColor 
+  let filteredHabits = selectedColor
     ? habits.filter(h => h.color === selectedColor)
     : habits;
 
@@ -460,7 +410,7 @@ export default function HabitsPage() {
   filteredHabits = [...filteredHabits].sort((a, b) => {
     const aLog = todayLogs[a.id!];
     const bLog = todayLogs[b.id!];
-    
+
     // Check if habits are completed
     const aCompleted = a.type === 'numeric'
       ? (a.target ? (aLog?.value || 0) >= a.target : (aLog?.value || 0) > 0)
@@ -468,12 +418,12 @@ export default function HabitsPage() {
     const bCompleted = b.type === 'numeric'
       ? (b.target ? (bLog?.value || 0) >= b.target : (bLog?.value || 0) > 0)
       : (bLog?.value || 0) > 0;
-    
+
     // In-progress (not completed) comes first
     if (aCompleted !== bCompleted) {
       return aCompleted ? 1 : -1;
     }
-    
+
     // If both have same completion status, maintain original order
     return 0;
   });
@@ -532,11 +482,10 @@ export default function HabitsPage() {
           <span className="text-sm font-medium text-gray-700">Filter by color:</span>
           <button
             onClick={() => setSelectedColor(null)}
-            className={`px-3 py-1 rounded-md text-sm transition-colors ${
-              selectedColor === null
-                ? 'bg-gray-900 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
+            className={`px-3 py-1 rounded-md text-sm transition-colors ${selectedColor === null
+              ? 'bg-gray-900 text-white'
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
           >
             All
           </button>
@@ -544,11 +493,10 @@ export default function HabitsPage() {
             <button
               key={color}
               onClick={() => setSelectedColor(selectedColor === color ? null : color)}
-              className={`w-8 h-8 rounded-full transition-all ${
-                selectedColor === color
-                  ? 'ring-2 ring-offset-2 ring-gray-400 scale-110'
-                  : 'hover:scale-105'
-              }`}
+              className={`w-8 h-8 rounded-full transition-all ${selectedColor === color
+                ? 'ring-2 ring-offset-2 ring-gray-400 scale-110'
+                : 'hover:scale-105'
+                }`}
               style={{ backgroundColor: color }}
               title={color}
             />
@@ -581,7 +529,7 @@ export default function HabitsPage() {
         </div>
       ) : (
         /* Habits List - 2 columns with drag and drop */
-        <motion.div 
+        <motion.div
           ref={containerRef}
           className="habits-grid grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch"
           layout
@@ -590,15 +538,15 @@ export default function HabitsPage() {
             {filteredHabits.map((habit, index) => {
               const originalIndex = habits.findIndex(h => h.id === habit.id);
               const isDragging = draggedHabitId === habit.id;
-              
+
               return (
                 <motion.div
                   key={habit.id}
                   data-habit-id={habit.id}
                   layout
                   initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ 
-                    opacity: isDragging ? 0.6 : 1, 
+                  animate={{
+                    opacity: isDragging ? 0.6 : 1,
                     scale: 1,
                     zIndex: isDragging ? 50 : 1,
                     x: shouldResetPosition[habit.id!] ? 0 : undefined,
@@ -630,7 +578,7 @@ export default function HabitsPage() {
                   onDragEnd={async (event, info) => {
                     await handleDragEnd();
                   }}
-                  whileDrag={{ 
+                  whileDrag={{
                     scale: 1.03,
                     boxShadow: "0 8px 20px rgba(0,0,0,0.15)",
                     zIndex: 100,
@@ -660,7 +608,7 @@ export default function HabitsPage() {
         const completedCount = habits.filter(habit => {
           const log = todayLogs[habit.id!];
           if (!log) return false;
-          
+
           if (habit.type === "boolean") {
             return log.value > 0;
           } else {

@@ -1,5 +1,11 @@
-// dexie database instance for indexeddb connection
-// configures schema, versions, and indexes for fast queries
+/**
+ * Dexie Database Configuration
+ * 
+ * Initializes the IndexedDB instance and defines the store schema/indexes.
+ * Versions are managed here to handle database migrations.
+ * 
+ * @module src/lib/db/dexie.ts
+ */
 
 import Dexie, { Table } from 'dexie';
 import { Habit, HabitLog } from './schema';

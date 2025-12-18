@@ -1,4 +1,11 @@
-// Journal management - organize entries into separate journals (like folders)
+/**
+ * Journal Organization Manager
+ * 
+ * Handles grouping journal entries into discrete "Journal" containers. 
+ * Supports creation, renaming, deletion (with cascading cleanup), and active state management.
+ * 
+ * @module src/lib/journals/manager.ts
+ */
 
 export interface Journal {
   id: string;
@@ -46,22 +53,22 @@ export function setActiveJournal(journalId: string): void {
 // Create new journal
 export function createJournal(name: string): Journal {
   const journals = getJournals();
-  
+
   // Limit to 15 journals
   if (journals.length >= 15) {
     throw new Error("Maximum of 15 journals allowed");
   }
-  
+
   const newJournal: Journal = {
     id: `journal-${Date.now()}`,
     name: name.trim(),
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
-  
+
   journals.push(newJournal);
   localStorage.setItem(JOURNALS_KEY, JSON.stringify(journals));
-  
+
   return newJournal;
 }
 
@@ -69,7 +76,7 @@ export function createJournal(name: string): Journal {
 export function renameJournal(journalId: string, newName: string): void {
   const journals = getJournals();
   const journal = journals.find(j => j.id === journalId);
-  
+
   if (journal) {
     journal.name = newName.trim();
     journal.updatedAt = new Date().toISOString();
@@ -80,24 +87,24 @@ export function renameJournal(journalId: string, newName: string): void {
 // Delete journal
 export function deleteJournal(journalId: string): void {
   const journals = getJournals();
-  
+
   // Don't allow deleting the last journal
   if (journals.length <= 1) {
     throw new Error("Cannot delete the last journal");
   }
-  
+
   const filtered = journals.filter(j => j.id !== journalId);
   localStorage.setItem(JOURNALS_KEY, JSON.stringify(filtered));
-  
+
   // If deleting active journal, switch to first available
   const activeId = getActiveJournalId();
   if (activeId === journalId) {
     setActiveJournal(filtered[0].id);
   }
-  
+
   // DELETE all entries from deleted journal (don't move them)
   const entries = JSON.parse(localStorage.getItem("journalEntries") || "[]");
-  const updatedEntries = entries.filter((entry: any) => 
+  const updatedEntries = entries.filter((entry: any) =>
     (entry.journalId || "journal-1") !== journalId
   );
   localStorage.setItem("journalEntries", JSON.stringify(updatedEntries));

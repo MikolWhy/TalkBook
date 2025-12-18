@@ -1,8 +1,8 @@
 "use client";
 
 import { Lightbulb } from "lucide-react";
-import { Prompt } from "../lib/nlp/prompts";
-import { RichTextEditorRef } from "./RichTextEditor";
+import { Prompt } from "@/lib/nlp/prompts";
+import { RichTextEditorRef } from "@/components/ui/RichTextEditor";
 
 interface PromptSuggestionsProps {
   prompts: Prompt[];

@@ -1,8 +1,17 @@
-// Centralized localStorage cache for journal entries
-// Eliminates redundant JSON.parse() calls across the application
-// Performance optimization: Parse once, cache in memory, invalidate on changes
+/**
+ * Journal Entries Cache
+ * 
+ * High-performance, memory-backed cache layer for journal entries stored in localStorage.
+ * 
+ * Optimization Strategy:
+ * - Minimizes expensive `JSON.parse` operations by maintaining an in-memory replica.
+ * - Synchronizes across tabs using a versioned invalidation mechanism.
+ * - Provides immediate cache updates during CRUD operations for a zero-latency UI feel.
+ * 
+ * @module src/lib/cache/entriesCache.ts
+ */
 
-interface JournalEntry {
+export interface JournalEntry {
   id: string;
   title: string;
   content: string;
@@ -48,14 +57,14 @@ function incrementCacheVersion(): void {
  */
 export function getEntries(): JournalEntry[] {
   if (typeof window === "undefined") return [];
-  
+
   // Check if cache is valid
   const storedVersion = getCacheVersion();
   if (entriesCache !== null && cacheVersion === storedVersion) {
     console.log("✅ [Cache Hit] Using cached entries, skipping parse");
     return entriesCache;
   }
-  
+
   // Cache miss or invalidated - parse from localStorage
   console.log("⚠️ [Cache Miss] Parsing entries from localStorage");
   try {
@@ -77,11 +86,13 @@ export function getEntries(): JournalEntry[] {
  */
 export function saveEntries(entries: JournalEntry[]): void {
   if (typeof window === "undefined") return;
-  
+
   try {
     localStorage.setItem(ENTRIES_KEY, JSON.stringify(entries));
     entriesCache = entries; // Update cache immediately
     incrementCacheVersion(); // Invalidate cache in other tabs/windows
+    // Dispatch custom event for same-tab updates (storage event only fires for cross-tab)
+    window.dispatchEvent(new Event('entries-updated'));
     console.log("✅ [Cache Update] Saved entries and updated cache");
   } catch (error) {
     console.error("Error saving entries to localStorage:", error);
@@ -105,12 +116,12 @@ export function addEntry(entry: JournalEntry): void {
 export function updateEntry(entryId: string, updates: Partial<JournalEntry>): boolean {
   const entries = getEntries();
   const entryIndex = entries.findIndex(e => e.id === entryId);
-  
+
   if (entryIndex === -1) {
     console.error("Entry not found:", entryId);
     return false;
   }
-  
+
   entries[entryIndex] = { ...entries[entryIndex], ...updates };
   saveEntries(entries);
   return true;
@@ -123,12 +134,12 @@ export function updateEntry(entryId: string, updates: Partial<JournalEntry>): bo
 export function deleteEntry(entryId: string): boolean {
   const entries = getEntries();
   const updatedEntries = entries.filter(e => e.id !== entryId);
-  
+
   if (updatedEntries.length === entries.length) {
     console.error("Entry not found:", entryId);
     return false;
   }
-  
+
   saveEntries(updatedEntries);
   return true;
 }
