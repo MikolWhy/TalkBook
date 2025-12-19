@@ -62,7 +62,7 @@ export default function StatsPage() {
   const [habitLogs, setHabitLogs] = useState<any[]>([]);
   const [journals, setJournals] = useState<Journal[]>([]);
   const [selectedJournalId, setSelectedJournalId] = useState<string>("all");
-  const [timeRange, setTimeRange] = useState<number>(30); // days - default to 30 for better visibility
+  const [timeRange, setTimeRange] = useState<number>(7); // days - default to 7 days
   const [xpStats, setXpStats] = useState<any>(null);
 
   // Load data
