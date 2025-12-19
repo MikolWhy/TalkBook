@@ -30,7 +30,7 @@ export default function PromptSuggestions({
   }
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
+    <div className="border border-gray-200 rounded-lg p-4 mb-6" style={{ backgroundColor: "var(--background, #ffffff)" }}>
       <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
         <Lightbulb className="w-5 h-5 text-yellow-500" />
         Writing Prompts

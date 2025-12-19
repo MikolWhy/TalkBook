@@ -290,68 +290,164 @@ export default function StatsPage() {
 
   // Combined activity data (entries + habits over time)
   const activityOverTime = useMemo(() => {
-    const grouped: Record<string, { entries: number; habits: number; dateObj: Date }> = {};
+    // Determine aggregation strategy
+    const isAllTime = timeRange >= 99999;
+    const shouldAggregate = timeRange > 30;
+    const aggregationDays = timeRange > 90 ? 7 : 1; // Weekly for 90+ days, daily otherwise
+
+    // Find the actual date range from data (for "All Time", use earliest entry date)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    let cutoffDate: Date;
+    if (isAllTime) {
+      // For "All Time", find the earliest entry or habit log date
+      const allDates: Date[] = [];
+      
+      filteredEntries.forEach((e: any) => {
+        if (e.createdAt) {
+          const entryDate = new Date(e.createdAt);
+          entryDate.setHours(0, 0, 0, 0);
+          allDates.push(entryDate);
+        }
+      });
+      
+      filteredHabitLogs.forEach((log: any) => {
+        if (log.date && log.value > 0) {
+          const logDate = new Date(log.date + 'T00:00:00');
+          logDate.setHours(0, 0, 0, 0);
+          allDates.push(logDate);
+        }
+      });
+      
+      if (allDates.length > 0) {
+        cutoffDate = new Date(Math.min(...allDates.map(d => d.getTime())));
+      } else {
+        // No data, default to 30 days back
+        cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - 30);
+      }
+      cutoffDate.setHours(0, 0, 0, 0);
+    } else {
+      cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - timeRange);
+      cutoffDate.setHours(0, 0, 0, 0);
+    }
+
+    // Group entries and habits by their actual dates
+    const dailyData: Record<string, { entries: number; habits: number }> = {};
 
     // Count entries per day
     filteredEntries.forEach((e: any) => {
-      const entryDate = new Date(e.createdAt);
-      entryDate.setHours(0, 0, 0, 0);
-      const dateKey = entryDate.toISOString().split('T')[0];
-      if (!grouped[dateKey]) {
-        grouped[dateKey] = { entries: 0, habits: 0, dateObj: entryDate };
+      if (e.createdAt) {
+        const entryDate = new Date(e.createdAt);
+        entryDate.setHours(0, 0, 0, 0);
+        const dateKey = entryDate.toISOString().split('T')[0];
+        if (!dailyData[dateKey]) {
+          dailyData[dateKey] = { entries: 0, habits: 0 };
+        }
+        dailyData[dateKey].entries++;
       }
-      grouped[dateKey].entries++;
     });
 
     // Count habit completions per day
     filteredHabitLogs.forEach((log: any) => {
-      if (log.value > 0) {
+      if (log.value > 0 && log.date) {
         const logDate = new Date(log.date + 'T00:00:00');
         logDate.setHours(0, 0, 0, 0);
         const dateKey = logDate.toISOString().split('T')[0];
-        if (!grouped[dateKey]) {
-          grouped[dateKey] = { entries: 0, habits: 0, dateObj: logDate };
+        if (!dailyData[dateKey]) {
+          dailyData[dateKey] = { entries: 0, habits: 0 };
         }
-        grouped[dateKey].habits++;
+        dailyData[dateKey].habits++;
       }
     });
 
-    // Generate all dates in the range for better visualization
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - timeRange);
-    cutoffDate.setHours(0, 0, 0, 0);
-
+    // Generate aggregated data points
     const result: Array<{ date: string; entries: number; habits: number }> = [];
-    const currentDate = new Date(cutoffDate);
+    const aggregatedData: Record<string, { entries: number; habits: number }> = {};
 
-    // For shorter ranges (7-30 days), show daily data
-    // For longer ranges (90+ days), show weekly/monthly aggregates
-    const shouldAggregate = timeRange > 30;
-    const aggregationDays = timeRange > 90 ? 7 : 1; // Weekly for 90+ days, daily otherwise
-
-    while (currentDate <= today) {
-      const dateKey = currentDate.toISOString().split('T')[0];
-      const data = grouped[dateKey] || { entries: 0, habits: 0 };
-
-      // Format date for display
-      let dateLabel: string;
-      if (timeRange <= 7) {
-        dateLabel = currentDate.toLocaleDateString("en-US", { weekday: "short", day: "numeric" });
-      } else if (timeRange <= 30) {
-        dateLabel = currentDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-      } else {
-        dateLabel = currentDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    // Aggregate daily data into buckets based on aggregation strategy
+    Object.keys(dailyData).forEach((dateKey) => {
+      const date = new Date(dateKey + 'T00:00:00');
+      date.setHours(0, 0, 0, 0);
+      
+      // Skip if date is outside our range
+      if (date < cutoffDate || date > today) {
+        return;
       }
 
-      result.push({
-        date: dateLabel,
-        entries: data.entries,
-        habits: data.habits,
-      });
+      if (shouldAggregate && aggregationDays > 1) {
+        // For weekly aggregation, group by week (start of week)
+        const weekStart = new Date(date);
+        const dayOfWeek = weekStart.getDay();
+        weekStart.setDate(weekStart.getDate() - dayOfWeek); // Start of week (Sunday)
+        weekStart.setHours(0, 0, 0, 0);
+        const bucketKey = weekStart.toISOString().split('T')[0];
+        
+        if (!aggregatedData[bucketKey]) {
+          aggregatedData[bucketKey] = { entries: 0, habits: 0 };
+        }
+        aggregatedData[bucketKey].entries += dailyData[dateKey].entries;
+        aggregatedData[bucketKey].habits += dailyData[dateKey].habits;
+      } else {
+        // Daily data - use as is
+        aggregatedData[dateKey] = { ...dailyData[dateKey] };
+      }
+    });
 
-      currentDate.setDate(currentDate.getDate() + aggregationDays);
+    // Generate result array with all date points in range
+    if (shouldAggregate && aggregationDays > 1) {
+      // For weekly aggregation, generate one point per week
+      const weekStart = new Date(cutoffDate);
+      const dayOfWeek = weekStart.getDay();
+      weekStart.setDate(weekStart.getDate() - dayOfWeek); // Start from Sunday of the week containing cutoffDate
+      weekStart.setHours(0, 0, 0, 0);
+      
+      const currentWeek = new Date(weekStart);
+      while (currentWeek <= today) {
+        const bucketKey = currentWeek.toISOString().split('T')[0];
+        const data = aggregatedData[bucketKey] || { entries: 0, habits: 0 };
+        
+        // Format week range for display
+        const weekEnd = new Date(currentWeek);
+        weekEnd.setDate(weekEnd.getDate() + 6);
+        const dateLabel = `${currentWeek.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${weekEnd.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+        
+        result.push({
+          date: dateLabel,
+          entries: data.entries,
+          habits: data.habits,
+        });
+        
+        // Move to next week
+        currentWeek.setDate(currentWeek.getDate() + 7);
+      }
+    } else {
+      // Daily aggregation - generate one point per day
+      const currentDate = new Date(cutoffDate);
+      while (currentDate <= today) {
+        const bucketKey = currentDate.toISOString().split('T')[0];
+        const data = aggregatedData[bucketKey] || { entries: 0, habits: 0 };
+
+        // Format date for display
+        let dateLabel: string;
+        if (timeRange <= 7) {
+          dateLabel = currentDate.toLocaleDateString("en-US", { weekday: "short", day: "numeric" });
+        } else if (timeRange <= 30) {
+          dateLabel = currentDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        } else {
+          dateLabel = currentDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        }
+
+        result.push({
+          date: dateLabel,
+          entries: data.entries,
+          habits: data.habits,
+        });
+
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
     }
 
     return result;

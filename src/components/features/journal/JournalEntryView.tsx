@@ -67,7 +67,7 @@ export default function JournalEntryView({ entry, onDelete }: JournalEntryViewPr
             <div className="flex-1 border-2 border-gray-100 rounded-2xl p-8 shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-y-auto" style={{ backgroundColor: "var(--background, #ffffff)" }}>
                 {entry ? (
                     <div className="space-y-6">
-                        <div className="flex items-start justify-between pb-6 border-b-2 border-gray-100 sticky top-0 bg-white z-10">
+                        <div className="flex items-start justify-between pb-6 border-b-2 border-gray-100 sticky top-0 z-10" style={{ backgroundColor: "var(--background, #ffffff)" }}>
                             <div className="flex-1">
                                 <h2 className="text-3xl font-bold text-gray-900 tracking-tight leading-tight">
                                     {entry.title || "Untitled Entry"}
