@@ -64,65 +64,70 @@ interface JournalEntryViewProps {
 export default function JournalEntryView({ entry, onDelete }: JournalEntryViewProps) {
     return (
         <div className="w-2/3 flex flex-col">
-            <div className="flex-1 border-2 border-gray-100 rounded-2xl p-8 shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-y-auto" style={{ backgroundColor: "var(--background, #ffffff)" }}>
+            <div className="flex-1 border-2 border-gray-100 rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-y-auto" style={{ backgroundColor: "var(--background, #ffffff)" }}>
                 {entry ? (
-                    <div className="space-y-6">
-                        <div className="flex items-start justify-between pb-6 border-b-2 border-gray-100 sticky top-0 z-10" style={{ backgroundColor: "var(--background, #ffffff)" }}>
-                            <div className="flex-1">
-                                <h2 className="text-3xl font-bold text-gray-900 tracking-tight leading-tight">
-                                    {entry.title || "Untitled Entry"}
-                                </h2>
-                                <p className="text-sm text-gray-500 mt-2 font-medium">
-                                    {formatDate(entry.createdAt)}
-                                </p>
-                            </div>
-                            <div className="flex items-center gap-3 ml-4">
-                                <span className="text-5xl leading-none" title={entry.mood || "neutral"}>
-                                    {entry.mood ? (moodMap[entry.mood] || "😐") : "😐"}
-                                </span>
-                            </div>
-                        </div>
-                        {entry.tags && entry.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-2">
-                                {entry.tags.map((tag: string, index: number) => (
-                                    <span
-                                        key={tag}
-                                        className={`px-4 py-2 rounded-full text-sm font-semibold border-2 shadow-sm transition-transform hover:scale-105 ${getTagColor(
-                                            index
-                                        )}`}
-                                    >
-                                        {tag}
+                    <div className="flex flex-col h-full">
+                        <div className="sticky top-0 z-10 px-8 pt-8 pb-6 border-b-2 border-gray-100" style={{ backgroundColor: "var(--background, #ffffff)" }}>
+                            <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                    <h2 className="text-3xl font-bold text-gray-900 tracking-tight leading-tight">
+                                        {entry.title || "Untitled Entry"}
+                                    </h2>
+                                    <p className="text-sm text-gray-500 mt-2 font-medium">
+                                        {formatDate(entry.createdAt)}
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-3 ml-4">
+                                    <span className="text-5xl leading-none" title={entry.mood || "neutral"}>
+                                        {entry.mood ? (moodMap[entry.mood] || "😐") : "😐"}
                                     </span>
-                                ))}
+                                </div>
                             </div>
-                        )}
-                        <div className="prose max-w-none entry-content">
-                            {entry.content ? (
-                                <div
-                                    className="text-gray-700 text-[15px] leading-relaxed"
-                                    dangerouslySetInnerHTML={{ __html: entry.content }}
-                                />
-                            ) : (
-                                <p className="text-gray-400 italic text-center py-8">No content</p>
-                            )}
                         </div>
-                        <div className="pt-6 border-t-2 border-gray-100 flex gap-3">
-                            <Link
-                                href={`/journal/${entry.id}`}
-                                className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 active:scale-95 transition-all font-semibold shadow-sm hover:shadow-md"
-                            >
-                                Edit Entry
-                            </Link>
-                            <button
-                                onClick={() => onDelete(entry.id)}
-                                className="px-6 py-3 bg-red-500 text-white rounded-xl hover:bg-red-600 active:scale-95 transition-all font-semibold shadow-sm hover:shadow-md"
-                            >
-                                Delete Entry
-                            </button>
+
+                        <div className="px-8 pb-8 space-y-6 pt-6">
+                            {entry.tags && entry.tags.length > 0 && (
+                                <div className="flex flex-wrap gap-2">
+                                    {entry.tags.map((tag: string, index: number) => (
+                                        <span
+                                            key={tag}
+                                            className={`px-4 py-2 rounded-full text-sm font-semibold border-2 shadow-sm transition-transform hover:scale-105 ${getTagColor(
+                                                index
+                                            )}`}
+                                        >
+                                            {tag}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+                            <div className="prose max-w-none entry-content">
+                                {entry.content ? (
+                                    <div
+                                        className="text-gray-700 text-[15px] leading-relaxed"
+                                        dangerouslySetInnerHTML={{ __html: entry.content }}
+                                    />
+                                ) : (
+                                    <p className="text-gray-400 italic text-center py-8">No content</p>
+                                )}
+                            </div>
+                            <div className="pt-6 border-t-2 border-gray-100 flex gap-3">
+                                <Link
+                                    href={`/journal/${entry.id}`}
+                                    className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 active:scale-95 transition-all font-semibold shadow-sm hover:shadow-md"
+                                >
+                                    Edit Entry
+                                </Link>
+                                <button
+                                    onClick={() => onDelete(entry.id)}
+                                    className="px-6 py-3 bg-red-500 text-white rounded-xl hover:bg-red-600 active:scale-95 transition-all font-semibold shadow-sm hover:shadow-md"
+                                >
+                                    Delete Entry
+                                </button>
+                            </div>
                         </div>
                     </div>
                 ) : (
-                    <div className="flex flex-col items-center justify-center h-full text-center">
+                    <div className="flex flex-col items-center justify-center h-full text-center p-8">
                         <FileTextIcon className="w-16 h-16 mb-4 opacity-20 text-gray-400" />
                         <p className="text-gray-400 text-lg font-medium">Select an entry to view</p>
                         <p className="text-gray-300 text-sm mt-2">Choose from the list on the left</p>
