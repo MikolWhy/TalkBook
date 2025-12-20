@@ -269,24 +269,25 @@ export default function HomePage() {
 
   return (
     <DashboardLayout>
+      <div className="flex flex-col overflow-hidden h-[calc(100vh-4rem)] md:h-[calc(100vh-5rem)] lg:h-[calc(100vh-6rem)]">
       {/* ====================================================================
             WELCOME CARD - Main Focus (Header)
             ====================================================================
         */}
-      <div className="mb-8">
-        <div className="bg-gradient-to-br from-purple-50 via-pink-50 to-indigo-50 rounded-2xl p-8 md:p-12 relative overflow-hidden border-2 border-purple-200 shadow-xl">
+      <div className="mb-4 flex-shrink-0">
+        <div className="bg-gradient-to-br from-purple-50 via-pink-50 to-indigo-50 rounded-2xl p-6 md:p-8 lg:p-12 relative overflow-hidden border-2 border-purple-200 shadow-xl">
           <div className="relative z-10">
-            <div className="mb-6">
-              <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-3">
+            <div className="mb-4 md:mb-6">
+              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-2 md:mb-3">
                 {userName === "Your Name" ? "Welcome!" : `Welcome back, ${userName}!`}
               </h1>
-              <p className="text-xl text-gray-700 font-medium">
+              <p className="text-lg md:text-xl text-gray-700 font-medium">
                 1 Page 1 Habit 1 Step at a time. Consistency is key !
               </p>
             </div>
 
             {/* Inspirational Quote Section */}
-            <div className="mt-6 pt-6 border-t border-purple-200">
+            <div className="mt-4 md:mt-6 pt-4 md:pt-6 border-t border-purple-200">
               {quoteLoading ? (
                 <div className="flex items-center justify-center py-4">
                   <div className="animate-pulse text-gray-400">Loading inspiration...</div>
@@ -297,9 +298,9 @@ export default function HomePage() {
                   className="cursor-pointer hover:opacity-80 transition-opacity"
                   title="Click for a new quote"
                 >
-                  <div className="flex items-start gap-3 mb-3">
-                    <Quote className="w-6 h-6 text-purple-500 mt-1 flex-shrink-0" />
-                    <p className="text-lg md:text-xl text-gray-700 italic leading-relaxed">
+                  <div className="flex items-start gap-2 md:gap-3 mb-2 md:mb-3">
+                    <Quote className="w-5 h-5 md:w-6 md:h-6 text-purple-500 mt-1 flex-shrink-0" />
+                    <p className="text-base md:text-lg lg:text-xl text-gray-700 italic leading-relaxed">
                       {quote.quoteText}
                     </p>
                   </div>
@@ -334,34 +335,34 @@ export default function HomePage() {
             QUICK ACTIONS SECTION
             ====================================================================
         */}
-      <div className="mb-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="mb-4 flex-shrink-0">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
           <a
             href="/habits/new"
-            className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 shadow-md border-2 border-purple-100 hover:border-purple-300 transition-all group"
+            className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-4 md:p-6 shadow-md border-2 border-purple-100 hover:border-purple-300 transition-all group"
           >
-            <div className="flex items-center gap-4">
-              <div className="bg-gradient-to-br from-purple-500 to-pink-500 p-4 rounded-xl shadow-lg group-hover:scale-110 transition-transform">
-                <Plus className="w-6 h-6 text-white" />
+            <div className="flex items-center gap-3 md:gap-4">
+              <div className="bg-gradient-to-br from-purple-500 to-pink-500 p-3 md:p-4 rounded-xl shadow-lg group-hover:scale-110 transition-transform">
+                <Plus className="w-5 h-5 md:w-6 md:h-6 text-white" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-gray-900 mb-1">Add New Habit</h3>
-                <p className="text-sm text-gray-600">Start tracking a new habit today</p>
+                <h3 className="text-base md:text-lg font-bold text-gray-900 mb-1">Add New Habit</h3>
+                <p className="text-xs md:text-sm text-gray-600">Start tracking a new habit today</p>
               </div>
             </div>
           </a>
 
           <a
             href="/journal/new"
-            className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-6 shadow-md border-2 border-blue-100 hover:border-blue-300 transition-all group"
+            className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-4 md:p-6 shadow-md border-2 border-blue-100 hover:border-blue-300 transition-all group"
           >
-            <div className="flex items-center gap-4">
-              <div className="bg-gradient-to-br from-blue-500 to-cyan-500 p-4 rounded-xl shadow-lg group-hover:scale-110 transition-transform">
-                <FileText className="w-6 h-6 text-white" />
+            <div className="flex items-center gap-3 md:gap-4">
+              <div className="bg-gradient-to-br from-blue-500 to-cyan-500 p-3 md:p-4 rounded-xl shadow-lg group-hover:scale-110 transition-transform">
+                <FileText className="w-5 h-5 md:w-6 md:h-6 text-white" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-gray-900 mb-1">New Journal Entry</h3>
-                <p className="text-sm text-gray-600">Write about your day</p>
+                <h3 className="text-base md:text-lg font-bold text-gray-900 mb-1">New Journal Entry</h3>
+                <p className="text-xs md:text-sm text-gray-600">Write about your day</p>
               </div>
             </div>
           </a>
@@ -372,26 +373,26 @@ export default function HomePage() {
             STATS SECTION - Today's Progress + Current Habits
             ====================================================================
         */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4 lg:gap-6 flex-1 min-h-0 overflow-hidden">
         {/* Today's Progress Card - Larger Graph */}
-        <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl p-6 text-white shadow-xl border border-gray-700 flex flex-col">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold">Today's Progress</h2>
-            <a href="/stats" className="text-gray-400 hover:text-white transition">
-              <BarChart className="w-5 h-5" />
+        <div className="bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 rounded-xl p-4 md:p-6 shadow-md border-2 border-purple-100 flex flex-col min-h-0 overflow-hidden">
+          <div className="flex justify-between items-center mb-3 md:mb-4 flex-shrink-0">
+            <h2 className="text-lg md:text-xl font-bold text-gray-900">Today's Progress</h2>
+            <a href="/stats" className="text-gray-600 hover:text-purple-600 transition flex-shrink-0">
+              <BarChart className="w-4 h-4 md:w-5 md:h-5" />
             </a>
           </div>
 
           {/* Circular Progress - Habit Completion Rate - Larger */}
-          <div className="flex flex-col items-center mb-6 flex-1 justify-center">
-            <div className="relative w-32 h-32 mb-3">
-              <svg className="transform -rotate-90 w-32 h-32">
+          <div className="flex flex-col items-center mb-3 md:mb-4 flex-shrink-0">
+            <div className="relative w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 lg:w-32 lg:h-32 mb-2 max-w-full">
+              <svg className="transform -rotate-90 w-full h-full max-w-full max-h-full" viewBox="0 0 128 128" preserveAspectRatio="xMidYMid meet">
                 {/* Background circle */}
                 <circle
                   cx="64"
                   cy="64"
                   r="56"
-                  stroke="rgba(255,255,255,0.1)"
+                  stroke="rgba(0,0,0,0.1)"
                   strokeWidth="10"
                   fill="none"
                 />
@@ -412,46 +413,46 @@ export default function HomePage() {
               {/* Percentage Text */}
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="text-center">
-                  <div className="text-3xl font-black text-green-400">{habitStats.completionRate}%</div>
-                  <div className="text-xs text-gray-400 font-medium">Habits</div>
+                  <div className="text-xl sm:text-2xl md:text-3xl font-black text-green-600 leading-tight">{habitStats.completionRate}%</div>
+                  <div className="text-xs text-gray-600 font-medium">Habits</div>
                 </div>
               </div>
             </div>
-            <p className="text-sm text-gray-300 text-center">
+            <p className="text-xs md:text-sm text-gray-700 text-center px-2">
               {habitStats.completedToday} of {habitStats.totalHabits} completed
             </p>
           </div>
 
           {/* Vertical Stats - Moved to Bottom */}
-          <div className="flex flex-col gap-3 pt-4 border-t border-gray-700 mt-auto">
-            <div className="flex items-center justify-between">
+          <div className="stats-scrollable flex flex-col gap-2 md:gap-3 pt-3 md:pt-4 border-t border-purple-200 mt-auto overflow-y-auto min-h-0 max-h-[180px]">
+            <div className="flex items-center justify-between flex-shrink-0">
               <div className="flex items-center gap-2">
-                <Flame className="w-4 h-4 text-orange-400" />
-                <span className="text-xs text-gray-400">Entry Streak</span>
+                <Flame className="w-4 h-4 text-orange-500" />
+                <span className="text-xs text-gray-600">Entry Streak</span>
               </div>
-              <div className="text-base font-bold text-orange-400">{stats.currentStreak}</div>
+              <div className="text-base font-bold text-orange-600">{stats.currentStreak}</div>
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-shrink-0">
               <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-blue-400" />
-                <span className="text-xs text-gray-400">Total Entries</span>
+                <FileText className="w-4 h-4 text-blue-500" />
+                <span className="text-xs text-gray-600">Total Entries</span>
               </div>
-              <div className="text-base font-bold text-blue-400">{stats.totalEntries}</div>
+              <div className="text-base font-bold text-blue-600">{stats.totalEntries}</div>
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-shrink-0">
               <div className="flex items-center gap-2">
-                <Dumbbell className="w-4 h-4 text-purple-400" />
-                <span className="text-xs text-gray-400">Active Habits</span>
+                <Dumbbell className="w-4 h-4 text-purple-500" />
+                <span className="text-xs text-gray-600">Active Habits</span>
               </div>
-              <div className="text-base font-bold text-purple-400">{habitStats.totalHabits}</div>
+              <div className="text-base font-bold text-purple-600">{habitStats.totalHabits}</div>
             </div>
           </div>
         </div>
 
         {/* Current Habits */}
-        <div className="bg-white rounded-xl p-6 shadow-md border-2 border-gray-100">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Current Habits</h2>
-          <div className="space-y-3 max-h-[400px] overflow-y-auto">
+        <div className="bg-white rounded-xl p-4 md:p-6 shadow-md border-2 border-gray-100 flex flex-col min-h-0 overflow-hidden">
+          <h2 className="text-lg md:text-xl font-bold text-gray-900 mb-3 md:mb-4 flex-shrink-0">Current Habits</h2>
+          <div className="space-y-2 md:space-y-3 flex-1 overflow-y-auto min-h-0">
             {habits.length === 0 ? (
               <div className="text-center py-8">
                 <Dumbbell className="w-12 h-12 text-gray-300 mx-auto mb-3" />
@@ -516,7 +517,7 @@ export default function HomePage() {
           )}
         </div>
       </div>
-
+      </div>
 
     </DashboardLayout>
   );

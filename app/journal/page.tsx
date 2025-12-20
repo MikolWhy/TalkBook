@@ -31,6 +31,7 @@ import JournalHeader from "@/components/features/journal/JournalHeader";
 import JournalListSidebar from "@/components/features/journal/JournalListSidebar";
 import JournalEntryView from "@/components/features/journal/JournalEntryView";
 import JournalManageDialog from "@/components/features/journal/JournalManageDialog";
+import ConfirmationModal from "@/components/ui/ConfirmationModal";
 
 export default function JournalPage() {
   const [selectedEntryId, setSelectedEntryId] = useState<string | number | null>(null);
@@ -40,6 +41,10 @@ export default function JournalPage() {
   const [journals, setJournals] = useState<Journal[]>([]);
   const [activeJournalId, setActiveJournalIdState] = useState<string>("");
   const [isManageDialogOpen, setIsManageDialogOpen] = useState(false);
+
+  // Delete confirmation modal state
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [entryToDelete, setEntryToDelete] = useState<string | number | null>(null);
 
   // Initialize journals on mount
   useEffect(() => {
@@ -108,19 +113,22 @@ export default function JournalPage() {
   }, [activeJournalId]);
 
   const handleDeleteEntry = (entryId: string | number) => {
-    if (!confirm("Are you sure you want to delete this entry? This action cannot be undone.")) {
-      return;
-    }
+    setEntryToDelete(entryId);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDeleteEntry = () => {
+    if (!entryToDelete) return;
 
     try {
       // OPTIMIZATION: Use cache deletion
-      deleteCachedEntry(entryId as string);
+      deleteCachedEntry(entryToDelete as string);
 
       // Reload entries
       loadEntries();
 
       // Clear selection if deleted entry was selected
-      if (selectedEntryId === entryId) {
+      if (selectedEntryId === entryToDelete) {
         setSelectedEntryId(null);
       }
     } catch (error) {
@@ -171,6 +179,20 @@ export default function JournalPage() {
           />
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setEntryToDelete(null);
+        }}
+        onConfirm={confirmDeleteEntry}
+        title="Delete Entry?"
+        message="Are you sure you want to delete this entry? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
     </DashboardLayout>
   );
 }

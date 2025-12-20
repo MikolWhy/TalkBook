@@ -20,7 +20,7 @@ interface HabitLog {
 
 export interface Insight {
     type: "positive" | "neutral" | "suggestion";
-    icon: string;
+    icon: string; // lucide-react icon name
     title: string;
     description: string;
 }
@@ -34,7 +34,7 @@ export function generateMoodInsights(entries: JournalEntry[], timeRange: number)
     if (entries.length === 0) {
         return [{
             type: "suggestion",
-            icon: "💭",
+            icon: "Brain",
             title: "Start tracking your mood",
             description: "Add mood tags to your journal entries to see patterns over time."
         }];
@@ -64,21 +64,21 @@ export function generateMoodInsights(entries: JournalEntry[], timeRange: number)
         if (positivePercentage >= 70) {
             insights.push({
                 type: "positive",
-                icon: "🌟",
+                icon: "Star",
                 title: "Great mood trend!",
                 description: `${positivePercentage}% of your entries show positive emotions. Keep it up!`
             });
         } else if (positivePercentage >= 50) {
             insights.push({
                 type: "neutral",
-                icon: "📊",
+                icon: "BarChart",
                 title: "Balanced emotions",
                 description: `Your mood is fairly balanced. Journaling can help process our feelings.`
             });
         } else {
             insights.push({
                 type: "suggestion",
-                icon: "💙",
+                icon: "Heart",
                 title: "We notice you",
                 description: "Remember it's okay to feel difficult emotions. Journaling is a great tool for processing them."
             });
@@ -103,7 +103,7 @@ export function generateMoodInsights(entries: JournalEntry[], timeRange: number)
 
         insights.push({
             type: "neutral",
-            icon: "🎯",
+            icon: "Target",
             title: "Most common mood",
             description: `You've felt ${moodLabels[topMood] || topMood} in ${count} ${count === 1 ? 'entry' : 'entries'}.`
         });
@@ -121,7 +121,7 @@ export function generateWritingInsights(entries: JournalEntry[], timeRange: numb
     if (entries.length === 0) {
         return [{
             type: "suggestion",
-            icon: "✍️",
+            icon: "PenTool",
             title: "Start your journey",
             description: "Write your first entry to begin tracking your progress."
         }];
@@ -138,14 +138,14 @@ export function generateWritingInsights(entries: JournalEntry[], timeRange: numb
     if (avgWords > 200) {
         insights.push({
             type: "positive",
-            icon: "📝",
+            icon: "FileText",
             title: "Detailed reflections",
             description: `You average ${avgWords} words per entry. Your thoughtful writing shows deep self-reflection.`
         });
     } else if (avgWords > 100) {
         insights.push({
             type: "neutral",
-            icon: "📝",
+            icon: "FileText",
             title: "Consistent writing",
             description: `You average ${avgWords} words per entry. Quality matters more than quantity!`
         });
@@ -161,14 +161,14 @@ export function generateWritingInsights(entries: JournalEntry[], timeRange: numb
     if (consistencyRate >= 50) {
         insights.push({
             type: "positive",
-            icon: "🔥",
+            icon: "Flame",
             title: "Excellent consistency",
             description: `You've written on ${daysWithEntries} of the last ${timeRange} days (${consistencyRate}%).`
         });
     } else if (consistencyRate >= 25) {
         insights.push({
             type: "neutral",
-            icon: "📅",
+            icon: "Calendar",
             title: "Building a habit",
             description: `You've written on ${daysWithEntries} days. Try to journal a bit more regularly for better insights.`
         });
@@ -232,7 +232,7 @@ export function generateMoodActivityCorrelation(entries: JournalEntry[]): Insigh
     if (maxMood && maxAvg > 50) {
         insights.push({
             type: "neutral",
-            icon: "✨",
+            icon: "Sparkles",
             title: "Writing & mood connection",
             description: `You write more when feeling ${moodLabels[maxMood] || maxMood} (avg ${Math.round(maxAvg)} words).`
         });
@@ -271,21 +271,21 @@ export function generateComparativeMetrics(entries: JournalEntry[]): Insight[] {
         if (percentChange > 20) {
             insights.push({
                 type: "positive",
-                icon: "📈",
+                icon: "TrendingUp",
                 title: "Writing more this week",
                 description: `You've written ${thisWeekCount} entries this week, up ${percentChange}% from last week!`
             });
         } else if (percentChange < -20) {
             insights.push({
                 type: "suggestion",
-                icon: "📉",
+                icon: "TrendingDown",
                 title: "Less active this week",
                 description: `You wrote ${thisWeekCount} entries this week, down from ${lastWeekCount} last week. Every entry counts!`
             });
         } else if (thisWeekCount > 0 && lastWeekCount > 0) {
             insights.push({
                 type: "neutral",
-                icon: "📊",
+                icon: "BarChart",
                 title: "Steady journaling",
                 description: `You've maintained a consistent pace with ${thisWeekCount} entries this week.`
             });
@@ -293,7 +293,7 @@ export function generateComparativeMetrics(entries: JournalEntry[]): Insight[] {
     } else if (thisWeekCount > 0) {
         insights.push({
             type: "positive",
-            icon: "🎉",
+            icon: "PartyPopper",
             title: "Great start!",
             description: `You've written ${thisWeekCount} ${thisWeekCount === 1 ? 'entry' : 'entries'} this week. Keep building the habit!`
         });
@@ -316,7 +316,7 @@ export function generateComparativeMetrics(entries: JournalEntry[]): Insight[] {
         if (moodChange > 15) {
             insights.push({
                 type: "positive",
-                icon: "😊",
+                icon: "Smile",
                 title: "Mood improving",
                 description: `Your positive mood entries increased by ${Math.round(moodChange)}% this week!`
             });

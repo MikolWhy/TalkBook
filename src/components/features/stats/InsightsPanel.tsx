@@ -16,7 +16,24 @@
  */
 
 import { useMemo } from "react";
-import { Lightbulb, TrendingUp, Heart, Target } from "lucide-react";
+import { 
+    Lightbulb, 
+    TrendingUp, 
+    Heart, 
+    Target,
+    Brain,
+    Star,
+    BarChart,
+    PenTool,
+    FileText,
+    Flame,
+    Calendar,
+    Sparkles,
+    TrendingDown,
+    PartyPopper,
+    Smile,
+    type LucideIcon
+} from "lucide-react";
 import {
     generateMoodInsights,
     generateWritingInsights,
@@ -41,15 +58,24 @@ export default function InsightsPanel({ entries, timeRange }: InsightsPanelProps
         return [...comparativeInsights, ...moodInsights, ...correlationInsights, ...writingInsights].slice(0, 6);
     }, [entries, timeRange]);
 
-    const getIconComponent = (type: Insight["type"]) => {
-        switch (type) {
-            case "positive":
-                return Heart;
-            case "suggestion":
-                return Target;
-            default:
-                return TrendingUp;
-        }
+    const getIconComponent = (iconName: string): LucideIcon => {
+        const iconMap: Record<string, LucideIcon> = {
+            Brain,
+            Star,
+            BarChart,
+            Heart,
+            Target,
+            PenTool,
+            FileText,
+            Flame,
+            Calendar,
+            Sparkles,
+            TrendingUp,
+            TrendingDown,
+            PartyPopper,
+            Smile,
+        };
+        return iconMap[iconName] || TrendingUp;
     };
 
     const getColorClasses = (type: Insight["type"]) => {
@@ -78,7 +104,7 @@ export default function InsightsPanel({ entries, timeRange }: InsightsPanelProps
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {insights.map((insight, index) => {
-                    const IconComponent = getIconComponent(insight.type);
+                    const IconComponent = getIconComponent(insight.icon);
                     const colorClasses = getColorClasses(insight.type);
 
                     return (
@@ -87,7 +113,9 @@ export default function InsightsPanel({ entries, timeRange }: InsightsPanelProps
                             className={`bg-gradient-to-br ${colorClasses} rounded-xl p-6 shadow-lg border-2`}
                         >
                             <div className="flex items-start gap-4">
-                                <div className="text-4xl flex-shrink-0">{insight.icon}</div>
+                                <div className="flex-shrink-0">
+                                    <IconComponent className="w-10 h-10 text-gray-700" />
+                                </div>
                                 <div className="flex-1">
                                     <h3 className="font-bold text-gray-900 text-lg mb-2">{insight.title}</h3>
                                     <p className="text-gray-700 text-sm leading-relaxed">{insight.description}</p>

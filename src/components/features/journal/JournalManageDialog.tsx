@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { type Journal, createJournal, renameJournal, deleteJournal, getJournals, getActiveJournalId } from "@/lib/journals/manager";
+import ConfirmationModal from "@/components/ui/ConfirmationModal";
 
 interface JournalManageDialogProps {
     isOpen: boolean;
@@ -24,6 +25,10 @@ export default function JournalManageDialog({
     const [newJournalName, setNewJournalName] = useState("");
     const [editingJournalId, setEditingJournalId] = useState<string | null>(null);
     const [editingJournalName, setEditingJournalName] = useState("");
+
+    // Delete confirmation modal state
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [journalToDelete, setJournalToDelete] = useState<{ id: string; name: string } | null>(null);
 
     if (!isOpen) return null;
 
@@ -129,15 +134,8 @@ export default function JournalManageDialog({
                                             <button
                                                 onClick={() => {
                                                     if (journals.length > 1) {
-                                                        if (confirm(`Delete "${journal.name}"? All entries in this journal will be permanently deleted. This cannot be undone.`)) {
-                                                            deleteJournal(journal.id);
-                                                            onJournalsUpdated();
-                                                            // Update active journal logic should be handled by onJournalsUpdated or parent?
-                                                            // Actually deleteJournal might affect active journal if it was the active one.
-                                                            // Parent should re-fetch active journal.
-                                                            const newActiveId = getActiveJournalId(); // It auto-updates in manager
-                                                            onSetActiveJournal(newActiveId);
-                                                        }
+                                                        setJournalToDelete({ id: journal.id, name: journal.name });
+                                                        setIsDeleteModalOpen(true);
                                                     } else {
                                                         alert("Cannot delete the last journal");
                                                     }
@@ -167,6 +165,36 @@ export default function JournalManageDialog({
                     </button>
                 </div>
             </div>
+
+            {/* Delete Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={isDeleteModalOpen}
+                onClose={() => {
+                    setIsDeleteModalOpen(false);
+                    setJournalToDelete(null);
+                }}
+                onConfirm={() => {
+                    if (!journalToDelete) return;
+                    
+                    try {
+                        deleteJournal(journalToDelete.id);
+                        onJournalsUpdated();
+                        // Update active journal logic should be handled by onJournalsUpdated or parent?
+                        // Actually deleteJournal might affect active journal if it was the active one.
+                        // Parent should re-fetch active journal.
+                        const newActiveId = getActiveJournalId(); // It auto-updates in manager
+                        onSetActiveJournal(newActiveId);
+                        setIsDeleteModalOpen(false);
+                        setJournalToDelete(null);
+                    } catch (error: any) {
+                        alert(error.message || "Failed to delete journal. Please try again.");
+                    }
+                }}
+                title="Delete Journal?"
+                message={`Are you sure you want to delete "${journalToDelete?.name}"? All entries in this journal will be permanently deleted. This cannot be undone.`}
+                confirmText="Delete"
+                cancelText="Cancel"
+            />
         </div>
     );
 }
