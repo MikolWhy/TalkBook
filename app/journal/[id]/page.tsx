@@ -33,6 +33,7 @@ import { generatePrompts, filterUsedPrompts, filterExpiredPrompts, Prompt, markP
 import { getEntries, getEntryById, updateEntry, saveEntries } from "@/lib/cache/entriesCache";
 import { awardEntryXP } from "@/lib/gamification/xp";
 import XPNotification from "@/components/gamification/XPNotification";
+import ConfirmationModal from "@/components/ui/ConfirmationModal";
 
 // Mood options (same as new entry page)
 const moodOptions = [
@@ -126,6 +127,9 @@ export default function EditEntryPage() {
   const [newLevel, setNewLevel] = useState(1);
   const [showXPNotification, setShowXPNotification] = useState(false);
   const [isSaving, setIsSaving] = useState(false); // Prevent duplicate saves
+
+  // Delete confirmation modal state
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   // Filter prompts: show only those NOT currently inserted in editor
   const availablePrompts = allPrompts.filter(p => !insertedPromptIds.has(p.id));
@@ -499,10 +503,10 @@ export default function EditEntryPage() {
 
   // Delete function
   const handleDelete = () => {
-    if (!confirm("Are you sure you want to delete this entry? This action cannot be undone.")) {
-      return;
-    }
+    setIsDeleteModalOpen(true);
+  };
 
+  const confirmDelete = () => {
     try {
       const storedEntries = JSON.parse(
         localStorage.getItem("journalEntries") || "[]"
@@ -784,6 +788,17 @@ export default function EditEntryPage() {
         oldLevel={oldLevel}
         newLevel={newLevel}
         onComplete={() => setShowXPNotification(false)}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDelete}
+        title="Delete Entry?"
+        message="Are you sure you want to delete this entry? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
       />
     </DashboardLayout>
   );

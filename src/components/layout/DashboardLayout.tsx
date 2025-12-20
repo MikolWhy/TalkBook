@@ -16,11 +16,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     const { sidebarOpen } = useSidebar();
 
     return (
-        <div className="min-h-screen flex" style={{ backgroundColor: "var(--background, #ffffff)" }}>
+        <div className="h-screen flex overflow-hidden" style={{ backgroundColor: "var(--background, #ffffff)" }}>
             <AppSidebar />
             <main
                 className={`${sidebarOpen ? "ml-64" : "ml-0"
-                    } flex-1 p-8 transition-all ${!sidebarOpen ? "pt-20" : "pt-8"}`}
+                    } flex-1 p-4 md:p-6 lg:p-8 transition-all ${!sidebarOpen ? "pt-16 md:pt-20" : "pt-4 md:pt-6 lg:pt-8"} overflow-y-auto`}
             >
                 {children}
             </main>

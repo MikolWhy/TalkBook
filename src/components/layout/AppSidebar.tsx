@@ -20,6 +20,7 @@ import { useSidebar } from "@/components/providers/SidebarProvider";
 import { useState, useEffect } from "react";
 import { BookHeart, Home, Dumbbell, BarChart, ArrowLeftFromLine, SettingsIcon, HelpCircleIcon, Zap, Lock as LockIcon } from "lucide-react";
 import { getUserStats } from "@/lib/gamification/xp";
+import { BACKGROUND_COLORS, type BackgroundColorKey } from "@/components/providers/BackgroundColorProvider";
 
 // Navigation items - shared across all pages
 const navItems = [
@@ -149,7 +150,7 @@ function CompactXPProgress() {
 // Lock button component to handle localStorage
 function LockButton() {
     const [hasPassword, setHasPassword] = useState(false);
-    const [, forceUpdate] = useState({});
+    const [hoverColor, setHoverColor] = useState<string>("rgb(243, 244, 246)");
 
     useEffect(() => {
         setHasPassword(!!localStorage.getItem("appPassword"));
@@ -159,9 +160,15 @@ function LockButton() {
         };
 
         const handleBackgroundColorChange = () => {
-            // Force re-render to update background color
-            forceUpdate({});
+            const savedColor = localStorage.getItem("appBackgroundColor") as BackgroundColorKey | null;
+            const colorKey = savedColor && savedColor in BACKGROUND_COLORS 
+                ? savedColor 
+                : "white";
+            setHoverColor(getHoverColor(colorKey));
         };
+
+        // Set initial hover color
+        handleBackgroundColorChange();
 
         window.addEventListener("storage", handleStorageChange);
         window.addEventListener("background-color-changed", handleBackgroundColorChange);
@@ -185,10 +192,20 @@ function LockButton() {
                 onClick={handleLock}
                 disabled={!hasPassword}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition ${hasPassword
-                    ? "text-gray-600 hover:bg-gray-100"
+                    ? "text-gray-600"
                     : "text-gray-400 cursor-not-allowed"
                     }`}
-                style={{ backgroundColor: "var(--background, #ffffff)" }}
+                style={{ backgroundColor: "transparent" }}
+                onMouseEnter={(e) => {
+                    if (hasPassword) {
+                        e.currentTarget.style.backgroundColor = hoverColor;
+                    }
+                }}
+                onMouseLeave={(e) => {
+                    if (hasPassword) {
+                        e.currentTarget.style.backgroundColor = "transparent";
+                    }
+                }}
                 title={!hasPassword ? "Set a password in Settings first" : "Lock app"}
             >
                 <LockIcon className="w-4 h-4" />
@@ -198,9 +215,45 @@ function LockButton() {
     );
 }
 
+// Function to get hover color based on background color theme
+function getHoverColor(backgroundColorKey: BackgroundColorKey | null): string {
+    const hoverColors: Record<BackgroundColorKey, string> = {
+        white: "rgb(243, 244, 246)", // gray-100
+        orange: "rgb(254, 215, 170)", // orange-200 - darker, more saturated orange
+        pink: "rgb(251, 207, 232)", // pink-200 - darker, more saturated pink
+        green: "rgb(187, 247, 208)", // green-200 - darker, more saturated green
+        blue: "rgb(191, 219, 254)", // blue-200 - darker, more saturated blue
+    };
+    
+    return hoverColors[backgroundColorKey || "white"];
+}
+
 export default function AppSidebar() {
     const { sidebarOpen, setSidebarOpen } = useSidebar();
     const pathname = usePathname(); // Get current route to highlight active nav item
+    const [hoverColor, setHoverColor] = useState<string>("rgb(243, 244, 246)"); // Default gray-100
+
+    // Get current background color and set hover color
+    useEffect(() => {
+        const updateHoverColor = () => {
+            const savedColor = localStorage.getItem("appBackgroundColor") as BackgroundColorKey | null;
+            const colorKey = savedColor && savedColor in BACKGROUND_COLORS 
+                ? savedColor 
+                : "white";
+            setHoverColor(getHoverColor(colorKey));
+        };
+
+        updateHoverColor();
+
+        // Listen for background color changes
+        window.addEventListener("background-color-changed", updateHoverColor);
+        window.addEventListener("storage", updateHoverColor);
+
+        return () => {
+            window.removeEventListener("background-color-changed", updateHoverColor);
+            window.removeEventListener("storage", updateHoverColor);
+        };
+    }, []);
 
     return (
         <>
@@ -235,7 +288,14 @@ export default function AppSidebar() {
                     {sidebarOpen && (
                         <button
                             onClick={() => setSidebarOpen(false)}
-                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                            className="p-2 rounded-lg transition-colors"
+                            style={{ backgroundColor: "transparent" }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = hoverColor;
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = "transparent";
+                            }}
                             aria-label="Collapse sidebar"
                             title="Collapse sidebar"
                         >
@@ -262,8 +322,21 @@ export default function AppSidebar() {
                                     className={
                                         isActive
                                             ? "flex items-center gap-3 px-4 py-3 bg-gray-900 text-white rounded-lg"
-                                            : "flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-gray-100 rounded-lg transition"
+                                            : "flex items-center gap-3 px-4 py-3 text-gray-600 rounded-lg transition"
                                     }
+                                    style={!isActive ? { 
+                                        backgroundColor: "transparent",
+                                    } : undefined}
+                                    onMouseEnter={(e) => {
+                                        if (!isActive) {
+                                            e.currentTarget.style.backgroundColor = hoverColor;
+                                        }
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        if (!isActive) {
+                                            e.currentTarget.style.backgroundColor = "transparent";
+                                        }
+                                    }}
                                 >
                                     <span>{typeof item.icon === "string" ? item.icon : <item.icon />}</span>
                                     <span>{item.label}</span>

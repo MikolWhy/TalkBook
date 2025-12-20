@@ -145,6 +145,29 @@ button:hover, a:hover, [role="button"]:hover {
   background: rgba(0, 0, 0, 0.3);
 }
 
+/* Stats Section Scrollbar Styles */
+.stats-scrollable {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+}
+
+.stats-scrollable::-webkit-scrollbar {
+  width: 8px;
+}
+
+.stats-scrollable::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.stats-scrollable::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.stats-scrollable::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
 /* iOS List Item Entrance Animation */
 @keyframes iosListItemEnter {
   from {
