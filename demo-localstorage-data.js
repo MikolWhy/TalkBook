@@ -1,5 +1,5 @@
 // Demo localStorage Data for TalkBook
-// Date Range: October 23, 2025 - November 22, 2025
+// Date Range: September 18, 2025 - December 18, 2025
 // Run this script in your browser console to populate localStorage
 
 (function() {
@@ -12,23 +12,23 @@
     {
       id: "journal-1",
       name: "Daily Journal",
-      createdAt: "2025-10-15T08:00:00.000Z",
-      updatedAt: "2025-10-15T08:00:00.000Z"
+      createdAt: "2025-09-10T08:00:00.000Z",
+      updatedAt: "2025-09-10T08:00:00.000Z"
     },
     {
       id: "journal-2",
       name: "Work & Projects",
-      createdAt: "2025-10-20T10:30:00.000Z",
-      updatedAt: "2025-10-20T10:30:00.000Z"
+      createdAt: "2025-09-15T10:30:00.000Z",
+      updatedAt: "2025-09-15T10:30:00.000Z"
     }
   ];
   localStorage.setItem("talkbook-journals", JSON.stringify(journals));
   localStorage.setItem("talkbook-active-journal", "journal-1");
 
   // ============================================================================
-  // JOURNAL ENTRIES (30 entries, one per day from Oct 23 - Nov 22, 2025)
+  // JOURNAL ENTRIES (entries from Sep 18 - Dec 18, 2025)
   // ============================================================================
-  const moods = ["very-happy", "happy", "neutral", "sad", "excited", "calm", "anxious", "grateful"];
+  const moods = ["very-happy", "happy", "neutral", "sad", "excited", "calm", "anxious"];
   const tags = ["work", "personal", "health", "family", "friends", "hobbies", "reflection", "goals", "gratitude", "learning"];
   const cardColors = ["default", "blue", "green", "purple", "pink", "yellow"];
 
@@ -99,10 +99,12 @@
   ];
 
   const entries = [];
-  const startDate = new Date("2025-10-23");
-  const endDate = new Date("2025-11-22");
+  const startDate = new Date("2025-09-18");
+  const endDate = new Date("2025-12-18");
 
-  for (let i = 0; i <= 30; i++) {
+  // Generate entries for ~91 days (Sep 18 - Dec 18, 2025)
+  const daysDiff = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24));
+  for (let i = 0; i <= daysDiff; i++) {
     const currentDate = new Date(startDate);
     currentDate.setDate(startDate.getDate() + i);
     
@@ -250,8 +252,8 @@
   
   localStorage.setItem("talkbook-xp", totalXP.toString());
   localStorage.setItem("talkbook-level", calculatedLevel.toString());
-  localStorage.setItem("talkbook-last-entry-date", "2025-11-22");
-  localStorage.setItem("talkbook-last-all-habits-bonus-date", "2025-11-20");
+  localStorage.setItem("talkbook-last-entry-date", "2025-12-18");
+  localStorage.setItem("talkbook-last-all-habits-bonus-date", "2025-12-16");
 
   // ============================================================================
   // USED PROMPTS
@@ -289,7 +291,7 @@
   console.log(`   - Entries: ${entries.length}`);
   console.log(`   - Total XP: ${totalXP}`);
   console.log(`   - Level: ${calculatedLevel}`);
-  console.log(`   - Date Range: Oct 23, 2025 - Nov 22, 2025`);
+  console.log(`   - Date Range: Sep 18, 2025 - Dec 18, 2025`);
   console.log('\n🔄 Refresh the page to see the changes!');
 })();
 

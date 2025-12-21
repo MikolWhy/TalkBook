@@ -1,5 +1,5 @@
 // Simple Demo Data - Copy and paste this entire file into your browser console
-// This will populate localStorage with a month's worth of data (Oct 23 - Nov 22, 2025)
+// This will populate localStorage with data from September 18 - December 18, 2025
 
 // Clear existing data first (optional - comment out if you want to keep existing data)
 // localStorage.clear();
@@ -8,25 +8,25 @@
 // JOURNALS
 // ============================================================================
 localStorage.setItem("talkbook-journals", JSON.stringify([
-  { id: "journal-1", name: "Daily Journal", createdAt: "2025-10-15T08:00:00.000Z", updatedAt: "2025-10-15T08:00:00.000Z" },
-  { id: "journal-2", name: "Work & Projects", createdAt: "2025-10-20T10:30:00.000Z", updatedAt: "2025-10-20T10:30:00.000Z" }
+  { id: "journal-1", name: "Daily Journal", createdAt: "2025-09-10T08:00:00.000Z", updatedAt: "2025-09-10T08:00:00.000Z" },
+  { id: "journal-2", name: "Work & Projects", createdAt: "2025-09-15T10:30:00.000Z", updatedAt: "2025-09-15T10:30:00.000Z" }
 ]));
 localStorage.setItem("talkbook-active-journal", "journal-1");
 
 // ============================================================================
-// JOURNAL ENTRIES (26 entries spanning Oct 23 - Nov 22, 2025)
+// JOURNAL ENTRIES (entries spanning Sep 18 - Dec 18, 2025)
 // ============================================================================
 const entries = [
   {
-    id: "entry-1729702800000",
-    title: "Morning Reflection - Nov 22",
+    id: "entry-1766016000000",
+    title: "Morning Reflection - Dec 18",
     content: "<p>Ending the day feeling satisfied. Made the most of today and that's what matters.</p><p>Reflecting on the past month, I've seen significant growth in both personal and professional areas. The consistency of journaling has helped me stay grounded and aware of my progress.</p>",
-    mood: "grateful",
+    mood: "happy",
     tags: ["reflection", "gratitude"],
     cardColor: "green",
     journalId: "journal-1",
-    createdAt: "2025-11-22T18:30:00.000Z",
-    updatedAt: "2025-11-22T18:30:00.000Z",
+    createdAt: "2025-12-18T18:30:00.000Z",
+    updatedAt: "2025-12-18T18:30:00.000Z",
     draft: false,
     promptIds: [],
     extractedPeople: [],
@@ -34,15 +34,15 @@ const entries = [
     extractedDates: []
   },
   {
-    id: "entry-1729616400000",
-    title: "Feeling Thankful - Nov 21",
+    id: "entry-1765929600000",
+    title: "Feeling Thankful - Dec 14",
     content: "<p>Feeling thankful for the people and opportunities in my life. Gratitude changes perspective.</p><p>Had a wonderful conversation with a friend today. These connections remind me what truly matters in life.</p>",
-    mood: "grateful",
+    mood: "happy",
     tags: ["gratitude", "friends"],
     cardColor: "yellow",
     journalId: "journal-1",
-    createdAt: "2025-11-21T16:00:00.000Z",
-    updatedAt: "2025-11-21T16:00:00.000Z",
+    createdAt: "2025-12-14T16:00:00.000Z",
+    updatedAt: "2025-12-14T16:00:00.000Z",
     draft: false,
     promptIds: [],
     extractedPeople: [],
@@ -50,15 +50,15 @@ const entries = [
     extractedDates: []
   },
   {
-    id: "entry-1729530000000",
-    title: "Progress Update - Nov 20",
+    id: "entry-1765843200000",
+    title: "Progress Update - Dec 11",
     content: "<p>Progress update: things are moving forward. Sometimes slow progress is still progress.</p><p>Completed a major milestone at work today. The team celebrated together and it felt great to see everyone's hard work pay off.</p>",
     mood: "excited",
     tags: ["work", "goals"],
     cardColor: "blue",
     journalId: "journal-1",
-    createdAt: "2025-11-20T14:15:00.000Z",
-    updatedAt: "2025-11-20T14:15:00.000Z",
+    createdAt: "2025-12-11T14:15:00.000Z",
+    updatedAt: "2025-12-11T14:15:00.000Z",
     draft: false,
     promptIds: [],
     extractedPeople: [],
@@ -66,15 +66,15 @@ const entries = [
     extractedDates: []
   },
   {
-    id: "entry-1729443600000",
-    title: "Mindful Moments - Nov 19",
+    id: "entry-1765756800000",
+    title: "Mindful Moments - Dec 7",
     content: "<p>Mindful moments throughout the day. Being present makes everything feel more meaningful.</p><p>Took a break from the usual routine to just be. Sometimes the best thing you can do is nothing at all.</p>",
     mood: "calm",
     tags: ["reflection", "health"],
     cardColor: "purple",
     journalId: "journal-1",
-    createdAt: "2025-11-19T12:00:00.000Z",
-    updatedAt: "2025-11-19T12:00:00.000Z",
+    createdAt: "2025-12-07T12:00:00.000Z",
+    updatedAt: "2025-12-07T12:00:00.000Z",
     draft: false,
     promptIds: [],
     extractedPeople: [],
@@ -82,15 +82,15 @@ const entries = [
     extractedDates: []
   },
   {
-    id: "entry-1729357200000",
-    title: "Creative Flow - Nov 18",
+    id: "entry-1765670400000",
+    title: "Creative Flow - Dec 3",
     content: "<p>Creative energy flowing today. Worked on a personal project and felt inspired. Love these moments.</p><p>Sometimes when you're in the right headspace, ideas just flow naturally. Today was one of those days.</p>",
     mood: "excited",
     tags: ["hobbies", "personal"],
     cardColor: "pink",
     journalId: "journal-1",
-    createdAt: "2025-11-18T15:30:00.000Z",
-    updatedAt: "2025-11-18T15:30:00.000Z",
+    createdAt: "2025-12-03T15:30:00.000Z",
+    updatedAt: "2025-12-03T15:30:00.000Z",
     draft: false,
     promptIds: [],
     extractedPeople: [],
@@ -98,15 +98,15 @@ const entries = [
     extractedDates: []
   },
   {
-    id: "entry-1729270800000",
-    title: "Balance Achieved - Nov 17",
+    id: "entry-1765584000000",
+    title: "Balance Achieved - Nov 30",
     content: "<p>Found better balance today between work and personal life. It's an ongoing process but making progress.</p><p>Set boundaries and stuck to them. It's important to protect your time and energy.</p>",
     mood: "calm",
     tags: ["personal", "health"],
     cardColor: "default",
     journalId: "journal-1",
-    createdAt: "2025-11-17T19:00:00.000Z",
-    updatedAt: "2025-11-17T19:00:00.000Z",
+    createdAt: "2025-11-30T19:00:00.000Z",
+    updatedAt: "2025-11-30T19:00:00.000Z",
     draft: false,
     promptIds: [],
     extractedPeople: [],
@@ -114,15 +114,15 @@ const entries = [
     extractedDates: []
   },
   {
-    id: "entry-1729184400000",
-    title: "Focus Session - Nov 16",
+    id: "entry-1765497600000",
+    title: "Focus Session - Nov 26",
     content: "<p>Deep focus session today. When you're in the zone, time flies and productivity soars.</p><p>Completed several important tasks that had been lingering. The feeling of checking things off the list is so satisfying.</p>",
     mood: "happy",
     tags: ["work", "goals"],
     cardColor: "blue",
     journalId: "journal-2",
-    createdAt: "2025-11-16T11:00:00.000Z",
-    updatedAt: "2025-11-16T11:00:00.000Z",
+    createdAt: "2025-11-26T11:00:00.000Z",
+    updatedAt: "2025-11-26T11:00:00.000Z",
     draft: false,
     promptIds: [],
     extractedPeople: [],
@@ -130,15 +130,15 @@ const entries = [
     extractedDates: []
   },
   {
-    id: "entry-1729098000000",
-    title: "Connection Day - Nov 15",
+    id: "entry-1765411200000",
+    title: "Connection Day - Nov 23",
     content: "<p>Connected with friends today. Good conversations and shared laughter. These moments are precious.</p><p>Met up for coffee and ended up talking for hours. Time well spent with people who matter.</p>",
     mood: "very-happy",
     tags: ["friends", "personal"],
     cardColor: "green",
     journalId: "journal-1",
-    createdAt: "2025-11-15T17:00:00.000Z",
-    updatedAt: "2025-11-15T17:00:00.000Z",
+    createdAt: "2025-11-23T17:00:00.000Z",
+    updatedAt: "2025-11-23T17:00:00.000Z",
     draft: false,
     promptIds: [],
     extractedPeople: [],
@@ -146,15 +146,15 @@ const entries = [
     extractedDates: []
   },
   {
-    id: "entry-1729011600000",
-    title: "New Insights - Nov 14",
+    id: "entry-1765324800000",
+    title: "New Insights - Nov 19",
     content: "<p>Had some new insights today. Sometimes clarity comes when you least expect it.</p><p>Was reading an article and something clicked. It's amazing how the right information finds you at the right time.</p>",
     mood: "excited",
     tags: ["learning", "reflection"],
     cardColor: "purple",
     journalId: "journal-1",
-    createdAt: "2025-11-14T13:30:00.000Z",
-    updatedAt: "2025-11-14T13:30:00.000Z",
+    createdAt: "2025-11-19T13:30:00.000Z",
+    updatedAt: "2025-11-19T13:30:00.000Z",
     draft: false,
     promptIds: [],
     extractedPeople: [],
@@ -162,15 +162,15 @@ const entries = [
     extractedDates: []
   },
   {
-    id: "entry-1728925200000",
-    title: "Reflection Time - Nov 13",
+    id: "entry-1765238400000",
+    title: "Reflection Time - Nov 15",
     content: "<p>Taking time to reflect on recent experiences. Reflection helps process and learn from what happened.</p><p>Looking back at the past few weeks, I can see patterns and areas for improvement. Growth is happening.</p>",
     mood: "neutral",
     tags: ["reflection", "personal"],
     cardColor: "default",
     journalId: "journal-1",
-    createdAt: "2025-11-13T20:00:00.000Z",
-    updatedAt: "2025-11-13T20:00:00.000Z",
+    createdAt: "2025-11-15T20:00:00.000Z",
+    updatedAt: "2025-11-15T20:00:00.000Z",
     draft: false,
     promptIds: [],
     extractedPeople: [],
@@ -178,7 +178,7 @@ const entries = [
     extractedDates: []
   },
   {
-    id: "entry-1728838800000",
+    id: "entry-1765152000000",
     title: "Daily Wins - Nov 12",
     content: "<p>Celebrating small wins today. Every step forward counts, no matter how small it seems.</p><p>Finished a task I'd been putting off, had a good workout, and made time for reading. Small victories add up.</p>",
     mood: "happy",
@@ -194,15 +194,15 @@ const entries = [
     extractedDates: []
   },
   {
-    id: "entry-1728752400000",
-    title: "Growth Moments - Nov 11",
+    id: "entry-1765065600000",
+    title: "Growth Moments - Nov 8",
     content: "<p>Noticed some personal growth today. Small changes add up over time. Proud of the progress.</p><p>Handled a difficult situation with more patience and understanding than I would have a few months ago. That's progress.</p>",
-    mood: "grateful",
+    mood: "happy",
     tags: ["reflection", "personal"],
     cardColor: "green",
     journalId: "journal-1",
-    createdAt: "2025-11-11T14:00:00.000Z",
-    updatedAt: "2025-11-11T14:00:00.000Z",
+    createdAt: "2025-11-08T14:00:00.000Z",
+    updatedAt: "2025-11-08T14:00:00.000Z",
     draft: false,
     promptIds: [],
     extractedPeople: [],
@@ -210,15 +210,15 @@ const entries = [
     extractedDates: []
   },
   {
-    id: "entry-1728666000000",
-    title: "Challenges Overcome - Nov 10",
+    id: "entry-1764979200000",
+    title: "Challenges Overcome - Nov 4",
     content: "<p>Faced some challenges today but worked through them. Growth happens outside the comfort zone.</p><p>Had to have a difficult conversation but it went better than expected. Sometimes we build things up in our minds more than necessary.</p>",
     mood: "calm",
     tags: ["personal", "goals"],
     cardColor: "blue",
     journalId: "journal-1",
-    createdAt: "2025-11-10T18:30:00.000Z",
-    updatedAt: "2025-11-10T18:30:00.000Z",
+    createdAt: "2025-11-04T18:30:00.000Z",
+    updatedAt: "2025-11-04T18:30:00.000Z",
     draft: false,
     promptIds: [],
     extractedPeople: [],
@@ -226,15 +226,15 @@ const entries = [
     extractedDates: []
   },
   {
-    id: "entry-1728579600000",
-    title: "Gratitude Practice - Nov 9",
+    id: "entry-1764892800000",
+    title: "Gratitude Practice - Nov 1",
     content: "<p>Practicing gratitude today. There's always something to be thankful for, even on difficult days.</p><p>Made a list of things I'm grateful for. It's a simple practice but it really shifts your perspective.</p>",
-    mood: "grateful",
+    mood: "happy",
     tags: ["gratitude", "reflection"],
     cardColor: "yellow",
     journalId: "journal-1",
-    createdAt: "2025-11-09T12:15:00.000Z",
-    updatedAt: "2025-11-09T12:15:00.000Z",
+    createdAt: "2025-11-01T12:15:00.000Z",
+    updatedAt: "2025-11-01T12:15:00.000Z",
     draft: false,
     promptIds: [],
     extractedPeople: [],
@@ -242,15 +242,15 @@ const entries = [
     extractedDates: []
   },
   {
-    id: "entry-1728493200000",
-    title: "Sunday Planning - Nov 8",
+    id: "entry-1764806400000",
+    title: "Sunday Planning - Oct 28",
     content: "<p>Sunday planning session. Organized the week ahead and feeling prepared for what's coming.</p><p>Set priorities and scheduled time for both work and personal activities. A good plan sets you up for success.</p>",
     mood: "calm",
     tags: ["goals", "personal"],
     cardColor: "purple",
     journalId: "journal-1",
-    createdAt: "2025-11-08T10:00:00.000Z",
-    updatedAt: "2025-11-08T10:00:00.000Z",
+    createdAt: "2025-10-28T10:00:00.000Z",
+    updatedAt: "2025-10-28T10:00:00.000Z",
     draft: false,
     promptIds: [],
     extractedPeople: [],
@@ -258,15 +258,15 @@ const entries = [
     extractedDates: []
   },
   {
-    id: "entry-1728406800000",
-    title: "Saturday Relaxation - Nov 7",
+    id: "entry-1764720000000",
+    title: "Saturday Relaxation - Oct 24",
     content: "<p>Saturday vibes. No rush, no pressure. Just enjoying the moment and being present.</p><p>Spent the day doing things I enjoy without any agenda. Sometimes the best days are the ones with no plans.</p>",
     mood: "calm",
     tags: ["personal", "health"],
     cardColor: "pink",
     journalId: "journal-1",
-    createdAt: "2025-11-07T15:00:00.000Z",
-    updatedAt: "2025-11-07T15:00:00.000Z",
+    createdAt: "2025-10-24T15:00:00.000Z",
+    updatedAt: "2025-10-24T15:00:00.000Z",
     draft: false,
     promptIds: [],
     extractedPeople: [],
@@ -274,15 +274,15 @@ const entries = [
     extractedDates: []
   },
   {
-    id: "entry-1728320400000",
-    title: "Friday Feels - Nov 6",
+    id: "entry-1764633600000",
+    title: "Friday Feels - Oct 21",
     content: "<p>Friday! Wrapped up the week feeling accomplished. Looking forward to some rest and relaxation.</p><p>Finished all the important tasks for the week. The weekend can't come soon enough.</p>",
     mood: "happy",
     tags: ["work", "personal"],
     cardColor: "green",
     journalId: "journal-1",
-    createdAt: "2025-11-06T17:30:00.000Z",
-    updatedAt: "2025-11-06T17:30:00.000Z",
+    createdAt: "2025-10-21T17:30:00.000Z",
+    updatedAt: "2025-10-21T17:30:00.000Z",
     draft: false,
     promptIds: [],
     extractedPeople: [],
@@ -290,15 +290,15 @@ const entries = [
     extractedDates: []
   },
   {
-    id: "entry-1728234000000",
-    title: "Midweek Check-in - Nov 5",
+    id: "entry-1764547200000",
+    title: "Midweek Check-in - Oct 17",
     content: "<p>Midweek check-in: staying on track with goals. Some challenges but working through them one step at a time.</p><p>The week is going well overall. Staying focused and making progress on key priorities.</p>",
     mood: "neutral",
     tags: ["goals", "work"],
     cardColor: "default",
     journalId: "journal-1",
-    createdAt: "2025-11-05T13:00:00.000Z",
-    updatedAt: "2025-11-05T13:00:00.000Z",
+    createdAt: "2025-10-17T13:00:00.000Z",
+    updatedAt: "2025-10-17T13:00:00.000Z",
     draft: false,
     promptIds: [],
     extractedPeople: [],
@@ -306,15 +306,15 @@ const entries = [
     extractedDates: []
   },
   {
-    id: "entry-1728147600000",
-    title: "Monday Motivation - Nov 4",
+    id: "entry-1764460800000",
+    title: "Monday Motivation - Oct 13",
     content: "<p>Monday morning and feeling motivated. Set intentions for the week and ready to make it count.</p><p>Started the week with a clear plan and positive energy. Excited about what's ahead.</p>",
     mood: "excited",
     tags: ["work", "goals"],
     cardColor: "blue",
     journalId: "journal-1",
-    createdAt: "2025-11-04T09:00:00.000Z",
-    updatedAt: "2025-11-04T09:00:00.000Z",
+    createdAt: "2025-10-13T09:00:00.000Z",
+    updatedAt: "2025-10-13T09:00:00.000Z",
     draft: false,
     promptIds: [],
     extractedPeople: [],
@@ -322,15 +322,15 @@ const entries = [
     extractedDates: []
   },
   {
-    id: "entry-1728061200000",
-    title: "Weekend Adventures - Nov 3",
+    id: "entry-1764374400000",
+    title: "Weekend Adventures - Oct 10",
     content: "<p>Explored a new place this weekend. Adventure and new experiences keep life interesting and exciting.</p><p>Went hiking and discovered a beautiful trail I'd never been on before. Nature always recharges me.</p>",
     mood: "very-happy",
     tags: ["hobbies", "health"],
     cardColor: "green",
     journalId: "journal-1",
-    createdAt: "2025-11-03T16:00:00.000Z",
-    updatedAt: "2025-11-03T16:00:00.000Z",
+    createdAt: "2025-10-10T16:00:00.000Z",
+    updatedAt: "2025-10-10T16:00:00.000Z",
     draft: false,
     promptIds: [],
     extractedPeople: [],
@@ -338,15 +338,15 @@ const entries = [
     extractedDates: []
   },
   {
-    id: "entry-1727974800000",
-    title: "Self Care Day - Nov 2",
+    id: "entry-1764288000000",
+    title: "Self Care Day - Oct 6",
     content: "<p>Took a day to focus on self-care. Sometimes you need to slow down and recharge. Feeling refreshed.</p><p>Did a face mask, read a book, and just relaxed. Self-care isn't selfish, it's necessary.</p>",
     mood: "calm",
     tags: ["health", "personal"],
     cardColor: "pink",
     journalId: "journal-1",
-    createdAt: "2025-11-02T14:30:00.000Z",
-    updatedAt: "2025-11-02T14:30:00.000Z",
+    createdAt: "2025-10-06T14:30:00.000Z",
+    updatedAt: "2025-10-06T14:30:00.000Z",
     draft: false,
     promptIds: [],
     extractedPeople: [],
@@ -354,15 +354,15 @@ const entries = [
     extractedDates: []
   },
   {
-    id: "entry-1727888400000",
-    title: "Work Progress - Nov 1",
+    id: "entry-1764201600000",
+    title: "Work Progress - Oct 3",
     content: "<p>Completed several important tasks at work. The team is working well together and we're making good progress.</p><p>Had a productive meeting and aligned on next steps. Collaboration makes everything easier.</p>",
     mood: "happy",
     tags: ["work"],
     cardColor: "blue",
     journalId: "journal-2",
-    createdAt: "2025-11-01T11:30:00.000Z",
-    updatedAt: "2025-11-01T11:30:00.000Z",
+    createdAt: "2025-10-03T11:30:00.000Z",
+    updatedAt: "2025-10-03T11:30:00.000Z",
     draft: false,
     promptIds: [],
     extractedPeople: [],
@@ -370,15 +370,15 @@ const entries = [
     extractedDates: []
   },
   {
-    id: "entry-1727802000000",
-    title: "Family Time - Oct 31",
+    id: "entry-1764115200000",
+    title: "Family Time - Sep 29",
     content: "<p>Quality time with family today. These connections are what truly matter in life. Feeling blessed.</p><p>Had dinner together and just talked. Simple moments but they mean everything.</p>",
     mood: "very-happy",
     tags: ["family", "personal"],
     cardColor: "yellow",
     journalId: "journal-1",
-    createdAt: "2025-10-31T19:00:00.000Z",
-    updatedAt: "2025-10-31T19:00:00.000Z",
+    createdAt: "2025-09-29T19:00:00.000Z",
+    updatedAt: "2025-09-29T19:00:00.000Z",
     draft: false,
     promptIds: [],
     extractedPeople: [],
@@ -386,15 +386,15 @@ const entries = [
     extractedDates: []
   },
   {
-    id: "entry-1727715600000",
-    title: "Learning Journey - Oct 30",
+    id: "entry-1764028800000",
+    title: "Learning Journey - Sep 25",
     content: "<p>Attended a workshop today and learned some valuable skills. Always good to invest in personal development.</p><p>The session was engaging and I came away with actionable insights. Learning never stops.</p>",
     mood: "excited",
     tags: ["learning", "goals"],
     cardColor: "purple",
     journalId: "journal-1",
-    createdAt: "2025-10-30T15:00:00.000Z",
-    updatedAt: "2025-10-30T15:00:00.000Z",
+    createdAt: "2025-09-25T15:00:00.000Z",
+    updatedAt: "2025-09-25T15:00:00.000Z",
     draft: false,
     promptIds: [],
     extractedPeople: [],
@@ -402,15 +402,15 @@ const entries = [
     extractedDates: []
   },
   {
-    id: "entry-1727629200000",
-    title: "New Beginnings - Oct 29",
+    id: "entry-1763942400000",
+    title: "New Beginnings - Sep 22",
     content: "<p>Starting a new chapter. Set some goals and feeling motivated to work towards them. Change can be exciting.</p><p>Decided to make some positive changes in my routine. Small steps lead to big transformations.</p>",
     mood: "excited",
     tags: ["goals", "personal"],
     cardColor: "green",
     journalId: "journal-1",
-    createdAt: "2025-10-29T10:00:00.000Z",
-    updatedAt: "2025-10-29T10:00:00.000Z",
+    createdAt: "2025-09-22T10:00:00.000Z",
+    updatedAt: "2025-09-22T10:00:00.000Z",
     draft: false,
     promptIds: [],
     extractedPeople: [],
@@ -418,15 +418,15 @@ const entries = [
     extractedDates: []
   },
   {
-    id: "entry-1727542800000",
-    title: "Feeling Grateful - Oct 28",
+    id: "entry-1763856000000",
+    title: "Feeling Grateful - Sep 18",
     content: "<p>Taking time to appreciate the good things in life. Grateful for health, relationships, and opportunities to grow.</p><p>Sometimes it's easy to focus on what's missing, but today I'm choosing to focus on what I have.</p>",
-    mood: "grateful",
+    mood: "happy",
     tags: ["gratitude", "reflection"],
     cardColor: "yellow",
     journalId: "journal-1",
-    createdAt: "2025-10-28T17:00:00.000Z",
-    updatedAt: "2025-10-28T17:00:00.000Z",
+    createdAt: "2025-09-18T17:00:00.000Z",
+    updatedAt: "2025-09-18T17:00:00.000Z",
     draft: false,
     promptIds: [],
     extractedPeople: [],
@@ -434,15 +434,15 @@ const entries = [
     extractedDates: []
   },
   {
-    id: "entry-1727456400000",
-    title: "Productive Day - Oct 27",
+    id: "entry-1763769600000",
+    title: "Productive Day - Oct 28",
     content: "<p>Made significant progress on my project today. The momentum is building and I'm excited about the direction things are heading.</p><p>Crossed off several items from my to-do list. Progress feels good.</p>",
     mood: "happy",
     tags: ["work", "goals"],
     cardColor: "blue",
     journalId: "journal-2",
-    createdAt: "2025-10-27T14:00:00.000Z",
-    updatedAt: "2025-10-27T14:00:00.000Z",
+    createdAt: "2025-10-28T14:00:00.000Z",
+    updatedAt: "2025-10-28T14:00:00.000Z",
     draft: false,
     promptIds: [],
     extractedPeople: [],
@@ -450,7 +450,7 @@ const entries = [
     extractedDates: []
   },
   {
-    id: "entry-1727370000000",
+    id: "entry-1763683200000",
     title: "Weekend Vibes - Oct 26",
     content: "<p>Spent the weekend recharging. Went for a long walk, read a good book, and caught up with family. These moments matter.</p><p>Sometimes the best weekends are the quiet ones. Rest is productive too.</p>",
     mood: "calm",
@@ -466,7 +466,7 @@ const entries = [
     extractedDates: []
   },
   {
-    id: "entry-1727283600000",
+    id: "entry-1763596800000",
     title: "End of Day Thoughts - Oct 25",
     content: "<p>Reflecting on today's experiences. Learned something new and had meaningful conversations with friends. Feeling content.</p><p>Days like this remind me why I journal. It helps capture these moments of clarity and connection.</p>",
     mood: "happy",
@@ -482,7 +482,7 @@ const entries = [
     extractedDates: []
   },
   {
-    id: "entry-1727197200000",
+    id: "entry-1763510400000",
     title: "Morning Reflection - Oct 24",
     content: "<p>Started the day with a clear mind and positive energy. Had a great morning routine and feeling ready to tackle the day ahead.</p><p>Morning routines really set the tone for the whole day. Grateful for this practice.</p>",
     mood: "happy",
@@ -498,7 +498,7 @@ const entries = [
     extractedDates: []
   },
   {
-    id: "entry-1727110800000",
+    id: "entry-1763424000000",
     title: "Morning Reflection - Oct 23",
     content: "<p>Starting fresh today. New day, new opportunities. Feeling optimistic about what's ahead.</p><p>Set some intentions for the week and feeling ready to make progress on my goals.</p>",
     mood: "excited",
@@ -523,8 +523,8 @@ localStorage.setItem("entriesCacheVersion", "1");
 // ============================================================================
 localStorage.setItem("talkbook-xp", "15250");
 localStorage.setItem("talkbook-level", "8");
-localStorage.setItem("talkbook-last-entry-date", "2025-11-22");
-localStorage.setItem("talkbook-last-all-habits-bonus-date", "2025-11-20");
+localStorage.setItem("talkbook-last-entry-date", "2025-12-18");
+localStorage.setItem("talkbook-last-all-habits-bonus-date", "2025-12-16");
 
 // ============================================================================
 // USED PROMPTS
@@ -592,7 +592,7 @@ localStorage.setItem("appBackgroundColor", "white");
         color: "#3B82F6", // blue
         frequency: "daily",
         archived: false,
-        createdAt: "2025-10-15T08:00:00.000Z",
+        createdAt: "2025-09-10T08:00:00.000Z",
         order: 0
       },
       {
@@ -602,7 +602,7 @@ localStorage.setItem("appBackgroundColor", "white");
         color: "#EF4444", // red
         frequency: "daily",
         archived: false,
-        createdAt: "2025-10-15T08:00:00.000Z",
+        createdAt: "2025-09-10T08:00:00.000Z",
         order: 1
       },
       {
@@ -614,7 +614,7 @@ localStorage.setItem("appBackgroundColor", "white");
         color: "#10B981", // green
         frequency: "daily",
         archived: false,
-        createdAt: "2025-10-16T09:00:00.000Z",
+        createdAt: "2025-09-11T09:00:00.000Z",
         order: 2
       },
       {
@@ -626,7 +626,7 @@ localStorage.setItem("appBackgroundColor", "white");
         color: "#8B5CF6", // purple
         frequency: "daily",
         archived: false,
-        createdAt: "2025-10-17T10:00:00.000Z",
+        createdAt: "2025-09-12T10:00:00.000Z",
         order: 3
       },
       {
@@ -636,7 +636,7 @@ localStorage.setItem("appBackgroundColor", "white");
         color: "#F59E0B", // orange
         frequency: "daily",
         archived: false,
-        createdAt: "2025-10-18T11:00:00.000Z",
+        createdAt: "2025-09-13T11:00:00.000Z",
         order: 4
       },
       {
@@ -646,7 +646,7 @@ localStorage.setItem("appBackgroundColor", "white");
         color: "#EC4899", // pink
         frequency: "daily",
         archived: false,
-        createdAt: "2025-10-19T12:00:00.000Z",
+        createdAt: "2025-09-14T12:00:00.000Z",
         order: 5
       }
     ];
@@ -658,8 +658,8 @@ localStorage.setItem("appBackgroundColor", "white");
       habitIds.push(id);
     }
     
-    // Generate habit logs for the month (Oct 23 - Nov 22, 2025)
-    const startDate = new Date("2025-10-23");
+    // Generate habit logs for the period (Sep 18 - Dec 18, 2025)
+    const startDate = new Date("2025-09-18");
     const logs = [];
     
     for (let i = 0; i <= 30; i++) {
@@ -710,7 +710,7 @@ localStorage.setItem("appBackgroundColor", "white");
 })();
 
 console.log("✅ Demo data loaded successfully!");
-console.log(`📊 Loaded ${entries.length} journal entries from Oct 23 - Nov 22, 2025`);
+console.log(`📊 Loaded ${entries.length} journal entries from Sep 18 - Dec 18, 2025`);
 console.log("\n📝 NOTE: Habits are stored in IndexedDB and need to be loaded separately.");
 console.log("   Run the 'load-habits-demo.js' script to populate habits data.");
 console.log("   Or wait a moment for the habits script above to attempt loading.");
