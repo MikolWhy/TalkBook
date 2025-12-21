@@ -48,32 +48,11 @@ const RichTextEditor = forwardRef<RichTextEditorRef, RichTextEditorProps>(
     });
 
     // Expose methods to parent components via ref
-    // SYNTAX: useImperativeHandle(ref, callback) - React hook to expose methods to parent via ref
-    //         The callback returns an object with methods that parent can call via ref.current.methodName()
-    //         ref comes from forwardRef wrapper (see component definition)
     useImperativeHandle(ref, () => ({
       insertPromptAsHeading: (prompt: string) => {
         if (!editor) return; // Early return if editor not initialized (defensive check)
 
-        // #1: Insert Prompt as H3 Heading with Paragraph Below
-        // WHY: User requested that prompts insert as headings (like Google Docs), and clicking
-        //      underneath should default to regular body text, not heading format.
-        // HOW: Use Tiptap's insertContent to insert HTML directly - `<h3>${prompt}</h3><p></p>`
-        //      The empty paragraph ensures cursor is positioned in paragraph mode for regular text.
-        // SYNTAX BREAKDOWN:
-        //   - editor.chain() - Tiptap's chainable API (returns EditorChain object)
-        //   - .focus() - Focuses the editor (chainable method)
-        //   - .insertContent(htmlString) - Inserts HTML content at cursor position
-        //     - Template literal: `...` allows ${prompt} interpolation
-        //     - HTML string: `<h3>...</h3><p></p>` - H3 heading + empty paragraph
-        //   - .run() - Executes the chain (required to actually perform the operations)
-        // REFERENCES:
-        //   - editor: Tiptap Editor instance from useEditor() hook (line ~30)
-        //   - prompt: string parameter passed from parent component
-        //   - insertContent: Tiptap command from @tiptap/core library
-        // APPROACH: Simple and direct - Tiptap handles cursor positioning automatically.
-        //           No setTimeout needed - this is conventional Tiptap usage.
-        // CONNECTION: Called from PromptSuggestions component when user clicks a prompt button.
+   
         editor.chain()
           .focus()
           .insertContent(`<h3>${prompt}</h3><p></p>`) // Insert H3 + empty paragraph

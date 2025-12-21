@@ -6,12 +6,6 @@
  * Reusable mood selection interface with emoji buttons and optional labels.
  * Provides a consistent UX for mood tracking across journal entry pages.
  * 
- * Features:
- * - 10 mood options with emojis and labels
- * - Framer Motion animations for smooth interactions
- * - Toggle selection (click again to deselect)
- * - Configurable label visibility
- * 
  * @module src/components/ui/MoodSelector.tsx
  */
 

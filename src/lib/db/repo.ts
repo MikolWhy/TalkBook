@@ -17,9 +17,8 @@
 import { db } from './dexie';
 import { Habit, HabitLog } from './schema';
 
-// ============================================================================
-// HABIT OPERATIONS (Zayn)
-// ============================================================================
+// HABIT OPERATIONS 
+
 
 export async function createHabit(habit: Omit<Habit, 'id'>): Promise<Habit> {
   try {
@@ -134,9 +133,9 @@ export async function deleteHabit(id: number): Promise<void> {
   }
 }
 
-// ============================================================================
-// HABIT LOG OPERATIONS (Zayn)
-// ============================================================================
+
+// HABIT LOG OPERATIONS 
+
 
 export async function logHabit(
   habitId: number,

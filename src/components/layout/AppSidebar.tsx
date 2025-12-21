@@ -94,16 +94,7 @@ function CompactXPProgress() {
 
     useEffect(() => {
         const loadStats = () => {
-            // Dynamic import to avoid issues if module isn't loaded yet? Or just standard require?
-            // Using standard import would be better if possible, but keeping logic similar.
-            // Changing to dynamic import or just standard import.
-            // Since this is client side, let's use standard import if possible, but keep require if it was conditional.
-            // However, require in useEffect is a bit odd practice for simple util.
-            // I'll switch to a functional call if the module is available.
-            // For now, I'll keep the dynamic require but cleanup the path.
-            // Actually, better to import at top if it's not huge.
-            // Let's use standard import.
-            // Using standard import now
+
             const userStats = getUserStats();
             setStats(userStats);
         };
