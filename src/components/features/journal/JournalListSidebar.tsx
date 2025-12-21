@@ -88,10 +88,16 @@ export default function JournalListSidebar({
 }: JournalListSidebarProps) {
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedTagFilter, setSelectedTagFilter] = useState<string | null>(null);
+    const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
+    const [selectedYear, setSelectedYear] = useState<number | null>(null);
     const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
+    const [isMonthDropdownOpen, setIsMonthDropdownOpen] = useState(false);
+    const [isYearDropdownOpen, setIsYearDropdownOpen] = useState(false);
     const filterDropdownRef = useRef<HTMLDivElement>(null);
+    const monthDropdownRef = useRef<HTMLDivElement>(null);
+    const yearDropdownRef = useRef<HTMLDivElement>(null);
 
-    // Click outside listener
+    // Click outside listeners
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (
@@ -101,13 +107,27 @@ export default function JournalListSidebar({
             ) {
                 setIsFilterDropdownOpen(false);
             }
+            if (
+                isMonthDropdownOpen &&
+                monthDropdownRef.current &&
+                !monthDropdownRef.current.contains(event.target as Node)
+            ) {
+                setIsMonthDropdownOpen(false);
+            }
+            if (
+                isYearDropdownOpen &&
+                yearDropdownRef.current &&
+                !yearDropdownRef.current.contains(event.target as Node)
+            ) {
+                setIsYearDropdownOpen(false);
+            }
         };
 
-        if (isFilterDropdownOpen) {
+        if (isFilterDropdownOpen || isMonthDropdownOpen || isYearDropdownOpen) {
             document.addEventListener('mousedown', handleClickOutside);
             return () => document.removeEventListener('mousedown', handleClickOutside);
         }
-    }, [isFilterDropdownOpen]);
+    }, [isFilterDropdownOpen, isMonthDropdownOpen, isYearDropdownOpen]);
 
     // Derived state: All Tags
     const allTags = useMemo(() => {
@@ -117,6 +137,62 @@ export default function JournalListSidebar({
             )
         ).sort();
     }, [entries]);
+
+    // Derived state: Available Years
+    const availableYears = useMemo(() => {
+        const yearSet = new Set<number>();
+        entries.forEach((entry) => {
+            if (entry.createdAt) {
+                const date = new Date(entry.createdAt);
+                yearSet.add(date.getFullYear());
+            }
+        });
+        return Array.from(yearSet).sort((a, b) => b - a); // Most recent first
+    }, [entries]);
+
+    // Derived state: Available Months (filtered by selected year if applicable)
+    const availableMonths = useMemo(() => {
+        const monthSet = new Set<number>();
+        const monthNames = [
+            "January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"
+        ];
+
+        entries.forEach((entry) => {
+            if (entry.createdAt) {
+                const date = new Date(entry.createdAt);
+                // If year is selected, only include months from that year
+                if (selectedYear === null || date.getFullYear() === selectedYear) {
+                    monthSet.add(date.getMonth()); // 0-11
+                }
+            }
+        });
+        
+        // Return months sorted (January = 0, December = 11)
+        return Array.from(monthSet).sort((a, b) => a - b).map(month => ({
+            value: month,
+            name: monthNames[month]
+        }));
+    }, [entries, selectedYear]);
+
+    // Clear month selection if it's not available in the selected year
+    useEffect(() => {
+        if (selectedMonth !== null && selectedYear !== null) {
+            const monthAvailable = availableMonths.some(m => m.value === selectedMonth);
+            if (!monthAvailable) {
+                setSelectedMonth(null);
+            }
+        }
+    }, [selectedYear, availableMonths, selectedMonth]);
+
+    // Helper function to format month name
+    const getMonthName = (month: number): string => {
+        const monthNames = [
+            "January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"
+        ];
+        return monthNames[month];
+    };
 
     // Derived state: Filtered Entries
     const filteredEntries = useMemo(() => {
@@ -143,9 +219,30 @@ export default function JournalListSidebar({
                 }
             }
 
+            // Month-Year filter
+            if (selectedMonth !== null || selectedYear !== null) {
+                if (entry.createdAt) {
+                    const entryDate = new Date(entry.createdAt);
+                    const entryYear = entryDate.getFullYear();
+                    const entryMonth = entryDate.getMonth(); // 0-11
+
+                    // If year is selected, check year match
+                    if (selectedYear !== null && entryYear !== selectedYear) {
+                        return false;
+                    }
+
+                    // If month is selected, check month match
+                    if (selectedMonth !== null && entryMonth !== selectedMonth) {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
+            }
+
             return true;
         });
-    }, [entries, searchQuery, selectedTagFilter]);
+    }, [entries, searchQuery, selectedTagFilter, selectedMonth, selectedYear]);
 
     // Map to List Items
     const listItems: IOSListItem[] = filteredEntries.map((entry) => {
@@ -274,12 +371,131 @@ export default function JournalListSidebar({
                     )}
                 </div>
 
+                {/* Month and Year Filters - Side by Side */}
+                <div className="flex gap-3">
+                    {/* Filter by Month Dropdown - 2/3 width */}
+                    <div className="relative flex-[2]" ref={monthDropdownRef}>
+                        <button
+                            onClick={() => setIsMonthDropdownOpen(!isMonthDropdownOpen)}
+                            className="w-full px-4 py-2 border text-gray-900 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors flex items-center justify-between"
+                            style={{ backgroundColor: "var(--background, #ffffff)" }}
+                        >
+                            <span>
+                                {selectedMonth !== null ? (
+                                    <span className="text-gray-900 font-medium">
+                                        {getMonthName(selectedMonth)}
+                                    </span>
+                                ) : (
+                                    <span className="text-gray-400">Filter by month...</span>
+                                )}
+                            </span>
+                            <span className="text-gray-400">
+                                {isMonthDropdownOpen ? "▲" : "▼"}
+                            </span>
+                        </button>
+
+                        {/* Dropdown Menu */}
+                        {isMonthDropdownOpen && (
+                            <div className="absolute z-10 w-full mt-1 border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto" style={{ backgroundColor: "var(--background, #ffffff)" }}>
+                                <button
+                                    onClick={() => {
+                                        setSelectedMonth(null);
+                                        setIsMonthDropdownOpen(false);
+                                    }}
+                                    className={`w-full px-4 py-2 text-left hover:bg-gray-100 transition-colors ${selectedMonth === null ? "bg-blue-50 font-medium text-gray-900" : "text-gray-400"
+                                        }`}
+                                >
+                                    All Months
+                                </button>
+                                {availableMonths.length > 0 ? (
+                                    availableMonths.map((month) => (
+                                        <button
+                                            key={month.value}
+                                            onClick={() => {
+                                                setSelectedMonth(month.value);
+                                                setIsMonthDropdownOpen(false);
+                                            }}
+                                            className={`w-full px-4 py-2 text-left hover:bg-gray-100 transition-colors ${selectedMonth === month.value ? "bg-blue-50 font-medium" : ""
+                                                }`}
+                                        >
+                                            {month.name}
+                                        </button>
+                                    ))
+                                ) : (
+                                    <div className="px-4 py-2 text-gray-500 text-sm">
+                                        {selectedYear ? "No entries in this year" : "No entries available"}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Filter by Year Dropdown - 1/3 width */}
+                    <div className="relative flex-1" ref={yearDropdownRef}>
+                        <button
+                            onClick={() => setIsYearDropdownOpen(!isYearDropdownOpen)}
+                            className="w-full px-4 py-2 border text-gray-900 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors flex items-center justify-between"
+                            style={{ backgroundColor: "var(--background, #ffffff)" }}
+                        >
+                            <span>
+                                {selectedYear !== null ? (
+                                    <span className="text-gray-900 font-medium">
+                                        {selectedYear}
+                                    </span>
+                                ) : (
+                                    <span className="text-gray-400">Filter by year...</span>
+                                )}
+                            </span>
+                            <span className="text-gray-400">
+                                {isYearDropdownOpen ? "▲" : "▼"}
+                            </span>
+                        </button>
+
+                        {/* Dropdown Menu */}
+                        {isYearDropdownOpen && (
+                            <div className="absolute z-10 w-full mt-1 border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto" style={{ backgroundColor: "var(--background, #ffffff)" }}>
+                                <button
+                                    onClick={() => {
+                                        setSelectedYear(null);
+                                        setIsYearDropdownOpen(false);
+                                    }}
+                                    className={`w-full px-4 py-2 text-left hover:bg-gray-100 transition-colors ${selectedYear === null ? "bg-blue-50 font-medium text-gray-900" : "text-gray-400"
+                                        }`}
+                                >
+                                    All Years
+                                </button>
+                                {availableYears.length > 0 ? (
+                                    availableYears.map((year) => (
+                                        <button
+                                            key={year}
+                                            onClick={() => {
+                                                setSelectedYear(year);
+                                                setIsYearDropdownOpen(false);
+                                            }}
+                                            className={`w-full px-4 py-2 text-left hover:bg-gray-100 transition-colors ${selectedYear === year ? "bg-blue-50 font-medium" : ""
+                                                }`}
+                                        >
+                                            {year}
+                                        </button>
+                                    ))
+                                ) : (
+                                    <div className="px-4 py-2 text-gray-500 text-sm">
+                                        No entries available
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
                 {/* Clear filters button */}
-                {(searchQuery || selectedTagFilter) && (
+                {(searchQuery || selectedTagFilter || selectedMonth !== null || selectedYear !== null) && (
                     <button
                         onClick={() => {
                             setSearchQuery("");
                             setSelectedTagFilter(null);
+                            setSelectedMonth(null);
+                            setSelectedYear(null);
                         }}
                         className="w-full px-4 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
                     >
@@ -297,7 +513,7 @@ export default function JournalListSidebar({
                     }}
                     selectedKeys={selectedEntryId ? new Set([String(selectedEntryId)]) : new Set()}
                     emptyMessage={
-                        searchQuery || selectedTagFilter
+                        searchQuery || selectedTagFilter || selectedMonth !== null || selectedYear !== null
                             ? "No entries match your filters."
                             : "No journal entries yet. Create your first entry!"
                     }
